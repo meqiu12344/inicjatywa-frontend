@@ -22,7 +22,7 @@ function LoginContent() {
   const { login, isLoggingIn, isAuthenticated, isLoading } = useAuth();
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
@@ -116,19 +116,21 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-900">
       {/* Left Column - Login Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 lg:px-16 xl:px-24">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 lg:px-16 xl:px-24 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 z-20 lg:shadow-2xl">
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
-          <div className="mb-10">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:shadow-amber-500/40 transition-shadow">
-                <span className="text-white font-bold text-xl">WK</span>
-              </div>
-              <span className="font-display font-semibold text-xl text-white">
-                Wydarzenia Katolickie
-              </span>
+          <div className="mb-10 flex justify-center items-center">
+            <Link href="/" className="inline-block transition-transform duration-200 hover:opacity-90 active:scale-95">
+              <Image
+                src="/images/inicjatywa-logo-granatowe.svg"
+                alt="Logo Inicjatywa"
+                width={250}
+                height={150}
+                className="w-auto h-20 sm:h-40 object-contain brightness-0 invert"
+                priority
+              />
             </Link>
           </div>
 
@@ -187,8 +189,8 @@ function LoginContent() {
                     'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                     'transition-all duration-200',
-                    errors.email 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                    errors.email
+                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                       : 'border-slate-700 hover:border-slate-600'
                   )}
                 />
@@ -221,8 +223,8 @@ function LoginContent() {
                     'w-full pl-12 pr-12 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                     'transition-all duration-200',
-                    errors.password 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                    errors.password
+                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                       : 'border-slate-700 hover:border-slate-600'
                   )}
                 />
@@ -318,23 +320,23 @@ function LoginContent() {
       </div>
 
       {/* Right Column - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative">
-        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-slate-900/50 to-slate-900 z-10" />
+      <div className="w-full h-64 lg:h-auto lg:w-1/2 relative order-first lg:order-last">
+        <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-slate-900 via-slate-900/40 to-transparent z-10 pointer-events-none" />
         <Image
           src="/images/login-bg.jpg"
-          alt="Kościół"
+          alt="Wnętrze Kościoła"
           fill
-          className="object-cover"
+          className="object-cover object-center"
           priority
-          sizes="50vw"
+          sizes="(max-w: 1024px) 100vw, 50vw"
         />
         {/* Overlay Content */}
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-12 text-center">
-          <div className="max-w-md">
-            <h2 className="font-display text-3xl font-bold text-white mb-4">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-8 lg:p-12 text-center drop-shadow-xl">
+          <div className="max-w-md bg-slate-900/40 backdrop-blur-md p-6 lg:p-8 rounded-2xl border border-white/10 hidden sm:block">
+            <h2 className="font-display text-2xl lg:text-3xl font-bold text-white mb-3">
               Odkryj wydarzenia w Twojej parafii
             </h2>
-            <p className="text-slate-300 text-lg">
+            <p className="text-slate-200 text-sm lg:text-lg">
               Dołącz do tysięcy katolików, którzy korzystają z naszej platformy,
               aby być na bieżąco z wydarzeniami religijnymi.
             </p>

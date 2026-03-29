@@ -53,13 +53,13 @@ function HeroSection() {
         />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-        <div className="max-w-3xl">
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+      <div className="relative max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 py-16 lg:py-24 2xl:py-32">
+        <div className="max-w-3xl 2xl:max-w-4xl">
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl 2xl:text-7xl font-bold tracking-tight mb-6">
             Odkryj wydarzenia
             <span className="block text-primary-200">katolickie w Polsce</span>
           </h1>
-          <p className="text-lg sm:text-xl text-primary-100 mb-8 max-w-2xl">
+          <p className="text-lg sm:text-xl 2xl:text-2xl text-primary-100 mb-8 max-w-2xl 2xl:max-w-4xl">
             Rekolekcje, pielgrzymki, spotkania modlitewne, koncerty i wiele więcej.
             Znajdź wydarzenia w swojej okolicy lub online.
           </p>
@@ -85,19 +85,54 @@ function HeroSection() {
             </button>
           </form>
 
-          {/* Stats */}
-          <div className="flex flex-wrap gap-8 mt-12">
-            <div>
-              <div className="text-3xl font-bold">🙏</div>
-              <div className="text-primary-200 text-sm">Wspólnota wiary</div>
+          {/* Stats / Features - encourages scrolling down */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6 2xl:gap-8 mt-16 2xl:mt-24 max-w-4xl 2xl:max-w-5xl relative z-10">
+            {/* Card 1 */}
+            <div 
+              onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: 'smooth' })}
+              className="group relative flex flex-col items-center sm:items-start p-6 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-white/30 rounded-3xl transition-all duration-500 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-2 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative w-12 h-12 flex items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-500 shadow-xl group-hover:rotate-3">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-3xl font-black text-white mb-1 tracking-tight">350+</div>
+              <div className="text-primary-200 font-medium">Wydarzeń</div>
+              <div className="absolute right-6 bottom-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                <ArrowRight className="w-5 h-5 text-white rotate-90" />
+              </div>
             </div>
-            <div>
-              <div className="text-3xl font-bold">📍</div>
-              <div className="text-primary-200 text-sm">Cała Polska</div>
+
+            {/* Card 2 */}
+            <div 
+              onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: 'smooth' })}
+              className="group relative flex flex-col items-center sm:items-start p-6 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-emerald-500/30 rounded-3xl transition-all duration-500 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-2 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative w-12 h-12 flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-500 shadow-xl group-hover:-rotate-3">
+                <MapPin className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-2xl font-black text-white mb-2 tracking-tight">Cała Polska</div>
+              <div className="text-primary-200 font-medium">Lokalnie i online</div>
+              <div className="absolute right-6 bottom-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                <ArrowRight className="w-5 h-5 text-emerald-300 rotate-90" />
+              </div>
             </div>
-            <div>
-              <div className="text-3xl font-bold">🎉</div>
-              <div className="text-primary-200 text-sm">Dołącz do nas</div>
+
+            {/* Card 3 */}
+            <div 
+              onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: 'smooth' })}
+              className="group relative flex flex-col items-center sm:items-start p-6 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-amber-400/30 rounded-3xl transition-all duration-500 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-2 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative w-12 h-12 flex items-center justify-center bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-500 shadow-xl group-hover:rotate-3">
+                <Heart className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-3xl font-black text-white mb-1 tracking-tight">Wspólnota</div>
+              <div className="text-primary-200 font-medium">Rośnij w wierze</div>
+              <div className="absolute right-6 bottom-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                <ArrowRight className="w-5 h-5 text-amber-300 rotate-90" />
+              </div>
             </div>
           </div>
         </div>
@@ -405,7 +440,7 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      
+
       <div className="container-page">
         {/* Gold Banner for top-tier promoted events */}
         <div className="mt-10">

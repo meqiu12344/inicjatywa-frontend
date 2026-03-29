@@ -5,18 +5,18 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  User, 
-  UserPlus, 
-  Check, 
-  Loader2, 
-  Phone, 
-  Building2, 
-  Globe, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  UserPlus,
+  Check,
+  Loader2,
+  Phone,
+  Building2,
+  Globe,
   FileText,
   Upload,
   X
@@ -46,7 +46,7 @@ export default function RegisterPage() {
   const { register: registerUser, isRegistering, isAuthenticated, isLoading } = useAuth();
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -116,7 +116,7 @@ export default function RegisterPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setLogoError(null);
-    
+
     if (!file) {
       setLogoFile(null);
       setLogoPreview(null);
@@ -136,7 +136,7 @@ export default function RegisterPage() {
     }
 
     setLogoFile(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -260,19 +260,21 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Left Column - Registration Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 lg:px-16 xl:px-24 overflow-y-auto">
+    <div className="min-h-screen flex flex-col lg:flex-row-reverse bg-slate-900">
+      {/* Form Container */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 lg:px-16 xl:px-24 overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 z-20 lg:shadow-2xl">
         <div className="w-full max-w-lg mx-auto">
           {/* Logo */}
-          <div className="mb-10">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:shadow-amber-500/40 transition-shadow">
-                <span className="text-white font-bold text-xl">WK</span>
-              </div>
-              <span className="font-display font-semibold text-xl text-white">
-                Wydarzenia Katolickie
-              </span>
+          <div className="mb-10 flex justify-center items-center">
+            <Link href="/" className="inline-block transition-transform duration-200 hover:opacity-90 active:scale-95">
+              <Image
+                src="/images/inicjatywa-logo-granatowe.svg"
+                alt="Logo Inicjatywa"
+                width={250}
+                height={150}
+                className="w-auto h-20 sm:h-40 object-contain brightness-0 invert"
+                priority
+              />
             </Link>
           </div>
 
@@ -361,8 +363,8 @@ export default function RegisterPage() {
                     'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                     'transition-all duration-200',
-                    errors.username 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                    errors.username
+                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                       : 'border-slate-700 hover:border-slate-600'
                   )}
                 />
@@ -395,8 +397,8 @@ export default function RegisterPage() {
                     'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                     'transition-all duration-200',
-                    errors.email 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                    errors.email
+                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                       : 'border-slate-700 hover:border-slate-600'
                   )}
                 />
@@ -448,8 +450,8 @@ export default function RegisterPage() {
                     'w-full pl-12 pr-12 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                     'transition-all duration-200',
-                    errors.password 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                    errors.password
+                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                       : 'border-slate-700 hover:border-slate-600'
                   )}
                 />
@@ -465,7 +467,7 @@ export default function RegisterPage() {
               {errors.password && (
                 <p className="mt-2 text-sm text-red-400">{errors.password.message}</p>
               )}
-              
+
               {/* Password requirements */}
               {password && (
                 <div className="mt-3 grid grid-cols-2 gap-2">
@@ -497,8 +499,8 @@ export default function RegisterPage() {
                     'w-full pl-12 pr-12 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                     'transition-all duration-200',
-                    errors.password_confirm 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                    errors.password_confirm
+                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                       : 'border-slate-700 hover:border-slate-600'
                   )}
                 />
@@ -532,8 +534,8 @@ export default function RegisterPage() {
                       />
                       <div className={clsx(
                         'w-5 h-5 rounded border-2 transition-all duration-200 flex items-center justify-center',
-                        field.value 
-                          ? 'bg-amber-500 border-amber-500' 
+                        field.value
+                          ? 'bg-amber-500 border-amber-500'
                           : 'border-slate-600 group-hover:border-slate-500'
                       )}>
                         {field.value && <Check className="w-3.5 h-3.5 text-white" />}
@@ -570,8 +572,8 @@ export default function RegisterPage() {
                         'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                         'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                         'transition-all duration-200',
-                        errors.organization_name 
-                          ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                        errors.organization_name
+                          ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                           : 'border-slate-700 hover:border-slate-600'
                       )}
                     />
@@ -609,7 +611,7 @@ export default function RegisterPage() {
                         <Building2 className="w-8 h-8 text-slate-600" />
                       </div>
                     )}
-                    
+
                     {/* Upload Button */}
                     <div className="flex-1">
                       <input
@@ -701,8 +703,8 @@ export default function RegisterPage() {
                       'w-full px-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                       'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                       'transition-all duration-200 resize-none',
-                      errors.organization_description 
-                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                      errors.organization_description
+                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                         : 'border-slate-700 hover:border-slate-600'
                     )}
                   />
@@ -725,8 +727,8 @@ export default function RegisterPage() {
                       'w-full px-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
                       'focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500',
                       'transition-all duration-200 resize-none',
-                      errors.organizer_motivation 
-                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500' 
+                      errors.organizer_motivation
+                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                         : 'border-slate-700 hover:border-slate-600'
                     )}
                   />
@@ -795,24 +797,24 @@ export default function RegisterPage() {
       </div>
 
       {/* Right Column - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative">
-        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-slate-900/50 to-slate-900 z-10" />
+      <div className="w-full h-64 lg:h-auto lg:w-1/2 relative order-first lg:order-last">
+        <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-l from-slate-900 via-slate-900/40 to-transparent z-10 pointer-events-none" />
         <Image
-          src="/images/register-bg.jpg"
-          alt="Kościół"
+          src="/images/login-bg.jpg"
+          alt="Wnętrze Kościoła"
           fill
-          className="object-cover"
+          className="object-cover object-center"
           priority
-          sizes="50vw"
+          sizes="(max-w: 1024px) 100vw, 50vw"
         />
         {/* Overlay Content */}
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-12 text-center">
-          <div className="max-w-md">
-            <h2 className="font-display text-3xl font-bold text-white mb-4">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-8 lg:p-12 text-center drop-shadow-xl">
+          <div className="max-w-md bg-slate-900/40 backdrop-blur-md p-6 lg:p-8 rounded-2xl border border-white/10 hidden sm:block">
+            <h2 className="font-display text-2xl lg:text-3xl font-bold text-white mb-3">
               Dołącz do wspólnoty
             </h2>
-            <p className="text-slate-300 text-lg">
-              Odkrywaj wydarzenia w swojej parafii, zapisuj się na rekolekcje 
+            <p className="text-slate-200 text-sm lg:text-lg">
+              Odkrywaj wydarzenia w swojej parafii, zapisuj się na rekolekcje
               i bądź częścią aktywnej społeczności katolickiej.
             </p>
           </div>

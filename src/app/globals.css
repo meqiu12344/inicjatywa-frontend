@@ -136,7 +136,7 @@ body {
   }
   
   .container-page {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    @apply max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 py-8 2xl:py-12;
   }
   
   .skeleton {
