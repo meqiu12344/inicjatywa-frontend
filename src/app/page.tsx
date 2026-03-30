@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, MapPin, TrendingUp, ArrowRight, Star, Clock, Heart, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { EventSlider, GoldBanner, GoldBannerSkeleton, CategoryGrid, CategoryGridSkeleton } from '@/components/events';
+import HeroGlobe from '@/components/layout/HeroGlobe';
 import {
   useLatestEvents,
   useTop10Events,
@@ -27,7 +28,6 @@ function SectionLoadError({ message }: { message: string }) {
   );
 }
 
-// Hero Section with city search
 function HeroSection() {
   const [cityInput, setCityInput] = useState('');
   const router = useRouter();
@@ -42,24 +42,32 @@ function HeroSection() {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 text-white overflow-hidden">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
+    <section className="relative bg-[#050B14] text-white overflow-hidden min-h-[90vh] lg:min-h-screen flex items-center">
+      {/* 3D Globe Background */}
+      <div className="absolute inset-0 z-0">
+        <HeroGlobe />
       </div>
 
-      <div className="relative max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 py-16 lg:py-24 2xl:py-32">
-        <div className="max-w-3xl 2xl:max-w-4xl">
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl 2xl:text-7xl font-bold tracking-tight mb-6">
+      {/* Dark overlay for readability on the left side */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#050B14] via-[#050B14]/80 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#050B14] via-transparent to-transparent pointer-events-none" />
+
+      {/* Content Container */}
+      <div className="relative w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 py-12 lg:py-20 z-10 pointer-events-none">
+
+        {/* Left Column: Text & CTA */}
+        <div className="max-w-3xl pointer-events-auto">
+          <div className="inline-block mb-6 px-4 py-2 rounded-full border border-primary-500/30 bg-primary-900/30 backdrop-blur-md">
+            <span className="text-sm font-medium tracking-wide text-primary-100 flex items-center gap-2">
+              <GlobeIcon /> Odkrywaj świat katolickich wydarzeń
+            </span>
+          </div>
+
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl 2xl:text-7xl font-bold tracking-tight mb-6 drop-shadow-xl">
             Odkryj wydarzenia
-            <span className="block text-primary-200">katolickie w Polsce</span>
+            <span className="block text-primary-300">katolickie w Polsce</span>
           </h1>
-          <p className="text-lg sm:text-xl 2xl:text-2xl text-primary-100 mb-8 max-w-2xl 2xl:max-w-4xl">
+          <p className="text-lg sm:text-xl 2xl:text-2xl text-slate-300 mb-8 max-w-2xl drop-shadow-md">
             Rekolekcje, pielgrzymki, spotkania modlitewne, koncerty i wiele więcej.
             Znajdź wydarzenia w swojej okolicy lub online.
           </p>
@@ -73,71 +81,34 @@ function HeroSection() {
                 value={cityInput}
                 onChange={(e) => setCityInput(e.target.value)}
                 placeholder="Wpisz miasto..."
-                className="w-full pl-12 pr-4 py-3 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 backdrop-blur-md shadow-2xl"
               />
             </div>
             <button
               type="submit"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-700 font-semibold rounded-xl hover:bg-primary-50 transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-xl"
             >
-              Szukaj wydarzeń
+              Szukaj
               <ArrowRight className="w-5 h-5" />
             </button>
           </form>
 
-          {/* Stats / Features - encourages scrolling down */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6 2xl:gap-8 mt-16 2xl:mt-24 max-w-4xl 2xl:max-w-5xl relative z-10">
-            {/* Card 1 */}
-            <div 
-              onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: 'smooth' })}
-              className="group relative flex flex-col items-center sm:items-start p-6 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-white/30 rounded-3xl transition-all duration-500 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-2 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative w-12 h-12 flex items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-500 shadow-xl group-hover:rotate-3">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-black text-white mb-1 tracking-tight">350+</div>
-              <div className="text-primary-200 font-medium">Wydarzeń</div>
-              <div className="absolute right-6 bottom-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
-                <ArrowRight className="w-5 h-5 text-white rotate-90" />
-              </div>
-            </div>
 
-            {/* Card 2 */}
-            <div 
-              onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: 'smooth' })}
-              className="group relative flex flex-col items-center sm:items-start p-6 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-emerald-500/30 rounded-3xl transition-all duration-500 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-2 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative w-12 h-12 flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-500 shadow-xl group-hover:-rotate-3">
-                <MapPin className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-2xl font-black text-white mb-2 tracking-tight">Cała Polska</div>
-              <div className="text-primary-200 font-medium">Lokalnie i online</div>
-              <div className="absolute right-6 bottom-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
-                <ArrowRight className="w-5 h-5 text-emerald-300 rotate-90" />
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div 
-              onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: 'smooth' })}
-              className="group relative flex flex-col items-center sm:items-start p-6 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-amber-400/30 rounded-3xl transition-all duration-500 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-2 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative w-12 h-12 flex items-center justify-center bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-500 shadow-xl group-hover:rotate-3">
-                <Heart className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-black text-white mb-1 tracking-tight">Wspólnota</div>
-              <div className="text-primary-200 font-medium">Rośnij w wierze</div>
-              <div className="absolute right-6 bottom-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
-                <ArrowRight className="w-5 h-5 text-amber-300 rotate-90" />
-              </div>
-            </div>
-          </div>
         </div>
+
       </div>
     </section>
+  );
+}
+
+// Icon helper for the badge
+function GlobeIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
   );
 }
 
