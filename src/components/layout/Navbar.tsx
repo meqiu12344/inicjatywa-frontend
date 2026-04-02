@@ -198,8 +198,8 @@ export function Navbar() {
       {/* Mobile menu */}
       <div
         className={clsx(
-          'md:hidden fixed inset-0 top-16 bg-white z-40 transition-transform duration-300 mt-6',
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          'md:hidden fixed inset-0 top-[10vh] 2xl:top-[12vh] bg-white z-40 transition-all duration-300 mt-0 min-h-[calc(100vh-80px)]',
+          mobileMenuOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'
         )}
       >
         <div className="p-4 space-y-2 bg-white/95">

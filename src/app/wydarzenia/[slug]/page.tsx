@@ -100,7 +100,7 @@ export default function EventPage({ params }: EventPageProps) {
   const cancelMutation = useCancelRegistration();
   const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [shareUrl, setShareUrl] = useState('');
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
 
   const { data: ticketTypes } = useQuery({
     queryKey: ['ticket-types', event?.id],

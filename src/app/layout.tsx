@@ -40,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="min-h-screen flex flex-col bg-slate-50" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden" suppressHydrationWarning>
         <Providers>
           <Navbar />
           <main className="flex-1">
