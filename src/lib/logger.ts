@@ -14,7 +14,7 @@ interface LogEntry {
 class ConsoleLogger {
   private logs: LogEntry[] = [];
   private maxLogs = 100;
-  private backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+  private backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   private originalError?: (...args: any[]) => void;
 
   constructor() {
