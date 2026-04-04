@@ -84,13 +84,6 @@ export default function HeroGlobe() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleMarkerClick = useCallback((d: object) => {
-    const event = d as GlobeEvent;
-    if (event.slug) {
-      router.push(`/wydarzenia/${event.slug}`);
-    }
-  }, [router]);
-
   const createHtmlElement = useCallback((d: object) => {
     const ev = d as GlobeEvent;
     const color = getColor(ev.category);
@@ -98,6 +91,10 @@ export default function HeroGlobe() {
 
     const el = document.createElement('div');
     el.style.cursor = 'pointer';
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (ev.slug) router.push(`/wydarzenia/${ev.slug}`);
+    });
     el.innerHTML = `
       <div style="display: flex; flex-direction: column; align-items: center; transition: transform 0.2s;" 
            onmouseover="this.style.transform='scale(1.25)'" 
@@ -114,7 +111,7 @@ export default function HeroGlobe() {
       </div>
     `;
     return el;
-  }, []);
+  }, [router]);
 
   return (
     <>
@@ -137,7 +134,6 @@ export default function HeroGlobe() {
           htmlLat="lat"
           htmlLng="lng"
           htmlElement={createHtmlElement}
-          onHtmlElementClick={handleMarkerClick}
         />
       )}
       </div>
