@@ -47,9 +47,16 @@ const isTokenValid = (token: string) => {
   }
 };
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token & HTTP method override for Apache compatibility
 apiClient.interceptors.request.use(
   (config) => {
+    // Apache on shared hosting blocks PUT/PATCH/DELETE - tunnel via POST + header
+    const method = config.method?.toUpperCase();
+    if (method && ['PUT', 'PATCH', 'DELETE'].includes(method)) {
+      config.headers['X-HTTP-Method-Override'] = method;
+      config.method = 'post';
+    }
+
     // Skip auth header for public endpoints (login, register, refresh)
     const isPublicEndpoint = isPublicEndpointUrl(config.url);
     

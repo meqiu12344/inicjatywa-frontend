@@ -732,8 +732,8 @@ export default function CreateEventPage() {
       return paymentsApi.createEventWithPayment(payload);
     },
     onSuccess: (response) => {
-      toast.success('Wydarzenie utworzone! Przekierowuję do płatności Stripe...');
-      // Redirect to Stripe checkout
+      toast.loading('Przekierowuję do płatności...', { duration: 3000 });
+      // Redirect to Stripe checkout — event is saved as draft until payment confirmed
       window.location.href = response.checkout_url;
     },
     onError: (error: any) => {

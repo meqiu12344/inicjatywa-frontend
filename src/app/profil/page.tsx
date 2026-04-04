@@ -158,7 +158,7 @@ export default function ProfilePage() {
   // Mutacja aktualizacji profilu
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      const response = await apiClient.post('/auth/profile/', data);
+      const response = await apiClient.patch('/auth/profile/', data);
       return response.data;
     },
     onSuccess: () => {
@@ -218,7 +218,7 @@ export default function ProfilePage() {
       formData.append('avatar', file);
       
       try {
-        await apiClient.post('/auth/profile/', formData, {
+        await apiClient.patch('/auth/profile/', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         toast.success('Zdjęcie profilowe zostało zaktualizowane');
