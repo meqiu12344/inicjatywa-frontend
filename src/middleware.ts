@@ -22,6 +22,7 @@ export function middleware(request: NextRequest) {
   // Proxy /api/ and /media/ requests to Django, preserving the full path including trailing slash
   if (pathname.startsWith('/api/') || pathname.startsWith('/media/')) {
     const url = new URL(pathname + request.nextUrl.search, BACKEND_URL);
+    console.log(`[middleware] Rewriting ${pathname} → ${url.toString()}`);
     return NextResponse.rewrite(url);
   }
 
