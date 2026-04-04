@@ -443,14 +443,23 @@ export default function MyEventsPage() {
                         </div>
                       )}
                       
-                      {/* Promote button - only for public events that are not promoted */}
+                      {/* Promote button - for public events */}
                       {event.status === 'public' && !event.is_promoted && (
                         <Link
-                          href={`/wydarzenia/${event.slug}/promuj`}
+                          href={`/moje-wydarzenia/${event.id}/promuj`}
                           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
                         >
                           <Megaphone className="w-4 h-4" />
                           Promuj
+                        </Link>
+                      )}
+                      {event.status === 'public' && event.is_promoted && (
+                        <Link
+                          href={`/moje-wydarzenia/${event.id}/promuj`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg transition-colors"
+                        >
+                          <Star className="w-4 h-4" />
+                          Zmień plan
                         </Link>
                       )}
                       
