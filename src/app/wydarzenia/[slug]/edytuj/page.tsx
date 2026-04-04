@@ -66,7 +66,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
   const [eventId, setEventId] = useState<number | null>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
 
   // Fetch event data
   const { data: event, isLoading: isLoadingEvent, error: eventError } = useQuery({

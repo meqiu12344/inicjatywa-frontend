@@ -6,6 +6,7 @@ import { Menu, X, Search, User, Calendar, Plus, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AdminNotificationBadge } from '@/components/AdminNotificationBadge';
 import { clsx } from 'clsx';
+import Image from 'next/image'
 
 const navigation = [
   { name: 'Wydarzenia', href: '/' },
@@ -21,16 +22,18 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <nav className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
+        <div className="flex items-center justify-between h-[10vh] 2xl:h-[12vh] min-h-[80px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-800 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">WK</span>
-            </div>
-            <span className="hidden sm:block font-display font-semibold text-lg text-slate-900">
-              Wydarzenia Katolickie
-            </span>
+          <Link href="/" className="flex items-center shrink-0 transition-transform duration-200 hover:opacity-90 active:scale-95">
+            <Image
+              src="/images/inicjatywa-logo-granatowe.svg"
+              alt="Logo Inicjatywa"
+              width={250}
+              height={50}
+              className="w-auto h-20 2xl:h-20 object-contain"
+              priority
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -195,11 +198,11 @@ export function Navbar() {
       {/* Mobile menu */}
       <div
         className={clsx(
-          'md:hidden fixed inset-0 top-16 bg-white z-40 transition-transform duration-300',
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          'md:hidden fixed inset-0 top-[10vh] 2xl:top-[12vh] bg-white z-40 transition-all duration-300 mt-0 min-h-[calc(100vh-80px)]',
+          mobileMenuOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'
         )}
       >
-        <div className="p-4 space-y-2">
+        <div className="p-4 space-y-2 bg-white/95">
           {navigation.map((item) => (
             <Link
               key={item.name}

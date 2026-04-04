@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, MapPin, TrendingUp, ArrowRight, Star, Clock, Heart, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { EventSlider, GoldBanner, GoldBannerSkeleton, CategoryGrid, CategoryGridSkeleton } from '@/components/events';
+import HeroGlobe from '@/components/layout/HeroGlobe';
 import {
   useLatestEvents,
   useTop10Events,
@@ -27,7 +28,6 @@ function SectionLoadError({ message }: { message: string }) {
   );
 }
 
-// Hero Section with city search
 function HeroSection() {
   const [cityInput, setCityInput] = useState('');
   const router = useRouter();
@@ -42,24 +42,32 @@ function HeroSection() {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 text-white overflow-hidden">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
+    <section className="relative bg-[#050B14] text-white overflow-hidden min-h-[90vh] lg:min-h-screen flex items-center">
+      {/* 3D Globe Background */}
+      <div className="absolute inset-0 z-0">
+        <HeroGlobe />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-        <div className="max-w-3xl">
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+      {/* Dark overlay for readability on the left side */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#050B14] via-[#050B14]/80 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#050B14] via-transparent to-transparent pointer-events-none" />
+
+      {/* Content Container */}
+      <div className="relative w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 py-12 lg:py-20 z-10 pointer-events-none">
+
+        {/* Left Column: Text & CTA */}
+        <div className="max-w-3xl pointer-events-auto">
+          <div className="inline-block mb-6 px-4 py-2 rounded-full border border-primary-500/30 bg-primary-900/30 backdrop-blur-md">
+            <span className="text-sm font-medium tracking-wide text-primary-100 flex items-center gap-2">
+              <GlobeIcon /> Odkrywaj świat katolickich wydarzeń
+            </span>
+          </div>
+
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl 2xl:text-7xl font-bold tracking-tight mb-6 drop-shadow-xl">
             Odkryj wydarzenia
-            <span className="block text-primary-200">katolickie w Polsce</span>
+            <span className="block text-primary-300">katolickie w Polsce</span>
           </h1>
-          <p className="text-lg sm:text-xl text-primary-100 mb-8 max-w-2xl">
+          <p className="text-lg sm:text-xl 2xl:text-2xl text-slate-300 mb-8 max-w-2xl drop-shadow-md">
             Rekolekcje, pielgrzymki, spotkania modlitewne, koncerty i wiele więcej.
             Znajdź wydarzenia w swojej okolicy lub online.
           </p>
@@ -73,36 +81,34 @@ function HeroSection() {
                 value={cityInput}
                 onChange={(e) => setCityInput(e.target.value)}
                 placeholder="Wpisz miasto..."
-                className="w-full pl-12 pr-4 py-3 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 backdrop-blur-md shadow-2xl"
               />
             </div>
             <button
               type="submit"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-700 font-semibold rounded-xl hover:bg-primary-50 transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-xl"
             >
-              Szukaj wydarzeń
+              Szukaj
               <ArrowRight className="w-5 h-5" />
             </button>
           </form>
 
-          {/* Stats */}
-          <div className="flex flex-wrap gap-8 mt-12">
-            <div>
-              <div className="text-3xl font-bold">🙏</div>
-              <div className="text-primary-200 text-sm">Wspólnota wiary</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">📍</div>
-              <div className="text-primary-200 text-sm">Cała Polska</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">🎉</div>
-              <div className="text-primary-200 text-sm">Dołącz do nas</div>
-            </div>
-          </div>
+
         </div>
+
       </div>
     </section>
+  );
+}
+
+// Icon helper for the badge
+function GlobeIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
   );
 }
 
@@ -405,7 +411,7 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      
+
       <div className="container-page">
         {/* Gold Banner for top-tier promoted events */}
         <div className="mt-10">

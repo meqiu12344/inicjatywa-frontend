@@ -520,7 +520,7 @@ export default function CreateEventPage() {
   const [addressValidationMessage, setAddressValidationMessage] = useState<{type: 'success' | 'error' | 'suggestion', message: string} | null>(null);
   const [postalCodeValidationMessage, setPostalCodeValidationMessage] = useState<{type: 'success' | 'error' | 'suggestion', message: string} | null>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
 
   // Redirect if not authenticated or not organizer
   useEffect(() => {

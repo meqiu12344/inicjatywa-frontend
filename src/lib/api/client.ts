@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
 
 // Flag to track if token refresh is in progress (prevents refresh spam)
 let isRefreshing = false;
