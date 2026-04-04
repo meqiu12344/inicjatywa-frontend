@@ -7,6 +7,7 @@ import { pl } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, Plus, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/events';
+import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { EventListItem } from '@/types';
 
 export default function CalendarPage() {
@@ -36,6 +37,8 @@ export default function CalendarPage() {
       return true;
     });
   }, [eventsData]);
+
+  usePromotionImpressions(events);
 
   // Grupuj wydarzenia według daty
   const eventsByDate = events.reduce((acc: Record<string, EventListItem[]>, event) => {

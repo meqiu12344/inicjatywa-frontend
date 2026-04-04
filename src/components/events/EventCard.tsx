@@ -6,6 +6,7 @@ import { Calendar, MapPin, Users, Star, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
+import { eventsApi } from '@/lib/api/events';
 import type { EventListItem } from '@/types';
 
 interface EventCardProps {
@@ -31,8 +32,15 @@ export function EventCard({ event, featured = false }: EventCardProps) {
   const formattedTime = format(startDate, 'HH:mm');
 
   return (
-    <Link href={eventUrl} className="block group">
-      <article
+    <Link
+      href={eventUrl}
+      className="block group"
+      onClick={() => {
+        if (event.is_promoted && event.promotion_id) {
+          eventsApi.recordClick(event.promotion_id);
+        }
+      }}
+    >      <article
         className={clsx(
           'card-hover h-full flex flex-col',
           featured && 'ring-2 ring-primary-500/20'

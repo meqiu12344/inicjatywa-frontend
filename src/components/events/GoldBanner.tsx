@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { Calendar, MapPin, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { eventsApi } from '@/lib/api/events';
+import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import type { EventListItem } from '@/types';
 
 interface GoldBannerProps {
@@ -22,6 +24,8 @@ export function GoldBanner({ events }: GoldBannerProps) {
       return true;
     });
   }, [events]);
+
+  usePromotionImpressions(uniqueEvents);
 
   if (!uniqueEvents || uniqueEvents.length === 0) {
     return null;
@@ -44,7 +48,7 @@ function GoldBannerCard({ event }: { event: EventListItem }) {
   const formattedDate = format(startDate, 'd.MM.yyyy', { locale: pl });
 
   return (
-    <Link href={eventUrl} className="block group">
+    <Link href={eventUrl} className="block group" onClick={() => { if (event.is_promoted && event.promotion_id) eventsApi.recordClick(event.promotion_id); }}>
       <div className="relative overflow-hidden rounded-2xl shadow-xl">
         {/* Gold Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400" />

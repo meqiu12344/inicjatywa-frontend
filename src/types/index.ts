@@ -147,6 +147,7 @@ export interface EventListItem {
   category?: Pick<Category, 'id' | 'name' | 'slug'>;
   is_promoted: boolean;
   promotion_level?: 'bronze' | 'silver' | 'gold';
+  promotion_id?: number;
   is_fully_booked: boolean;
   online_event: boolean;
   description?: string;

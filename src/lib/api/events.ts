@@ -150,6 +150,17 @@ export const eventsApi = {
     return get(`${EVENTS_BASE}/${eventId}/promotion-stats/`);
   },
 
+  // Record impressions for promoted events (fire-and-forget)
+  recordImpressions: (promotionIds: number[]): void => {
+    if (!promotionIds.length) return;
+    post(`${EVENTS_BASE}/record-impression/`, { promotion_ids: promotionIds }).catch(() => {});
+  },
+
+  // Record a click on a promoted event (fire-and-forget)
+  recordClick: (promotionId: number): void => {
+    post(`${EVENTS_BASE}/record-click/`, { promotion_id: promotionId }).catch(() => {});
+  },
+
   // Update registration (attendance/status)
   updateRegistration: async (eventId: number, registrationId: number, data: { attended?: boolean; status?: string }): Promise<unknown> => {
     return post(`${EVENTS_BASE}/${eventId}/registrations/${registrationId}/`, data, { method: 'PATCH' } as any);

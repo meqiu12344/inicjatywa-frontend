@@ -14,6 +14,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
+import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import type { EventListItem, EventFilters, EventType } from '@/types';
 
 // Date presets
@@ -143,6 +144,8 @@ function SearchPageContent() {
       return true;
     });
   }, [searchResults]);
+
+  usePromotionImpressions(events);
   
   const totalCount = searchResults?.count || 0;
   const totalPages = Math.ceil(totalCount / 12);

@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, Calendar, MapPin, Heart, Star } from 'lucide
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
+import { eventsApi } from '@/lib/api/events';
+import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import type { EventListItem } from '@/types';
 
 interface EventSliderProps {
@@ -57,6 +59,7 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
     <Link
       href={eventUrl}
       className="flex-shrink-0 w-64 sm:w-72 group relative"
+      onClick={() => { if (event.is_promoted && event.promotion_id) eventsApi.recordClick(event.promotion_id); }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -171,6 +174,8 @@ export function EventSlider({
       return true;
     });
   }, [events]);
+
+  usePromotionImpressions(uniqueEvents);
 
   const checkScrollButtons = () => {
     const container = scrollContainerRef.current;

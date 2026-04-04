@@ -16,6 +16,7 @@ import { notFound, useParams, useSearchParams, useRouter } from 'next/navigation
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
+import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { EventListItem } from '@/types';
 
 // Types
@@ -511,6 +512,7 @@ export default function OrganizerProfilePage() {
   }
 
   const events = eventsData?.results || [];
+  usePromotionImpressions(events);
   const reviews = reviewsData?.results || [];
   const canAddReview = reviewsData?.can_add_review ?? false;
   const userReview = reviewsData?.user_review;
