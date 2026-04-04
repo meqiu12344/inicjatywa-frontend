@@ -48,7 +48,7 @@ function formatDate(iso: string): string {
 function spreadOverlapping(events: GlobeEvent[]): GlobeEvent[] {
   const groups = new Map<string, GlobeEvent[]>();
   for (const ev of events) {
-    const key = `${ev.lat.toFixed(2)}_${ev.lng.toFixed(2)}`;
+    const key = `${ev.lat.toFixed(1)}_${ev.lng.toFixed(1)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(ev);
   }
@@ -57,9 +57,9 @@ function spreadOverlapping(events: GlobeEvent[]): GlobeEvent[] {
     if (group.length === 1) {
       result.push(group[0]);
     } else {
-      const offset = 0.35; // ~35km spread
+      const offset = 0.8 + group.length * 0.15;
       group.forEach((ev, i) => {
-        const angle = (2 * Math.PI * i) / group.length;
+        const angle = (2 * Math.PI * i) / group.length - Math.PI / 2;
         result.push({
           ...ev,
           lat: ev.lat + offset * Math.cos(angle),
@@ -124,14 +124,14 @@ export default function HeroGlobe() {
       if (ev.slug) router.push(`/wydarzenia/${ev.slug}`);
     });
     el.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; transition: transform 0.2s;" 
-           onmouseover="this.style.transform='scale(1.25)'" 
-           onmouseout="this.style.transform='scale(1)'">
+      <div style="display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; position: relative;" 
+           onmouseover="this.style.transform='scale(1.25)'; this.querySelector('.globe-tooltip').style.opacity='1'; this.querySelector('.globe-tooltip').style.pointerEvents='auto';" 
+           onmouseout="this.style.transform='scale(1)'; this.querySelector('.globe-tooltip').style.opacity='0'; this.querySelector('.globe-tooltip').style.pointerEvents='none';">
         <svg viewBox="-4 0 36 36" fill="${color}" width="26" height="26" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));">
           <path d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"/>
           <circle fill="white" cx="14" cy="12" r="5"/>
         </svg>
-        <div style="background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; margin-top: 3px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.15); max-width: 180px; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">
+        <div class="globe-tooltip" style="opacity: 0; pointer-events: none; transition: opacity 0.2s; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; margin-top: 3px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.15); line-height: 1.3; position: absolute; top: 100%; z-index: 10;">
           <div style="font-weight: 600;">${ev.city}</div>
           <div style="opacity: 0.8; font-size: 10px;">${ev.title.length > 28 ? ev.title.slice(0, 28) + '…' : ev.title}</div>
           ${date ? `<div style="opacity: 0.6; font-size: 9px;">${date}</div>` : ''}
