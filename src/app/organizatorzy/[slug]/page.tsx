@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, useParams, useSearchParams, useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { EventListItem } from '@/types';
@@ -450,8 +450,8 @@ export default function OrganizerProfilePage() {
       setRating(0);
       setComment('');
     },
-    onError: () => {
-      toast.error('Nie udało się dodać opinii');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się dodać opinii'));
     },
   });
 
@@ -465,8 +465,8 @@ export default function OrganizerProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['organizer-reviews', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer', slug] });
     },
-    onError: () => {
-      toast.error('Nie udało się usunąć opinii');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się usunąć opinii'));
     },
   });
 
@@ -480,8 +480,8 @@ export default function OrganizerProfilePage() {
       toast.success('Odpowiedź została dodana');
       queryClient.invalidateQueries({ queryKey: ['organizer-reviews', slug] });
     },
-    onError: () => {
-      toast.error('Nie udało się dodać odpowiedzi');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się dodać odpowiedzi'));
     },
   });
 

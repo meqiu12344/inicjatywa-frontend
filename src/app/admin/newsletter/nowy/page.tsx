@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Send, Save, FileText, Eye } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 
 const CKEditorWrapper = dynamic(() => import('@/components/CKEditorWrapper'), { ssr: false });
@@ -54,8 +54,8 @@ export default function NewNewsletterPage() {
       toast.success('Zapisano szkic');
       queryClient.invalidateQueries({ queryKey: ['newsletters'] });
     },
-    onError: () => {
-      toast.error('Błąd podczas zapisywania szkicu');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Błąd podczas zapisywania szkicu'));
     },
   });
 
@@ -69,8 +69,8 @@ export default function NewNewsletterPage() {
       queryClient.invalidateQueries({ queryKey: ['newsletters'] });
       router.push('/admin/newsletter');
     },
-    onError: () => {
-      toast.error('Błąd podczas wysyłania newslettera');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Błąd podczas wysyłania newslettera'));
     },
   });
 

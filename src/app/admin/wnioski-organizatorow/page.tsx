@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi, OrganizerRequest } from '@/lib/api/admin';
+import { getErrorMessage } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -52,8 +53,8 @@ export default function OrganizerRequestsPage() {
       queryClient.invalidateQueries({ queryKey: ['organizer-request-stats'] });
       setSelectedRequest(null);
     },
-    onError: () => {
-      toast.error('Nie udało się zatwierdzić wniosku');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zatwierdzić wniosku'));
     },
   });
 
@@ -68,8 +69,8 @@ export default function OrganizerRequestsPage() {
       setShowRejectModal(false);
       setRejectReason('');
     },
-    onError: () => {
-      toast.error('Nie udało się odrzucić wniosku');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się odrzucić wniosku'));
     },
   });
 

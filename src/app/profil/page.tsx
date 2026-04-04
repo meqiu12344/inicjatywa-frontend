@@ -13,7 +13,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useHydration } from '@/stores/authStore';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -165,8 +165,8 @@ export default function ProfilePage() {
       toast.success('Profil został zaktualizowany');
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
-    onError: () => {
-      toast.error('Nie udało się zaktualizować profilu');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zaktualizować profilu'));
     },
   });
 
@@ -183,8 +183,8 @@ export default function ProfilePage() {
       toast.success('Hasło zostało zmienione');
       resetPassword();
     },
-    onError: () => {
-      toast.error('Nie udało się zmienić hasła');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zmienić hasła'));
     },
   });
 
@@ -199,8 +199,8 @@ export default function ProfilePage() {
       logout();
       router.push('/');
     },
-    onError: () => {
-      toast.error('Nie udało się usunąć konta');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się usunąć konta'));
     },
   });
 

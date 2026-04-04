@@ -13,7 +13,7 @@ import {
   User, MapPin, Trash2, ChevronLeft, ChevronRight, Inbox, FileText,
   Send, Loader2
 } from 'lucide-react';
-import { get, post, patch, del } from '@/lib/api/client';
+import { get, post, patch, del, getErrorMessage } from '@/lib/api/client';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
@@ -130,8 +130,8 @@ export default function EventRegistrationsPage() {
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['event-registrations-stats'] });
     },
-    onError: () => {
-      toast.error('Nie udało się zaktualizować statusu');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zaktualizować statusu'));
     },
     onSettled: () => {
       setActionLoading(null);
@@ -146,8 +146,8 @@ export default function EventRegistrationsPage() {
       toast.success('Obecność zaktualizowana');
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
     },
-    onError: () => {
-      toast.error('Nie udało się zaktualizować obecności');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zaktualizować obecności'));
     },
     onSettled: () => {
       setActionLoading(null);
@@ -163,8 +163,8 @@ export default function EventRegistrationsPage() {
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['event-registrations-stats'] });
     },
-    onError: () => {
-      toast.error('Nie udało się usunąć rejestracji');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się usunąć rejestracji'));
     },
     onSettled: () => {
       setActionLoading(null);

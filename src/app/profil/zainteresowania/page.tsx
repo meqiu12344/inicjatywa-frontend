@@ -7,6 +7,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { authApi } from '@/lib/api/auth';
+import { getErrorMessage } from '@/lib/api/client';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface Category {
@@ -43,7 +44,7 @@ export default function InterestsPage() {
       setSelectedCategories(data.favorite_categories);
     } catch (error) {
       console.error('Failed to load interests:', error);
-      toast.error('Nie udało się załadować zainteresowań');
+      toast.error(getErrorMessage(error, 'Nie udało się załadować zainteresowań'));
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +68,7 @@ export default function InterestsPage() {
       router.push('/');
     } catch (error) {
       console.error('Failed to save interests:', error);
-      toast.error('Nie udało się zapisać zainteresowań');
+      toast.error(getErrorMessage(error, 'Nie udało się zapisać zainteresowań'));
     } finally {
       setIsSaving(false);
     }

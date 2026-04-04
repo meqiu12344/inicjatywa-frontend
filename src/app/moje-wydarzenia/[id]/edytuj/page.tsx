@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, Globe, ExternalLink, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { eventsApi } from '@/lib/api/events';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { locationsApi } from '@/lib/api/locations';
 import { useAuthStore } from '@/stores/authStore';
 import dynamic from 'next/dynamic';
@@ -387,8 +387,8 @@ export default function EditEventPage({ params }: Props) {
       toast.success('Zdjęcie zostało zaktualizowane');
       queryClient.invalidateQueries({ queryKey: ['event', eventId] });
     },
-    onError: () => {
-      toast.error('Nie udało się przesłać zdjęcia');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się przesłać zdjęcia'));
     },
   });
 
@@ -449,11 +449,7 @@ export default function EditEventPage({ params }: Props) {
       }, 500);
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.detail || 
-                      error?.response?.data?.message ||
-                      JSON.stringify(error?.response?.data) ||
-                      'Nie udało się zapisać zmian';
-      toast.error(message);
+      toast.error(getErrorMessage(error, 'Nie udało się zapisać zmian'));
     },
   });
 

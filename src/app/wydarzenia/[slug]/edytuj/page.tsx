@@ -13,6 +13,7 @@ import {
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
+import { getErrorMessage } from '@/lib/api/client';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { TicketType, Category, Event } from '@/types';
@@ -312,8 +313,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
       router.push(`/wydarzenia/${data.slug}`);
     },
-    onError: () => {
-      toast.error('Nie udało się zaktualizować wydarzenia');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zaktualizować wydarzenia'));
     },
   });
 

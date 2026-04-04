@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useHydration } from '@/stores/authStore';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 
 interface Props {
   params: Promise<{ eventId: string }>;
@@ -131,8 +131,8 @@ export default function OrganizerManageTicketsPage({ params }: Props) {
       });
       queryClient.invalidateQueries({ queryKey: ['ticket-types', resolvedParams.eventId] });
     },
-    onError: () => {
-      setFormMessage({ type: 'error', text: 'Nie udało się dodać biletu.' });
+    onError: (error) => {
+      setFormMessage({ type: 'error', text: getErrorMessage(error, 'Nie udało się dodać biletu.') });
     },
   });
 
@@ -144,7 +144,7 @@ export default function OrganizerManageTicketsPage({ params }: Props) {
       queryClient.invalidateQueries({ queryKey: ['ticket-types', resolvedParams.eventId] });
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Nie udało się usunąć biletu.';
+      const message = getErrorMessage(error, 'Nie udało się usunąć biletu.');
       setFormMessage({ type: 'error', text: message });
     },
   });
@@ -158,8 +158,8 @@ export default function OrganizerManageTicketsPage({ params }: Props) {
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ['ticket-types', resolvedParams.eventId] });
     },
-    onError: () => {
-      setFormMessage({ type: 'error', text: 'Nie udało się zaktualizować biletu.' });
+    onError: (error) => {
+      setFormMessage({ type: 'error', text: getErrorMessage(error, 'Nie udało się zaktualizować biletu.') });
     },
   });
 

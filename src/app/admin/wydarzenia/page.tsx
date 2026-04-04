@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi, PendingEvent } from '@/lib/api/admin';
+import { getErrorMessage } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -54,8 +55,8 @@ export default function PendingEventsPage() {
       queryClient.invalidateQueries({ queryKey: ['pending-event-stats'] });
       setSelectedEvent(null);
     },
-    onError: () => {
-      toast.error('Nie udało się zatwierdzić wydarzenia');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się zatwierdzić wydarzenia'));
     },
   });
 
@@ -70,8 +71,8 @@ export default function PendingEventsPage() {
       setShowRejectModal(false);
       setRejectReason('');
     },
-    onError: () => {
-      toast.error('Nie udało się odrzucić wydarzenia');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się odrzucić wydarzenia'));
     },
   });
 

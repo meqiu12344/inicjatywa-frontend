@@ -15,7 +15,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { eventsApi } from '@/lib/api/events';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { 
@@ -80,8 +80,8 @@ export default function MyEventsPage() {
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
       setDeleteConfirmId(null);
     },
-    onError: () => {
-      toast.error('Nie udało się usunąć wydarzenia');
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Nie udało się usunąć wydarzenia'));
       setDeleteConfirmId(null);
     },
   });

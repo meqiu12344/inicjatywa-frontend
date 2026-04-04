@@ -185,25 +185,34 @@ export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<
   return response.data;
 }
 
-// Error helper
-export function getErrorMessage(error: unknown): string {
+// Error helper — handles all DRF error shapes
+export function getErrorMessage(error: unknown, fallback?: string): string {
   if (axios.isAxiosError(error)) {
-    const apiError = error.response?.data as ApiError;
-    if (apiError?.message) {
-      return apiError.message;
+    const data = error.response?.data;
+    if (data) {
+      // { "error": "..." } — custom views
+      if (typeof data.error === 'string') return data.error;
+      // { "detail": "..." } — DRF default
+      if (typeof data.detail === 'string') return data.detail;
+      // { "message": "..." } — custom shape
+      if (typeof data.message === 'string') return data.message;
+      // { "non_field_errors": ["..."] } — DRF serializer
+      if (Array.isArray(data.non_field_errors)) return data.non_field_errors.join(' ');
+      // { "field": ["err1","err2"], ... } — DRF field errors
+      if (typeof data === 'object' && !Array.isArray(data)) {
+        const fieldMessages: string[] = [];
+        for (const [, val] of Object.entries(data)) {
+          if (Array.isArray(val)) fieldMessages.push(...val.map(String));
+          else if (typeof val === 'string') fieldMessages.push(val);
+        }
+        if (fieldMessages.length) return fieldMessages.join(' ');
+      }
+      // plain string body
+      if (typeof data === 'string' && data.length < 200) return data;
     }
-    if (apiError?.errors) {
-      return Object.values(apiError.errors).flat().join(', ');
-    }
-    if (error.response?.status === 404) {
-      return 'Nie znaleziono zasobu';
-    }
-    if (error.response?.status === 403) {
-      return 'Brak dostępu';
-    }
-    if (error.response?.status === 500) {
-      return 'Błąd serwera. Spróbuj ponownie później.';
-    }
+    if (error.response?.status === 404) return 'Nie znaleziono zasobu';
+    if (error.response?.status === 403) return 'Brak dostępu';
+    if (error.response?.status === 500) return 'Błąd serwera. Spróbuj ponownie później.';
   }
-  return 'Wystąpił nieoczekiwany błąd';
+  return fallback ?? 'Wystąpił nieoczekiwany błąd';
 }
