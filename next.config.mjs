@@ -18,7 +18,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-test.inicjatywakatolicka.pl';
     return [
       {
         source: '/ckeditor5/:path*',
