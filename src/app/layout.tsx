@@ -31,6 +31,10 @@ export const metadata: Metadata = {
     locale: "pl_PL",
     siteName: "Inicjatywa Katolicka",
   },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
