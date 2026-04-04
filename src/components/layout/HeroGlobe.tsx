@@ -91,6 +91,7 @@ export default function HeroGlobe() {
 
     const el = document.createElement('div');
     el.style.cursor = 'pointer';
+    el.style.pointerEvents = 'auto';
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       if (ev.slug) router.push(`/wydarzenia/${ev.slug}`);
