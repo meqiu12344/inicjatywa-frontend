@@ -1,15 +1,62 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { apiClient } from '@/lib/api/client';
 
 // Dynamic import to prevent SSR issues with WebGL/window
 const Globe = dynamic(() => import('react-globe.gl'), { ssr: false });
 
+interface GlobeEvent {
+  id: number;
+  title: string;
+  slug: string;
+  lat: number;
+  lng: number;
+  city: string;
+  start_date: string;
+  category: string | null;
+}
+
+// Color palette per category (fallback to blue)
+const CATEGORY_COLORS: Record<string, string> = {
+  'Rekolekcje': '#10b981',
+  'Pielgrzymki': '#eab308',
+  'Spotkania modlitewne': '#8b5cf6',
+  'Koncerty': '#f59e0b',
+  'Warsztaty': '#3b82f6',
+  'Konferencje': '#ec4899',
+  'Wolontariat': '#14b8a6',
+};
+const DEFAULT_COLOR = '#60a5fa';
+
+function getColor(category: string | null): string {
+  if (!category) return DEFAULT_COLOR;
+  return CATEGORY_COLORS[category] ?? DEFAULT_COLOR;
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+  } catch {
+    return '';
+  }
+}
+
 export default function HeroGlobe() {
   const globeEl = useRef<any>();
+  const router = useRouter();
   const [windowWidth, setWindowWidth] = useState(600);
   const [windowHeight, setWindowHeight] = useState(600);
+  const [events, setEvents] = useState<GlobeEvent[]>([]);
+
+  // Fetch events for globe
+  useEffect(() => {
+    apiClient.get('/events/globe/')
+      .then((res) => setEvents(res.data))
+      .catch(() => {/* Fail silently — globe shows empty */});
+  }, []);
 
   useEffect(() => {
     // Configure rotation auto-spin and initial position
@@ -37,16 +84,37 @@ export default function HeroGlobe() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Dummy Catholic event points over Poland and Europe
-  const locations = [
-    { lat: 52.2297, lng: 21.0122, color: '#f59e0b', name: 'Warszawa - Koncert' }, 
-    { lat: 50.0647, lng: 19.9450, color: '#10b981', name: 'Kraków - Modlitwa' },   
-    { lat: 51.1079, lng: 17.0385, color: '#3b82f6', name: 'Wrocław - Spotkanie' },
-    { lat: 54.3520, lng: 18.6466, color: '#f43f5e', name: 'Gdańsk - Warsztaty' },
-    { lat: 50.8041, lng: 19.1166, color: '#eab308', name: 'Częstochowa - Pielgrzymka' },
-    { lat: 41.9028, lng: 12.4964, color: '#white', name: 'Rzym - Pielgrzymka' },
-    { lat: 31.7683, lng: 35.2137, color: '#eab308', name: 'Ziemia Święta' },
-  ];
+  const handleMarkerClick = useCallback((d: object) => {
+    const event = d as GlobeEvent;
+    if (event.slug) {
+      router.push(`/wydarzenia/${event.slug}`);
+    }
+  }, [router]);
+
+  const createHtmlElement = useCallback((d: object) => {
+    const ev = d as GlobeEvent;
+    const color = getColor(ev.category);
+    const date = formatDate(ev.start_date);
+
+    const el = document.createElement('div');
+    el.style.cursor = 'pointer';
+    el.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; transition: transform 0.2s;" 
+           onmouseover="this.style.transform='scale(1.25)'" 
+           onmouseout="this.style.transform='scale(1)'">
+        <svg viewBox="-4 0 36 36" fill="${color}" width="26" height="26" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));">
+          <path d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"/>
+          <circle fill="white" cx="14" cy="12" r="5"/>
+        </svg>
+        <div style="background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; margin-top: 3px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.15); max-width: 180px; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">
+          <div style="font-weight: 600;">${ev.city}</div>
+          <div style="opacity: 0.8; font-size: 10px;">${ev.title.length > 28 ? ev.title.slice(0, 28) + '…' : ev.title}</div>
+          ${date ? `<div style="opacity: 0.6; font-size: 9px;">${date}</div>` : ''}
+        </div>
+      </div>
+    `;
+    return el;
+  }, []);
 
   return (
     <>
@@ -65,30 +133,18 @@ export default function HeroGlobe() {
           atmosphereColor="#60a5fa"
           atmosphereAltitude={0.15}
           
-          htmlElementsData={locations}
-          htmlElement={(d: any) => {
-            const el = document.createElement('div');
-            el.innerHTML = `
-              <div style="display: flex; flex-direction: column; items-center; align-items: center;">
-                <svg viewBox="-4 0 36 36" fill="${d.color}" width="24" height="24" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));">
-                  <path d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z" />
-                  <circle fill="white" cx="14" cy="12" r="5" />
-                </svg>
-                <div style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-top: 2px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.2);">
-                  ${d.name}
-                </div>
-              </div>
-            `;
-            el.style.pointerEvents = 'none';
-            return el;
-          }}
+          htmlElementsData={events}
+          htmlLat="lat"
+          htmlLng="lng"
+          htmlElement={createHtmlElement}
+          onHtmlElementClick={handleMarkerClick}
         />
       )}
       </div>
 
       <div className="absolute bottom-4 right-4 lg:bottom-8 lg:right-8 z-20 bg-[#050B14]/70 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-white/90 border border-white/10 flex items-center gap-2 shadow-2xl">
         <span className="w-2.5 h-2.5 rounded-full bg-primary-400 animate-pulse"></span>
-        Interaktywna Mapa (Przeciągnij, by obrócić)
+        Interaktywna Mapa (Kliknij wydarzenie, by zobaczyć szczegóły)
       </div>
     </>
   );
