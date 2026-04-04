@@ -731,7 +731,15 @@ export default function CreateEventPage() {
 
       return paymentsApi.createEventWithPayment(payload);
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
+      // Upload image if selected
+      if (imageFile && response.event_id) {
+        try {
+          await eventsApi.uploadImage(response.event_id, imageFile);
+        } catch {
+          // Don't block payment flow if image upload fails
+        }
+      }
       toast.loading('Przekierowuję do płatności...', { duration: 3000 });
       // Redirect to Stripe checkout — event is saved as draft until payment confirmed
       window.location.href = response.checkout_url;
@@ -801,7 +809,15 @@ export default function CreateEventPage() {
 
       return paymentsApi.createEventFree(payload);
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
+      // Upload image if selected
+      if (imageFile && response.event_id) {
+        try {
+          await eventsApi.uploadImage(response.event_id, imageFile);
+        } catch {
+          // Image upload failed but event was created
+        }
+      }
       toast.success(response.message || 'Wydarzenie zostało utworzone i czeka na zatwierdzenie!');
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
       router.push('/moje-wydarzenia');

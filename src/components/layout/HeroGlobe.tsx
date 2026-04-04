@@ -44,6 +44,33 @@ function formatDate(iso: string): string {
   }
 }
 
+// Spread out markers at the same location so they don't overlap
+function spreadOverlapping(events: GlobeEvent[]): GlobeEvent[] {
+  const groups = new Map<string, GlobeEvent[]>();
+  for (const ev of events) {
+    const key = `${ev.lat.toFixed(2)}_${ev.lng.toFixed(2)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(ev);
+  }
+  const result: GlobeEvent[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+    } else {
+      const offset = 0.35; // ~35km spread
+      group.forEach((ev, i) => {
+        const angle = (2 * Math.PI * i) / group.length;
+        result.push({
+          ...ev,
+          lat: ev.lat + offset * Math.cos(angle),
+          lng: ev.lng + offset * Math.sin(angle),
+        });
+      });
+    }
+  }
+  return result;
+}
+
 export default function HeroGlobe() {
   const globeEl = useRef<any>();
   const router = useRouter();
@@ -54,7 +81,7 @@ export default function HeroGlobe() {
   // Fetch events for globe
   useEffect(() => {
     apiClient.get('/events/globe/')
-      .then((res) => setEvents(res.data))
+      .then((res) => setEvents(spreadOverlapping(res.data)))
       .catch(() => {/* Fail silently — globe shows empty */});
   }, []);
 
