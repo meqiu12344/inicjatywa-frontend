@@ -19,6 +19,7 @@
     "ckeditor5": "^47.4.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.460.0",
     "next": "^16.2.1",
