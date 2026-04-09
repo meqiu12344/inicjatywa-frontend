@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { TicketCheck, AlertTriangle, Ticket, Plus, Trash2, Pencil, X, Check } from 'lucide-react';
+import { TicketCheck, AlertTriangle, Ticket, Plus, Trash2, Pencil, X, Check, ScanLine } from 'lucide-react';
 import { use } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -255,6 +255,13 @@ export default function OrganizerManageTicketsPage({ params }: Props) {
               Wydarzenie ID: <strong>{resolvedParams.eventId}</strong>
             </div>
             <div className="flex gap-4">
+              <Link
+                href={`/bilety/skaner/${resolvedParams.eventId}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+              >
+                <ScanLine className="w-4 h-4" />
+                Skanuj bilety
+              </Link>
               <Link
                 href={`/bilety/organizator/zarzadzaj/${resolvedParams.eventId}/zamowienia`}
                 className="text-indigo-600 hover:underline"

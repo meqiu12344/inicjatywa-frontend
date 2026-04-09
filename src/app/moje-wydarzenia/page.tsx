@@ -9,7 +9,7 @@ import {
   Plus, Search, Star, AlertCircle, Clock,
   ChevronLeft, ChevronRight, CalendarX, Megaphone,
   FileText, EyeOff, Lock, CheckCircle, XCircle,
-  ChevronDown, BarChart3, Settings
+  ChevronDown, BarChart3, Settings, ScanLine
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -396,6 +396,13 @@ export default function MyEventsPage() {
                       >
                         <BarChart3 className="w-4 h-4" />
                         Statystyki
+                      </Link>
+                      <Link
+                        href={`/bilety/skaner/${event.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors"
+                      >
+                        <ScanLine className="w-4 h-4" />
+                        Skanuj bilety
                       </Link>
                       
                       {/* Status Dropdown */}
