@@ -26,12 +26,17 @@ function PaymentSuccessContent() {
     const confirmPayment = async () => {
       if (paymentType === 'promotion') return;
       if (!eventId || !isAuthenticated) return;
+      // Require session_id to prevent URL spoofing
+      if (!sessionId) {
+        toast.error('Brak identyfikatora sesji płatności.');
+        return;
+      }
       
       setIsConfirming(true);
       try {
         const response = await paymentsApi.confirmPayment(
           parseInt(eventId), 
-          sessionId || undefined
+          sessionId
         );
         setEventSlug(response.event_slug);
       } catch (error) {

@@ -5,6 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatol
 
 // Flag to track if token refresh is in progress (prevents refresh spam)
 let isRefreshing = false;
+let refreshPromise: Promise<string> | null = null;
 let refreshSubscribers: Array<{ resolve: (token: string) => void; reject: (error: any) => void }> = [];
 
 const subscribeTokenRefresh = (resolve: (token: string) => void, reject: (error: any) => void) => {
@@ -83,29 +84,30 @@ apiClient.interceptors.response.use(
     // Handle 401 - try to refresh token
     const isPublicEndpoint = isPublicEndpointUrl(originalRequest.url);
     if (error.response?.status === 401 && !originalRequest._retry && !isPublicEndpoint) {
-      if (isRefreshing) {
-        // If refresh is already in progress, queue this request
-        return new Promise((resolve, reject) => {
-          subscribeTokenRefresh(
-            (token: string) => {
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-              }
-              resolve(apiClient(originalRequest));
-            },
-            (err: any) => {
-              reject(err);
-            }
-          );
-        });
+      originalRequest._retry = true;
+
+      // If a refresh is already in progress, wait for it instead of starting another
+      if (isRefreshing && refreshPromise) {
+        try {
+          const token = await refreshPromise;
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
+          return apiClient(originalRequest);
+        } catch {
+          return Promise.reject(error);
+        }
       }
 
-      originalRequest._retry = true;
       isRefreshing = true;
 
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
+      // Create a single refresh promise that all concurrent 401s will share
+      refreshPromise = new Promise<string>(async (resolveRefresh, rejectRefresh) => {
+        try {
+          const refreshToken = localStorage.getItem('refresh_token');
+          if (!refreshToken) {
+            throw new Error('No refresh token');
+          }
           const response = await axios.post(`${API_URL}/api/auth/token/refresh/`, {
             refresh: refreshToken,
           });
@@ -115,23 +117,31 @@ apiClient.interceptors.response.use(
 
           // Notify all queued requests with new token
           onTokenRefreshed(access);
-
-          // Retry original request
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${access}`;
+          resolveRefresh(access);
+        } catch (refreshError) {
+          // Refresh failed - logout user and clear all auth state
+          onTokenRefreshFailed(refreshError);
+          useAuthStore.getState().logout();
+          // Only redirect if we're not already on the login page
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/logowanie')) {
+            window.location.href = '/logowanie';
           }
-          return apiClient(originalRequest);
+          rejectRefresh(refreshError);
+        } finally {
+          isRefreshing = false;
+          refreshPromise = null;
         }
-      } catch (refreshError) {
-        // Refresh failed - logout user and clear all auth state
-        onTokenRefreshFailed(refreshError);
-        useAuthStore.getState().logout();
-        // Only redirect if we're not already on the login page
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/logowanie')) {
-          window.location.href = '/logowanie';
+      });
+
+      try {
+        const token = await refreshPromise;
+        // Retry original request
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
         }
-      } finally {
-        isRefreshing = false;
+        return apiClient(originalRequest);
+      } catch {
+        return Promise.reject(error);
       }
     }
 

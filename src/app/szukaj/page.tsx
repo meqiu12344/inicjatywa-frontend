@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { format, addDays, startOfWeek, endOfMonth } from 'date-fns';
@@ -85,6 +85,7 @@ function SearchPageContent() {
   
   // Initialize state from URL params
   const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || '');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     searchParams.get('categories')?.split(',').filter(Boolean) || []
@@ -105,6 +106,12 @@ function SearchPageContent() {
 
   const datePresets = useMemo(() => getDatePresets(), []);
 
+  // Debounce search query to prevent flickering results
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   // Get categories
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -114,7 +121,7 @@ function SearchPageContent() {
 
   // Build filters object
   const filters: EventFilters = useMemo(() => ({
-    search: query || undefined,
+    search: debouncedQuery || undefined,
     city: selectedCity || undefined,
     categories: selectedCategories.length > 0 
       ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
@@ -126,12 +133,13 @@ function SearchPageContent() {
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [query, selectedCity, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
+  }), [debouncedQuery, selectedCity, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['search', filters],
     queryFn: () => eventsApi.getEvents(filters),
+    placeholderData: (prev) => prev, // Keep previous data while loading
   });
 
   // Deduplicate events by ID
