@@ -1,11 +1,11 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, Mail, Lock, LogIn, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, LogIn, Loader2, AlertCircle, CheckCircle2, MailWarning } from 'lucide-react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { useAuth } from '@/hooks/useAuth';
 import { clsx } from 'clsx';
@@ -14,6 +14,27 @@ import toast from 'react-hot-toast';
 interface LoginFormData {
   email: string;
   password: string;
+}
+
+/** Pull a human-friendly message out of any DRF/axios error shape */
+function extractErrorMessage(error: any): string {
+  const data = error?.response?.data;
+  if (data) {
+    if (typeof data === 'string' && data.length < 300) return data;
+    if (typeof data.message === 'string') return data.message;
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data.error === 'string') return data.error;
+    if (Array.isArray(data.non_field_errors)) return data.non_field_errors.join(' ');
+    if (typeof data === 'object') {
+      const parts: string[] = [];
+      for (const v of Object.values(data)) {
+        if (Array.isArray(v)) parts.push(...v.map(String));
+        else if (typeof v === 'string') parts.push(v);
+      }
+      if (parts.length) return parts.join(' ');
+    }
+  }
+  return error?.message || 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.';
 }
 
 function LoginContent() {
@@ -26,12 +47,15 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const recaptchaRef = useRef<ReCAPTCHA | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setError,
+    clearErrors,
   } = useForm<LoginFormData>({
     defaultValues: {
       email: '',
@@ -43,6 +67,8 @@ function LoginContent() {
   const rawRedirect = searchParams.get('redirect') || searchParams.get('next') || '/';
   const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
   const verified = searchParams.get('verified');
+  const registered = searchParams.get('registered');
+  const reason = searchParams.get('reason'); // e.g. 'session-expired'
 
   // Redirect if already logged in
   useEffect(() => {
@@ -51,22 +77,36 @@ function LoginContent() {
     }
   }, [isAuthenticated, isLoading, router, redirectUrl]);
 
-  // Show toast for email verification status
+  // Show toast for email verification & registration status (only once per arrival)
   useEffect(() => {
     if (verified === 'success') {
-      toast.success('Twój adres e-mail został zweryfikowany!');
+      toast.success('Twój adres e-mail został zweryfikowany! Możesz się teraz zalogować.');
     } else if (verified === 'expired') {
       toast('Link weryfikacyjny wygasł. Zarejestruj się ponownie.', { icon: '⚠️' });
     } else if (verified === 'failed') {
       toast.error('Link weryfikacyjny jest nieprawidłowy lub został już użyty.');
     }
-  }, [verified]);
+    if (registered === 'true') {
+      toast.success('Konto utworzone! Sprawdź swoją skrzynkę e-mail, aby je aktywować.', { duration: 6000 });
+    }
+    if (reason === 'session-expired') {
+      toast('Sesja wygasła. Zaloguj się ponownie.', { icon: '🔒' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resetRecaptcha = () => {
+    try {
+      recaptchaRef.current?.reset();
+    } catch {
+      /* ignore */
+    }
+    setRecaptchaToken(null);
+  };
 
   const onRecaptchaChange = useCallback((token: string | null) => {
     setRecaptchaToken(token);
-    if (token) {
-      setRecaptchaError(null);
-    }
+    if (token) setRecaptchaError(null);
   }, []);
 
   const onRecaptchaExpired = useCallback(() => {
@@ -74,6 +114,10 @@ function LoginContent() {
   }, []);
 
   const onSubmit = (data: LoginFormData) => {
+    // Clear previous errors
+    clearErrors();
+    setEmailNotVerified(false);
+
     // Validate reCAPTCHA
     if (isRecaptchaEnabled && !recaptchaToken) {
       setRecaptchaError('Proszę potwierdzić, że nie jesteś robotem');
@@ -87,15 +131,30 @@ function LoginContent() {
           router.push(redirectUrl);
         },
         onError: (error: any) => {
-          // Handle specific error messages
-          const message = error?.response?.data?.detail || error?.message || 'Błąd logowania';
-          if (message.toLowerCase().includes('email') || message.toLowerCase().includes('użytkownik')) {
-            setError('email', { message });
-          } else if (message.toLowerCase().includes('hasło') || message.toLowerCase().includes('password')) {
-            setError('password', { message });
-          } else {
+          const status = error?.response?.status;
+          const message = extractErrorMessage(error);
+
+          // Reset reCAPTCHA after any failed attempt
+          if (isRecaptchaEnabled) resetRecaptcha();
+
+          // 403 - email not verified
+          if (status === 403) {
+            setEmailNotVerified(true);
             setError('root', { message });
+            toast.error('Konto nie zostało jeszcze zweryfikowane.');
+            return;
           }
+
+          // 401 - bad credentials
+          if (status === 401) {
+            setError('root', { message: message || 'Nieprawidłowy email lub hasło.' });
+            toast.error('Nieprawidłowy email lub hasło.');
+            return;
+          }
+
+          // Generic / 500
+          setError('root', { message });
+          toast.error(message);
         },
       }
     );
@@ -145,35 +204,75 @@ function LoginContent() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Verification Status */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            {/* Verification Status banners */}
             {verified === 'success' && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                <p className="text-sm text-emerald-400">✅ Twój adres e-mail został zweryfikowany! Możesz się teraz zalogować.</p>
+              <div role="status" className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-emerald-300">
+                  Twój adres e-mail został zweryfikowany! Możesz się teraz zalogować.
+                </p>
               </div>
             )}
             {verified === 'expired' && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <p className="text-sm text-amber-400">⚠️ Link weryfikacyjny wygasł. Zarejestruj się ponownie.</p>
+              <div role="status" className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-300">
+                  Link weryfikacyjny wygasł.{' '}
+                  <Link href="/rejestracja" className="underline hover:text-amber-200">
+                    Zarejestruj się ponownie
+                  </Link>
+                  .
+                </p>
               </div>
             )}
             {verified === 'failed' && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-sm text-red-400">❌ Link weryfikacyjny jest nieprawidłowy lub został już użyty.</p>
+              <div role="alert" className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-300">
+                  Link weryfikacyjny jest nieprawidłowy lub został już użyty.
+                </p>
+              </div>
+            )}
+            {registered === 'true' && (
+              <div role="status" className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-start gap-3">
+                <MailWarning className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-200">
+                  <p className="font-semibold mb-1">Konto utworzone pomyślnie!</p>
+                  <p>
+                    Wysłaliśmy link aktywacyjny na Twój adres e-mail. Sprawdź skrzynkę (oraz folder
+                    Spam), aby aktywować konto.
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* Global Error */}
-            {errors.root && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-sm text-red-400">{errors.root.message}</p>
+            {/* Email-not-verified specific banner (after attempted login) */}
+            {emailNotVerified && (
+              <div role="alert" aria-live="polite" className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-3">
+                <MailWarning className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-200">
+                  <p className="font-semibold mb-1">Adres e-mail nie został potwierdzony</p>
+                  <p>
+                    Sprawdź swoją skrzynkę pocztową (i folder Spam) i kliknij link aktywacyjny,
+                    który wysłaliśmy podczas rejestracji.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Global Error (only shown when not the email-verification case) */}
+            {errors.root && !emailNotVerified && (
+              <div role="alert" aria-live="polite" className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-300">{errors.root.message}</p>
               </div>
             )}
 
             {/* Email/Username Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email lub nazwa użytkownika
+                Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -182,8 +281,9 @@ function LoginContent() {
                   id="email"
                   autoComplete="username"
                   placeholder="twoj@email.pl"
+                  aria-invalid={!!errors.email}
                   {...register('email', {
-                    required: 'Email lub nazwa użytkownika jest wymagana',
+                    required: 'Podaj swój adres email',
                   })}
                   className={clsx(
                     'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
@@ -196,7 +296,7 @@ function LoginContent() {
                 />
               </div>
               {errors.email && (
-                <p className="mt-2 text-sm text-red-400">{errors.email.message}</p>
+                <p role="alert" className="mt-2 text-sm text-red-400">{errors.email.message}</p>
               )}
             </div>
 
@@ -212,8 +312,9 @@ function LoginContent() {
                   id="password"
                   autoComplete="current-password"
                   placeholder="••••••••"
+                  aria-invalid={!!errors.password}
                   {...register('password', {
-                    required: 'Hasło jest wymagane',
+                    required: 'Podaj hasło',
                     minLength: {
                       value: 6,
                       message: 'Hasło musi mieć co najmniej 6 znaków',
@@ -242,7 +343,7 @@ function LoginContent() {
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-2 text-sm text-red-400">{errors.password.message}</p>
+                <p role="alert" className="mt-2 text-sm text-red-400">{errors.password.message}</p>
               )}
             </div>
 
@@ -260,13 +361,14 @@ function LoginContent() {
             {isRecaptchaEnabled && (
               <div className="flex flex-col items-center">
                 <ReCAPTCHA
+                  ref={recaptchaRef}
                   sitekey={recaptchaSiteKey as string}
                   onChange={onRecaptchaChange}
                   onExpired={onRecaptchaExpired}
                   theme="dark"
                 />
                 {recaptchaError && (
-                  <p className="mt-2 text-sm text-red-400">{recaptchaError}</p>
+                  <p role="alert" className="mt-2 text-sm text-red-400">{recaptchaError}</p>
                 )}
               </div>
             )}

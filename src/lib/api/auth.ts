@@ -119,6 +119,23 @@ export const authApi = {
   },
 
   /**
+   * Request password reset email
+   * Backend always returns 200 to prevent email enumeration.
+   */
+  requestPasswordReset: async (email: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/auth/password-reset/', { email });
+    return response.data;
+  },
+
+  /**
+   * Confirm password reset using uid + token from email link
+   */
+  confirmPasswordReset: async (data: { uid: string; token: string; new_password: string }): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/auth/password-reset/confirm/', data);
+    return response.data;
+  },
+
+  /**
    * Logout - blacklists refresh token on backend
    */
   logout: async () => {

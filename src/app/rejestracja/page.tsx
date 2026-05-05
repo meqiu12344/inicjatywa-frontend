@@ -19,11 +19,35 @@ import {
   Globe,
   FileText,
   Upload,
-  X
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { useAuth } from '@/hooks/useAuth';
 import { clsx } from 'clsx';
+import toast from 'react-hot-toast';
+
+/** Map fields between backend (snake_case from DRF) and our form */
+const FIELD_MAP: Record<string, keyof RegisterFormData | 'root'> = {
+  email: 'email',
+  username: 'username',
+  password: 'password',
+  password_confirm: 'password_confirm',
+  first_name: 'first_name',
+  last_name: 'last_name',
+  phone_number: 'phone_number',
+  organization_name: 'organization_name',
+  organization_id: 'organization_nip',
+  official_website: 'organization_website',
+  description: 'organization_description',
+  motivation: 'organizer_motivation',
+};
+
+function joinErr(val: any): string {
+  if (Array.isArray(val)) return val.map(String).join(' ');
+  if (typeof val === 'string') return val;
+  return '';
+}
 
 interface RegisterFormData {
   first_name: string;
@@ -55,6 +79,16 @@ export default function RegisterPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recaptchaRef = useRef<ReCAPTCHA | null>(null);
+
+  const resetRecaptcha = () => {
+    try {
+      recaptchaRef.current?.reset();
+    } catch {
+      /* ignore */
+    }
+    setRecaptchaToken(null);
+  };
 
   const {
     register,
@@ -232,14 +266,48 @@ export default function RegisterPage() {
     }
 
     registerUser(payload, {
+      onSuccess: () => {
+        toast.success('Konto utworzone! Sprawdź skrzynkę email aby aktywować konto.', { duration: 6000 });
+        router.push('/logowanie?registered=true');
+      },
       onError: (error: any) => {
-        const message = error?.response?.data?.detail || error?.message || 'Błąd rejestracji';
-        if (message.toLowerCase().includes('email')) {
-          setError('email', { message });
-        } else if (message.toLowerCase().includes('użytkownik') || message.toLowerCase().includes('username')) {
-          setError('username', { message });
+        if (isRecaptchaEnabled) resetRecaptcha();
+        const data = error?.response?.data;
+        let mappedAny = false;
+
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          for (const [backendField, val] of Object.entries(data)) {
+            // skip wrapper keys
+            if (['message', 'detail', 'error', 'non_field_errors', 'errors'].includes(backendField)) continue;
+            const formField = FIELD_MAP[backendField];
+            const msg = joinErr(val);
+            if (!msg) continue;
+            if (formField && formField !== 'root') {
+              setError(formField as any, { message: msg });
+              mappedAny = true;
+            }
+          }
+          // Handle non_field_errors as global
+          if (data.non_field_errors) {
+            const msg = joinErr(data.non_field_errors);
+            if (msg) {
+              setError('root', { message: msg });
+              mappedAny = true;
+            }
+          }
+        }
+
+        if (!mappedAny) {
+          const fallback =
+            data?.message ||
+            data?.detail ||
+            data?.error ||
+            error?.message ||
+            'Wystąpił błąd podczas rejestracji.';
+          setError('root', { message: String(fallback) });
+          toast.error(String(fallback));
         } else {
-          setError('root', { message });
+          toast.error('Sprawdź formularz i popraw oznaczone pola.');
         }
       },
     }, config);
@@ -743,6 +811,7 @@ export default function RegisterPage() {
             {isRecaptchaEnabled && (
               <div className="flex flex-col items-center pt-2">
                 <ReCAPTCHA
+                  ref={recaptchaRef}
                   sitekey={recaptchaSiteKey as string}
                   onChange={onRecaptchaChange}
                   onExpired={onRecaptchaExpired}

@@ -53,44 +53,33 @@ export function useAuth() {
   });
 
   // Login mutation
+  // Note: redirect & success toast handled by the calling page (so it can use ?redirect=… etc.)
   const loginMutation = useMutation({
     mutationFn: loginUser,
     onSuccess: (data) => {
       setAuth(data.user, data.profile, data.tokens);
       queryClient.invalidateQueries({ queryKey: ['auth'] });
       toast.success('Zalogowano pomyślnie!');
-      router.push('/');
     },
-    onError: (error) => {
-      toast.error(getErrorMessage(error));
-    },
+    // onError: page handles parsing for inline alerts; no global toast here to avoid duplicates.
   });
 
   // Register mutation
+  // Note: page is responsible for the redirect (e.g. to /logowanie?registered=true)
+  // since after register the email isn't verified yet — we don't want the user logged-in.
   const registerMutation = useMutation({
     mutationFn: registerUser,
-    onSuccess: (data) => {
-      setAuth(data.user, data.profile, data.tokens);
+    onSuccess: (_data) => {
+      // Do NOT call setAuth here — backend requires email verification before login.
       queryClient.invalidateQueries({ queryKey: ['auth'] });
-      toast.success('Konto utworzone pomyślnie!');
-      router.push('/');
     },
-    onError: (error) => {
-      toast.error(getErrorMessage(error));
-    },
+    // onError: handled by the calling page for inline + per-field display
   });
 
-  // Logout mutation
+  // Logout mutation — clear local state regardless of API result, single toast.
   const logoutMutation = useMutation({
     mutationFn: logoutUser,
-    onSuccess: () => {
-      storeLogout();
-      queryClient.clear();
-      toast.success('Wylogowano pomyślnie');
-      router.push('/');
-    },
-    onError: () => {
-      // Even if API fails, clear local state
+    onSettled: () => {
       storeLogout();
       queryClient.clear();
       toast.success('Wylogowano pomyślnie');
