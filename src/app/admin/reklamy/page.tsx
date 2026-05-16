@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, DragEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { adsApi, Ad, AdSlot, AdType } from '@/lib/api/ads';
@@ -19,6 +19,8 @@ import {
   X,
   Eye,
   Megaphone,
+  Upload,
+  Link2,
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -78,11 +80,46 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
       : EMPTY_FORM
   );
   const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('Plik musi być obrazem.'));
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        reject(new Error('Plik nie może być większy niż 5 MB.'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Błąd odczytu pliku.'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleFileChange = async (file: File | null | undefined) => {
+    if (!file) return;
+    try {
+      const base64 = await readFileAsBase64(file);
+      setForm((prev) => ({ ...prev, imageUrl: base64 }));
+      setError('');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Błąd wczytywania pliku.');
+    }
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileChange(e.dataTransfer.files?.[0]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { setError('Nazwa jest wymagana.'); return; }
-    if (form.type === 'image' && !form.imageUrl.trim()) { setError('Podaj URL obrazu.'); return; }
+    if (form.type === 'image' && !form.imageUrl.trim()) { setError('Wybierz obraz lub wklej URL.'); return; }
     if (form.type === 'html' && !form.htmlCode.trim()) { setError('Podaj kod HTML.'); return; }
     if (form.type === 'google_adsense' && !form.adsenseSlot.trim()) { setError('Podaj slot AdSense.'); return; }
 
@@ -156,17 +193,90 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
           {/* Image fields */}
           {form.type === 'image' && (
             <>
+              {/* Drop zone / file picker */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL obrazu *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Obraz banneru *</label>
+
+                {form.imageUrl ? (
+                  /* Preview with replace button */
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                    <img
+                      src={form.imageUrl}
+                      alt="Podgląd"
+                      className="w-full object-cover max-h-40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { set('imageUrl', ''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow text-gray-600 hover:text-red-500 transition-colors"
+                      title="Usuń obraz"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 hover:bg-white rounded-lg shadow text-xs font-medium text-gray-700 hover:text-indigo-600 transition-colors"
+                    >
+                      <Upload className="w-3.5 h-3.5" /> Zmień
+                    </button>
+                  </div>
+                ) : (
+                  /* Drop zone */
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`cursor-pointer flex flex-col items-center justify-center gap-2 p-8 rounded-xl border-2 border-dashed transition-all ${
+                      isDragging
+                        ? 'border-indigo-400 bg-indigo-50'
+                        : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      isDragging ? 'bg-indigo-100' : 'bg-gray-100'
+                    }`}>
+                      <Upload className={`w-5 h-5 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-gray-700">
+                        {isDragging ? 'Upuść tutaj' : 'Przeciągnij obraz lub kliknij'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, GIF, WEBP — max 5 MB</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hidden file input */}
                 <input
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.imageUrl}
-                  onChange={(e) => set('imageUrl', e.target.value)}
-                  placeholder="https://example.com/banner.jpg"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e.target.files?.[0])}
                 />
+
+                {/* Optional: also allow URL fallback */}
+                <details className="mt-2 group">
+                  <summary className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-indigo-500 transition-colors list-none">
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>Lub wklej URL obrazu</span>
+                  </summary>
+                  <input
+                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={form.imageUrl.startsWith('data:') ? '' : form.imageUrl}
+                    onChange={(e) => set('imageUrl', e.target.value)}
+                    placeholder="https://example.com/banner.jpg"
+                  />
+                </details>
               </div>
+
+              {/* Click-through URL */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL docelowy (klik)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 inline-flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-gray-400" /> URL docelowy (klik)
+                </label>
                 <input
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={form.linkUrl}
@@ -174,11 +284,6 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
                   placeholder="https://reklamodawca.pl"
                 />
               </div>
-              {form.imageUrl && (
-                <div className="rounded-lg overflow-hidden border border-gray-200">
-                  <img src={form.imageUrl} alt="Podgląd" className="w-full object-cover max-h-32" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                </div>
-              )}
             </>
           )}
 
