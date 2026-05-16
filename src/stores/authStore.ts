@@ -180,16 +180,20 @@ export const useAuthStore = create<AuthState>()(
  * Hook to check if the store has been hydrated from localStorage
  */
 export function useHydration() {
-  const [hydrated, setHydrated] = useState(() => {
-    return typeof window !== 'undefined' && useAuthStore.persist.hasHydrated();
-  });
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (useAuthStore.persist.hasHydrated()) {
-      setHydrated(true);
-      return;
-    }
-
+    // This runs only on the client after the first render
+    const checkHydration = () => {
+      if (useAuthStore.persist.hasHydrated()) {
+        setHydrated(true);
+      }
+    };
+    
+    // Check immediately if already hydrated
+    checkHydration();
+    
+    // Also listen for hydration completion
     const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
       setHydrated(true);
     });
@@ -199,7 +203,7 @@ export function useHydration() {
     const timeout = setTimeout(() => setHydrated(true), 1000);
 
     return () => {
-      unsubFinishHydration();
+      if (unsubFinishHydration) unsubFinishHydration();
       clearTimeout(timeout);
     };
   }, []);

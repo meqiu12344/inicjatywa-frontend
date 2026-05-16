@@ -158,3 +158,47 @@ body {
     display: none;
   }
 }
+
+/* ─── Ad Banner ─────────────────────────────────────────────── */
+.ad-banner-wrapper {
+  @apply w-full my-6;
+}
+
+.ad-banner-inner {
+  @apply relative w-full;
+}
+
+.ad-banner-label {
+  @apply absolute -top-4 left-0 text-[10px] font-medium uppercase tracking-widest text-slate-400 select-none;
+}
+
+.ad-banner-content {
+  @apply w-full rounded-xl overflow-hidden;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px dashed #cbd5e1;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ad-banner-content:hover {
+  border-color: #94a3b8;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.09);
+}
+
+.ad-banner-placeholder {
+  @apply flex flex-col items-center justify-center gap-1 py-5 px-6;
+  min-height: 90px;
+}
+
+.ad-banner-icon {
+  @apply text-slate-400;
+}
+
+.ad-banner-text {
+  @apply text-sm font-medium text-slate-500 m-0;
+}
+
+.ad-banner-subtext {
+  @apply text-xs text-slate-400 m-0;
+}
+

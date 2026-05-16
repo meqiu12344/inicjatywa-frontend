@@ -1,7 +1,14 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
+const isServer = typeof window === 'undefined';
+const API_URL = isServer
+  ? (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-test.inicjatywakatolicka.pl')
+  : '';
+
+if (typeof window !== 'undefined') {
+  console.log('[API] Client-side initialization. API_URL:', API_URL);
+}
 
 // Flag to track if token refresh is in progress (prevents refresh spam)
 let isRefreshing = false;
@@ -24,7 +31,7 @@ const onTokenRefreshFailed = (error: any) => {
 
 // Create axios instance
 export const apiClient = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -51,6 +58,11 @@ const isTokenValid = (token: string) => {
 // Request interceptor - add auth token & HTTP method override for Apache compatibility
 apiClient.interceptors.request.use(
   (config) => {
+    // Ensure URL starts with /api for local proxying if it's a relative path
+    if (config.url && !config.url.startsWith('/api') && !config.url.startsWith('http')) {
+      config.url = `/api${config.url.startsWith('/') ? '' : '/'}${config.url}`;
+    }
+
     // Apache on shared hosting blocks PUT/PATCH/DELETE - tunnel via POST + header
     const method = config.method?.toUpperCase();
     if (method && ['PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -60,7 +72,7 @@ apiClient.interceptors.request.use(
 
     // Skip auth header for public endpoints (login, register, refresh)
     const isPublicEndpoint = isPublicEndpointUrl(config.url);
-    
+
     // Get token from localStorage (client-side only)
     if (typeof window !== 'undefined' && !isPublicEndpoint) {
       const token = localStorage.getItem('access_token');
