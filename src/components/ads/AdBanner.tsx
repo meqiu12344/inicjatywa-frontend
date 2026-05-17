@@ -29,48 +29,50 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
     >
       <div className="ad-banner-inner">
         <span className="ad-banner-label">Reklama</span>
-        <div className="ad-banner-content">
 
-          {/* ── Image ad ── */}
-          {ad.type === 'image' && (
-            ad.linkUrl ? (
+        {/* ── Image ad ── */}
+        {ad.type === 'image' && (
+          <div className="ad-banner-content ad-banner-content--image">
+            {ad.linkUrl ? (
               <a
                 href={ad.linkUrl}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="block w-full h-full"
+                className="block w-full"
               >
                 <img
                   src={ad.imageUrl}
                   alt={ad.name}
-                  className="w-full h-full object-cover"
+                  className="w-full object-contain"
+                  style={{ display: 'block', maxHeight: '200px' }}
                 />
               </a>
             ) : (
               <img
                 src={ad.imageUrl}
                 alt={ad.name}
-                className="w-full h-full object-cover"
+                className="w-full object-contain"
+                style={{ display: 'block', maxHeight: '200px' }}
               />
-            )
-          )}
+            )}
+          </div>
+        )}
 
-          {/* ── HTML / embed ad ── */}
-          {ad.type === 'html' && (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              dangerouslySetInnerHTML={{ __html: ad.htmlCode ?? '' }}
-            />
-          )}
+        {/* ── HTML / embed ad ── */}
+        {ad.type === 'html' && (
+          <div
+            className="ad-banner-content"
+            dangerouslySetInnerHTML={{ __html: ad.htmlCode ?? '' }}
+          />
+        )}
 
-          {/* ── Google AdSense (placeholder – requires script) ── */}
-          {ad.type === 'google_adsense' && (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">
-              Google AdSense: {ad.adsenseSlot}
-            </div>
-          )}
+        {/* ── Google AdSense ── */}
+        {ad.type === 'google_adsense' && (
+          <div className="ad-banner-content" style={{ minHeight: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="text-xs text-gray-400">Google AdSense: {ad.adsenseSlot}</span>
+          </div>
+        )}
 
-        </div>
       </div>
     </div>
   );
