@@ -811,7 +811,7 @@ export default function OrganizerProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="animate-pulse">
-                      <div className="h-40 bg-gray-200 rounded-lg mb-2" />
+                      <div className="aspect-[1/1.414] bg-gray-200 rounded-lg mb-2" />
                       <div className="h-4 bg-gray-200 rounded w-3/4" />
                     </div>
                   ))}
@@ -824,7 +824,7 @@ export default function OrganizerProfilePage() {
                       href={`/wydarzenia/${event.slug}`}
                       className="group block bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-all"
                     >
-                      <div className="relative h-32">
+                      <div className="relative aspect-[1/1.414] w-full">
                         {event.image_thumbnail ? (
                           <img
                             src={event.image_thumbnail}
