@@ -1,9 +1,10 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
+import { getBackendUrl } from '@/lib/env';
 
 const isServer = typeof window === 'undefined';
 const API_URL = isServer
-  ? (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-test.inicjatywakatolicka.pl')
+  ? getBackendUrl()
   : '';
 
 if (typeof window !== 'undefined') {

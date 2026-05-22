@@ -2,8 +2,9 @@
  * Permission-based route protection middleware + API proxy
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getBackendUrl } from '@/lib/env';
 
-const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api-test.inicjatywakatolicka.pl';
+const BACKEND_URL = getBackendUrl();
 
 export const config = {
   matcher: [

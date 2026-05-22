@@ -3,6 +3,8 @@
  * Captures all console logs and sends them to the backend
  */
 
+import { getPublicApiBaseUrl } from '@/lib/env';
+
 interface LogEntry {
   type: 'log' | 'error' | 'warn' | 'info';
   message: any[];
@@ -14,7 +16,7 @@ interface LogEntry {
 class ConsoleLogger {
   private logs: LogEntry[] = [];
   private maxLogs = 100;
-  private backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  private backendUrl = getPublicApiBaseUrl();
   private originalError?: (...args: any[]) => void;
 
   constructor() {

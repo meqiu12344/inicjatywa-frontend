@@ -1,4 +1,15 @@
 /** @type {import('next').NextConfig} */
+const DEFAULT_BACKEND_URL = 'https://api-test.inicjatywakatolicka.pl';
+
+function normalizeBackendUrl(value) {
+  if (!value) {
+    return DEFAULT_BACKEND_URL;
+  }
+
+  const normalized = String(value).trim().replace(/^['"]|['"]$/g, '').replace(/\/+$/, '');
+  return normalized || DEFAULT_BACKEND_URL;
+}
+
 const nextConfig = {
   // Prevent Next.js from stripping trailing slashes on API routes (Django requires them)
   skipTrailingSlashRedirect: true,
@@ -28,7 +39,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-test.inicjatywakatolicka.pl';
+    const backendUrl = normalizeBackendUrl(process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL);
     return [
       {
         source: '/ckeditor5/:path*',
