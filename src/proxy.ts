@@ -2,8 +2,9 @@
  * Permission-based route protection middleware + API proxy
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getBackendUrl } from '@/lib/env';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
+const BACKEND_URL = getBackendUrl();
 
 export const config = {
   matcher: [
@@ -16,7 +17,7 @@ export const config = {
   ],
 };
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Proxy /api/ and /media/ requests to Django, preserving the full path including trailing slash

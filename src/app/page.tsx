@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, MapPin, TrendingUp, ArrowRight, Star, Clock, Heart, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { EventSlider, GoldBanner, GoldBannerSkeleton, CategoryGrid, CategoryGridSkeleton } from '@/components/events';
+import AdBanner from '@/components/ads/AdBanner';
 import HeroGlobe from '@/components/layout/HeroGlobe';
 import {
   useLatestEvents,
@@ -418,6 +419,9 @@ export default function HomePage() {
           <GoldBannerSection />
         </div>
 
+        {/* Ad Banner #1 – po wyróżnionych wydarzeniach */}
+        <AdBanner id="ad-banner-1" />
+
         {/* Personalized Recommendations (for logged-in users) */}
         <RecommendedEventsSection />
 
@@ -429,6 +433,9 @@ export default function HomePage() {
 
         {/* Top 10 Popular Events */}
         <Top10EventsSection />
+
+        {/* Ad Banner #2 – po Top 10 */}
+        <AdBanner id="ad-banner-2" />
 
         {/* Dynamic Category Sliders */}
         <CategorySlidersSection />

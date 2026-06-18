@@ -47,7 +47,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
         )}
       >
         {/* Image */}
-        <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden">
+        <div className="relative aspect-[1/1.414] bg-slate-100 overflow-hidden">
           {event.image_thumbnail ? (
             <Image
               src={event.image_thumbnail}
@@ -138,7 +138,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
 export function EventCardSkeleton() {
   return (
     <div className="card overflow-hidden">
-      <div className="aspect-[16/10] skeleton" />
+      <div className="aspect-[1/1.414] skeleton" />
       <div className="p-4 space-y-3">
         <div className="h-4 w-32 skeleton rounded" />
         <div className="h-6 w-full skeleton rounded" />

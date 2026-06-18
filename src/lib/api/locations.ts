@@ -1,6 +1,9 @@
 import axios from 'axios';
+import { getBackendUrl } from '@/lib/env';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl';
+const API_BASE = (typeof window !== 'undefined') 
+  ? '' 
+  : getBackendUrl();
 
 export interface ValidatePostalCodeResponse {
   valid: boolean;

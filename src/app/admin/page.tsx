@@ -13,7 +13,8 @@ import {
   CheckCircle,
   XCircle,
   BarChart3,
-  Settings
+  Settings,
+  Megaphone
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi } from '@/lib/api/admin';
@@ -93,6 +94,15 @@ export default function AdminDashboard() {
       stats: null,
       statsLabel: '',
       color: 'bg-orange-500',
+    },
+    {
+      title: 'Reklamy',
+      description: 'Zarządzaj reklamami i miejscami reklamowymi',
+      href: '/admin/reklamy',
+      icon: Megaphone,
+      stats: null,
+      statsLabel: '',
+      color: 'bg-rose-500',
     },
   ];
 

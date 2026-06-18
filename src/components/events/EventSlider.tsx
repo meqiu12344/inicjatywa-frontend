@@ -65,7 +65,7 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
     >
       <article className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-full">
         {/* Image Container */}
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative aspect-[1/1.414] overflow-hidden">
           {event.image_thumbnail ? (
             <Image
               src={event.image_thumbnail}
@@ -141,7 +141,7 @@ function SliderEventCardSkeleton() {
   return (
     <div className="flex-shrink-0 w-64 sm:w-72">
       <div className="bg-white rounded-xl overflow-hidden shadow-md">
-        <div className="aspect-[4/3] bg-slate-200 animate-pulse" />
+        <div className="aspect-[1/1.414] bg-slate-200 animate-pulse" />
         <div className="p-4 space-y-2">
           <div className="h-5 bg-slate-200 rounded animate-pulse" />
           <div className="h-5 bg-slate-200 rounded w-3/4 animate-pulse" />
