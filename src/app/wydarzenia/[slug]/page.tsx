@@ -298,13 +298,13 @@ export default function EventPage({ params }: EventPageProps) {
               <div className="flex flex-wrap gap-3">
                 {/* Platform tickets */}
                 {hasTicketsForSale && event.event_type === 'platform' && !isClosed && !(isOngoing && !event.is_permanent) && (
-                  <Link
-                    href={`/bilety/zakup/${event.id}`}
-                    className="btn btn-primary flex items-center gap-2"
+                  <div
+                    className="btn flex items-center gap-2 cursor-not-allowed bg-slate-300 text-slate-700"
+                    aria-disabled="true"
                   >
                     <Ticket className="w-5 h-5" />
-                    Kup bilety{minTicketPrice !== null ? ` - od ${minTicketPrice.toFixed(2)} zł` : ''}
-                  </Link>
+                    Zakup chwilowo wyłączony{minTicketPrice !== null ? ` - od ${minTicketPrice.toFixed(2)} zł` : ''}
+                  </div>
                 )}
 
                 {/* External tickets */}
@@ -336,7 +336,9 @@ export default function EventPage({ params }: EventPageProps) {
                   <div className="flex items-start gap-2 px-4 py-2 rounded-lg bg-amber-50 text-amber-800 text-sm border border-amber-200">
                     <AlertTriangle className="w-4 h-4 mt-0.5" />
                     <span>
-                      Rejestracja odbywa się poprzez zakup biletu.
+                      {event.event_type === 'platform'
+                        ? 'Zakup biletow przez platforme jest chwilowo wylaczony.'
+                        : 'Rejestracja odbywa sie poprzez zakup biletu.'}
                     </span>
                   </div>
                 )}
@@ -829,13 +831,13 @@ export default function EventPage({ params }: EventPageProps) {
               {/* Quick action buttons */}
               <div className="mt-6 pt-6 border-t border-slate-200 space-y-3">
                 {hasTicketsForSale && event.event_type === 'platform' && !isClosed && !(isOngoing && !event.is_permanent) && (
-                  <Link
-                    href={`/bilety/zakup/${event.id}`}
-                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                  <div
+                    className="btn w-full flex items-center justify-center gap-2 cursor-not-allowed bg-slate-300 text-slate-700"
+                    aria-disabled="true"
                   >
                     <Ticket className="w-4 h-4" />
-                    Kup bilety
-                  </Link>
+                    Zakup chwilowo wyłączony
+                  </div>
                 )}
 
                 {event.can_register && !event.is_registered && !event.is_fully_booked && !isClosed && !['paid', 'platform'].includes(event.event_type) && !(isOngoing && !event.is_permanent) && (

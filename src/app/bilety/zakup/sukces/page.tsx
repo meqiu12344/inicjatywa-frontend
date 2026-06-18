@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 
@@ -26,13 +25,16 @@ function TicketPurchaseSuccessContent() {
               Numer zamówienia: <span className="font-semibold text-white">{orderNumber}</span>
             </div>
           )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="text-sm text-slate-400">
+            {/*
             <Link href="/moje-bilety" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition-colors">
               Moje bilety
             </Link>
             <Link href="/" className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors">
               Strona główna
             </Link>
+            */}
+            Przyciski po zakupie sa tymczasowo ukryte.
           </div>
         </div>
       </div>
