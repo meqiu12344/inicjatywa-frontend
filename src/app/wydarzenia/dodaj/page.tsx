@@ -2000,7 +2000,8 @@ export default function CreateEventPage() {
                       </div>
                     </div>
 
-                    {/* Platform Tickets */}
+                    {/* Platform Tickets - tymczasowo wylaczone */}
+                    {/*
                     <div
                       onClick={() => setValue('event_type', 'platform')}
                       className={`event-type-option ${watchEventType === 'platform' ? 'selected' : ''}`}
@@ -2021,6 +2022,7 @@ export default function CreateEventPage() {
                         </div>
                       </div>
                     </div>
+                    */}
 
                     {/* External Tickets */}
                     <div

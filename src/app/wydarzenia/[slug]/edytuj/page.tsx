@@ -1112,6 +1112,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                       </div>
                     </label>
 
+                    {/* Platform Tickets - tymczasowo wylaczone */}
+                    {/*
                     <label className={`
                       flex items-start gap-3 p-4 bg-white border-2 rounded-xl cursor-pointer transition-all
                       ${watchEventType === 'platform' ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-primary-300'}
@@ -1130,6 +1132,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                         <p className="text-sm text-gray-500 mt-1">Sprzedawaj bilety bezpośrednio przez nasz system (prowizja 10%, min. 2 PLN)</p>
                       </div>
                     </label>
+                    */}
 
                     <label className={`
                       flex items-start gap-3 p-4 bg-white border-2 rounded-xl cursor-pointer transition-all
