@@ -74,9 +74,14 @@ function spreadOverlapping(events: GlobeEvent[]): GlobeEvent[] {
 export default function HeroGlobe() {
   const globeEl = useRef<any>();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [windowWidth, setWindowWidth] = useState(600);
   const [windowHeight, setWindowHeight] = useState(600);
   const [events, setEvents] = useState<GlobeEvent[]>([]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch events for globe
   useEffect(() => {
@@ -144,26 +149,26 @@ export default function HeroGlobe() {
   return (
     <>
       <div id="globe-container" className="absolute inset-0 w-full h-full flex items-center justify-center cursor-move z-0 transition-opacity duration-1000 translate-x-[10%] lg:translate-x-[25%] scale-110">
-        
-        {typeof window !== 'undefined' && (
+
+        {isMounted && (
           <Globe
             ref={globeEl}
-          width={windowWidth}
-          height={windowHeight}
-          // High-quality satellite maps
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-          bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-          backgroundColor="rgba(0,0,0,0)" // Transparent background
-          showAtmosphere={true}
-          atmosphereColor="#60a5fa"
-          atmosphereAltitude={0.15}
-          
-          htmlElementsData={events}
-          htmlLat="lat"
-          htmlLng="lng"
-          htmlElement={createHtmlElement}
-        />
-      )}
+            width={windowWidth}
+            height={windowHeight}
+            // High-quality satellite maps
+            globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+            backgroundColor="rgba(0,0,0,0)" // Transparent background
+            showAtmosphere={true}
+            atmosphereColor="#60a5fa"
+            atmosphereAltitude={0.15}
+
+            htmlElementsData={events}
+            htmlLat="lat"
+            htmlLng="lng"
+            htmlElement={createHtmlElement}
+          />
+        )}
       </div>
 
       <div className="absolute bottom-4 right-4 lg:bottom-8 lg:right-8 z-20 bg-[#050B14]/70 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-white/90 border border-white/10 flex items-center gap-2 shadow-2xl">
