@@ -125,8 +125,17 @@ apiClient.interceptors.response.use(
             refresh: refreshToken,
           });
 
-          const { access } = response.data;
+          // ROTATE_REFRESH_TOKENS is enabled on the backend, so the response also
+          // returns a NEW refresh token and blacklists the old one. Persist both
+          // tokens — and sync the auth store so a later reload's rehydration can't
+          // overwrite them with the stale originals — otherwise the *second*
+          // refresh would reuse a blacklisted token and force an unexpected logout.
+          const { access, refresh: rotatedRefresh } = response.data;
           localStorage.setItem('access_token', access);
+          if (rotatedRefresh) {
+            localStorage.setItem('refresh_token', rotatedRefresh);
+          }
+          useAuthStore.getState().setTokens(access, rotatedRefresh);
 
           // Notify all queued requests with new token
           onTokenRefreshed(access);

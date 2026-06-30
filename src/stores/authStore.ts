@@ -55,6 +55,7 @@ interface AuthState {
   
   // Actions
   setAuth: (user: User, profile: Profile, tokens: AuthTokens) => void;
+  setTokens: (access: string, refresh?: string) => void;
   updateProfile: (profile: Partial<Profile>) => void;
   updateUser: (user: Partial<User>) => void;
   logout: () => void;
@@ -83,6 +84,24 @@ export const useAuthStore = create<AuthState>()(
         const permissions = createPermissionChecker(toPermUser(user), toPermProfile(profile));
         set({ user, profile, tokens, isAuthenticated: true, permissions });
       },
+
+      // Called by the API client after a successful token refresh. Because the
+      // backend rotates refresh tokens, this must persist BOTH the new access and
+      // the new refresh token and keep the store (and its persisted blob) in sync.
+      setTokens: (access, refresh) =>
+        set((state) => {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('access_token', access);
+            if (refresh) {
+              localStorage.setItem('refresh_token', refresh);
+            }
+          }
+          const refreshToken = refresh ?? state.tokens?.refresh ?? '';
+          return {
+            tokens: { access, refresh: refreshToken },
+            isAuthenticated: true,
+          };
+        }),
       
       updateProfile: (profileData) =>
         set((state) => {
@@ -145,9 +164,17 @@ export const useAuthStore = create<AuthState>()(
         try {
           if (typeof window === 'undefined' || !state) return;
 
-          // If tokens exist, validate access token before restoring
+          // If tokens exist, decide whether the session is still usable.
           if (state.tokens?.access) {
-            if (!isTokenValid(state.tokens.access)) {
+            const accessValid = isTokenValid(state.tokens.access);
+            const refreshValid = !!state.tokens.refresh && isTokenValid(state.tokens.refresh);
+
+            // Only force logout when NEITHER token is usable. If the access token
+            // expired but the refresh token is still valid (e.g. after returning
+            // from an external Stripe redirect that took longer than the 30-min
+            // access-token lifetime), keep the session — the API client will
+            // transparently refresh the access token on the next request.
+            if (!accessValid && !refreshValid) {
               localStorage.removeItem('access_token');
               localStorage.removeItem('refresh_token');
               localStorage.removeItem('auth-storage');

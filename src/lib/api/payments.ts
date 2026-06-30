@@ -12,6 +12,8 @@ export interface CreateEventPaymentData {
       city: string;
       postal_code: string;
       region: string;
+      latitude?: number | null;
+      longitude?: number | null;
     };
     event_type: 'free' | 'voluntary' | 'platform' | 'paid';
     participant_limit?: number | null;

@@ -55,6 +55,8 @@ interface EventFormData {
   location_city: string;
   location_postal_code: string;
   location_region: string;
+  location_lat: number | null;
+  location_lng: number | null;
   participant_limit: number | null;
   is_limited: boolean;
   is_fully_booked: boolean;
@@ -563,6 +565,8 @@ export default function CreateEventPage() {
       location_city: '',
       location_postal_code: '',
       location_region: '',
+      location_lat: null,
+      location_lng: null,
       participant_limit: null,
       is_limited: true,
       is_fully_booked: false,
@@ -705,6 +709,8 @@ export default function CreateEventPage() {
             city: data.location_city,
             postal_code: data.location_postal_code,
             region: data.location_region,
+            latitude: data.location_lat,
+            longitude: data.location_lng,
           } : undefined,
           event_type: data.event_type,
           participant_limit: data.is_limited ? null : data.participant_limit,
@@ -785,6 +791,8 @@ export default function CreateEventPage() {
             city: data.location_city,
             postal_code: data.location_postal_code,
             region: data.location_region,
+            latitude: data.location_lat,
+            longitude: data.location_lng,
           } : undefined,
           event_type: data.event_type,
           participant_limit: data.is_limited ? null : data.participant_limit,
@@ -894,11 +902,15 @@ export default function CreateEventPage() {
     const street = [address.road, address.house_number].filter(Boolean).join(' ');
     const postal = address.postcode || '';
     const region = address.state || '';
+    const parsedLat = item.lat !== undefined ? parseFloat(item.lat) : NaN;
+    const parsedLng = item.lon !== undefined ? parseFloat(item.lon) : NaN;
 
     setValue('location_address', street);
     setValue('location_city', city);
     setValue('location_postal_code', postal);
     setValue('location_region', region);
+    setValue('location_lat', Number.isFinite(parsedLat) ? parsedLat : null);
+    setValue('location_lng', Number.isFinite(parsedLng) ? parsedLng : null);
     setLocationQuery(item.display_name || `${street}, ${city}`);
     setLocationResults([]);
   };
