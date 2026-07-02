@@ -633,7 +633,7 @@ export default function CreateEventPage() {
       try {
         // Use Nominatim directly instead of Django proxy
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5`,
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
           {
             headers: {
               'Accept': 'application/json',
@@ -994,9 +994,14 @@ export default function CreateEventPage() {
       const result = await locationsApi.validateAddress(normalizedAddress, city);
       
       if (!result.valid) {
-        setAddressValidationMessage({ type: 'error', message: result.error || 'Nie znaleziono podanego adresu' });
+        // Nie każdy adres jest w bazie OpenStreetMap (domy rekolekcyjne, małe
+        // miejscowości). Nie blokujemy zapisu — pokazujemy tylko podpowiedź.
+        setAddressValidationMessage({
+          type: 'suggestion',
+          message: 'Nie udało się automatycznie potwierdzić adresu w mapach. Jeśli jest poprawny, możesz kontynuować.',
+        });
         setIsValidatingAddress(false);
-        return false;
+        return true;
       }
 
       // Suggest city if different

@@ -237,7 +237,7 @@ export default function EditEventPage({ params }: Props) {
     setIsSearchingLocation(true);
 
     fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
       {
         headers: { 'Accept-Language': 'pl' },
         signal: controller.signal,
@@ -313,9 +313,14 @@ export default function EditEventPage({ params }: Props) {
       const result = await locationsApi.validateAddress(normalizedAddress, city);
 
       if (!result.valid) {
-        setAddressValidationMessage({ type: 'error', message: result.error || 'Nie znaleziono podanego adresu' });
+        // Nie każdy adres jest w bazie OpenStreetMap (domy rekolekcyjne, małe
+        // miejscowości). Nie blokujemy zapisu — pokazujemy tylko podpowiedź.
+        setAddressValidationMessage({
+          type: 'suggestion',
+          message: 'Nie udało się automatycznie potwierdzić adresu w mapach. Jeśli jest poprawny, możesz kontynuować.',
+        });
         setIsValidatingAddress(false);
-        return false;
+        return true;
       }
 
       if (result.city && result.city.toLowerCase() !== city.toLowerCase()) {
