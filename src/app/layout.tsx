@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { MarketingTags } from "@/components/analytics/MarketingTags";
 import "@/lib/logger"; // Initialize console logger
 
 const inter = Inter({
@@ -35,6 +36,10 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     apple: "/apple-icon.png",
   },
+  other: {
+    // Weryfikacja domeny Meta (Facebook/Instagram)
+    "facebook-domain-verification": "gipg6nxvn2yq8m8vmigdt1ilh2k7h4",
+  },
 };
 
 export default function RootLayout({
@@ -45,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="pl" className={`${inter.variable} ${poppins.variable}`}>
       <body className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden" suppressHydrationWarning>
+        <MarketingTags />
         <Providers>
           <Navbar />
           <main className="flex-1">

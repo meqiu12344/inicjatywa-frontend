@@ -1,13 +1,21 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
-
 function TicketPurchaseSuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order_number');
   const eventId = searchParams.get('event_id');
+
+  // Meta Pixel: zdarzenie Purchase z event_id spojnym z Conversions API
+  // (Django) => Meta deduplikuje i nie liczy zakupu podwojnie.
+  useEffect(() => {
+    if (!orderNumber) return;
+    const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq;
+    if (typeof fbq !== 'function') return;
+    fbq('track', 'Purchase', { currency: 'PLN' }, { eventID: `purchase.${orderNumber}` });
+  }, [orderNumber]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4 flex items-center justify-center">
