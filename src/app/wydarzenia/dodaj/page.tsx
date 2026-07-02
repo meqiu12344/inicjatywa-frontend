@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { paymentsApi } from '@/lib/api/payments';
-import { locationsApi } from '@/lib/api/locations';
+import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { TicketType, Category } from '@/types';
@@ -630,19 +630,24 @@ export default function CreateEventPage() {
 
     const timeout = setTimeout(async () => {
       setIsSearchingLocation(true);
-      try {
-        // Use Nominatim directly instead of Django proxy
+      const search = async (q: string) => {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
-          {
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': 'CatholicEvents/1.0'
-            }
-          }
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
+          { headers: { 'Accept': 'application/json' } }
         );
         const data = await response.json();
-        setLocationResults(Array.isArray(data) ? data : []);
+        return Array.isArray(data) ? data : [];
+      };
+      try {
+        let data = await search(locationQuery);
+        // Brak wyników? Spróbuj z wyczyszczonym zapytaniem (bez "ul.", inicjałów typu "K." itp.)
+        if (data.length === 0) {
+          const cleaned = normalizeAddressQuery(locationQuery);
+          if (cleaned && cleaned !== locationQuery) {
+            data = await search(cleaned);
+          }
+        }
+        setLocationResults(data);
       } catch {
         setLocationResults([]);
       } finally {

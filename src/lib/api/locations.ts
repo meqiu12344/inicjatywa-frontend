@@ -21,6 +21,25 @@ export interface ValidateAddressResponse {
   postal_code?: string;
 }
 
+/**
+ * Czyści zapytanie adresowe, aby zwiększyć szansę dopasowania w mapach
+ * (Nominatim). Usuwa przedrostki ulic, skróty honorowe oraz pojedyncze
+ * inicjały imienia patrona ulicy (np. "K." w "K. Kadrzyckiej"), które są
+ * wieloznaczne i uniemożliwiają znalezienie ulicy.
+ */
+export function normalizeAddressQuery(query: string): string {
+  let q = query || '';
+  // Przedrostki typu ulica/aleja/plac/osiedle
+  q = q.replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac|os\.|osiedle)\s+/gi, '');
+  // Skróty honorowe (św., ks., gen., kard., bp., abp, płk, mjr, kpt., prof., dr, o.)
+  q = q.replace(/\b(św|ks|gen|kard|bp|abp|płk|mjr|kpt|kpl|prof|dr|o)\.?\s+/gi, '');
+  // Pojedyncze inicjały imienia (np. "K.")
+  q = q.replace(/\b[\p{L}]\.\s*/gu, '');
+  // Scal wielokrotne spacje
+  q = q.replace(/\s{2,}/g, ' ').trim();
+  return q;
+}
+
 export const locationsApi = {
   /**
    * Validate Polish postal code (XX-XXX format)

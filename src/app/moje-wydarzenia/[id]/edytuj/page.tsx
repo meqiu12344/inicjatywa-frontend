@@ -10,7 +10,7 @@ import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, Gl
 import toast from 'react-hot-toast';
 import { eventsApi } from '@/lib/api/events';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
-import { locationsApi } from '@/lib/api/locations';
+import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
 import { useAuthStore } from '@/stores/authStore';
 import dynamic from 'next/dynamic';
 import { 
@@ -236,23 +236,32 @@ export default function EditEventPage({ params }: Props) {
     const controller = new AbortController();
     setIsSearchingLocation(true);
 
-    fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
-      {
-        headers: { 'Accept-Language': 'pl' },
-        signal: controller.signal,
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        setLocationResults(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
+    const search = async (q: string) => {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
+        { signal: controller.signal }
+      );
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    };
+
+    (async () => {
+      try {
+        let data = await search(locationQuery);
+        // Brak wyników? Spróbuj z wyczyszczonym zapytaniem (bez "ul.", inicjałów typu "K." itp.)
+        if (data.length === 0) {
+          const cleaned = normalizeAddressQuery(locationQuery);
+          if (cleaned && cleaned !== locationQuery) {
+            data = await search(cleaned);
+          }
+        }
+        setLocationResults(data);
+      } catch {
         setLocationResults([]);
-      })
-      .finally(() => {
+      } finally {
         setIsSearchingLocation(false);
-      });
+      }
+    })();
 
     return () => controller.abort();
   }, [locationQuery]);
