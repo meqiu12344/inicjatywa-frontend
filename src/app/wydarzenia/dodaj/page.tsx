@@ -515,6 +515,7 @@ export default function CreateEventPage() {
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
+  const [showManualCoords, setShowManualCoords] = useState(false);
   
   // Location validation states
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
@@ -1923,6 +1924,77 @@ export default function CreateEventPage() {
                           <p className="text-xs text-gray-500 mt-1">Format: XX-XXX (np. 00-001, 31-456)</p>
                         )}
                       </div>
+                    </div>
+
+                    {/* Ręczne współrzędne – gdy adresu nie da się znaleźć na mapie */}
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowManualCoords((v) => !v)}
+                        className="text-sm text-blue-600 hover:text-blue-700 underline"
+                      >
+                        {showManualCoords
+                          ? 'Ukryj ręczne współrzędne'
+                          : 'Nie możesz znaleźć adresu? Wpisz współrzędne ręcznie'}
+                      </button>
+
+                      {showManualCoords && (
+                        <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-gray-600 mb-3">
+                            Otwórz miejsce w Mapach Google, kliknij na nim prawym przyciskiem
+                            i wybierz współrzędne, aby je skopiować, a następnie wklej je poniżej
+                            (np. <span className="font-mono">49.6210, 20.2540</span>).
+                          </p>
+
+                          <div className="mb-3">
+                            <label className="form-label-small">Wklej współrzędne z Map Google</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="form-input"
+                              placeholder="np. 49.6210, 20.2540"
+                              onChange={(e) => {
+                                const match = e.target.value.match(
+                                  /(-?\d{1,3}(?:[.,]\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:[.,]\d+)?)/
+                                );
+                                if (match) {
+                                  const lat = parseFloat(match[1].replace(',', '.'));
+                                  const lng = parseFloat(match[2].replace(',', '.'));
+                                  if (Number.isFinite(lat)) setValue('location_lat', lat);
+                                  if (Number.isFinite(lng)) setValue('location_lng', lng);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="form-label-small">Szerokość (latitude)</label>
+                              <input
+                                type="number"
+                                step="any"
+                                {...register('location_lat', { valueAsNumber: true })}
+                                className="form-input"
+                                placeholder="np. 49.6210"
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label-small">Długość (longitude)</label>
+                              <input
+                                type="number"
+                                step="any"
+                                {...register('location_lng', { valueAsNumber: true })}
+                                className="form-input"
+                                placeholder="np. 20.2540"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Współrzędne są opcjonalne – pomagają dokładnie pokazać wydarzenie na mapie,
+                            gdy adres nie zostanie rozpoznany automatycznie.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

@@ -47,6 +47,8 @@ interface EditEventFormData {
   location_city: string;
   location_postal_code: string;
   location_region: string;
+  location_lat: number | null;
+  location_lng: number | null;
   ticket_price: number | null;
   ticket_url: string;
   participant_limit: number | null;
@@ -67,6 +69,7 @@ export default function EditEventPage({ params }: Props) {
   const [activeTab, setActiveTab] = useState<'basic' | 'tickets' | 'stats'>('basic');
   const [description, setDescription] = useState('');
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
+  const [showManualCoords, setShowManualCoords] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
@@ -128,6 +131,8 @@ export default function EditEventPage({ params }: Props) {
       location_city: '',
       location_postal_code: '',
       location_region: '',
+      location_lat: null,
+      location_lng: null,
       ticket_price: null,
       ticket_url: '',
       participant_limit: null,
@@ -201,6 +206,8 @@ export default function EditEventPage({ params }: Props) {
       location_city: event.location?.city || '',
       location_postal_code: event.location?.postal_code || '',
       location_region: event.location?.region || '',
+      location_lat: event.location?.latitude ?? null,
+      location_lng: event.location?.longitude ?? null,
       ticket_price: event.ticket_price !== undefined && event.ticket_price !== null ? Number(event.ticket_price) : null,
       ticket_url: event.ticket_url || '',
       participant_limit: event.participant_limit || null,
@@ -360,11 +367,15 @@ export default function EditEventPage({ params }: Props) {
     const street = [address.road, address.house_number].filter(Boolean).join(' ');
     const postal = address.postcode || '';
     const region = address.state || '';
+    const parsedLat = item.lat !== undefined ? parseFloat(item.lat) : NaN;
+    const parsedLng = item.lon !== undefined ? parseFloat(item.lon) : NaN;
 
     setValue('location_address', street);
     setValue('location_city', city);
     setValue('location_postal_code', postal);
     setValue('location_region', region);
+    if (Number.isFinite(parsedLat)) setValue('location_lat', parsedLat);
+    if (Number.isFinite(parsedLng)) setValue('location_lng', parsedLng);
     setLocationQuery(item.display_name || `${street}, ${city}`);
     setLocationResults([]);
   };
@@ -435,6 +446,8 @@ export default function EditEventPage({ params }: Props) {
           city: data.location_city,
           postal_code: data.location_postal_code || undefined,
           region: data.location_region || undefined,
+          latitude: data.location_lat ?? undefined,
+          longitude: data.location_lng ?? undefined,
         } : undefined,
         ticket_price: data.ticket_price || undefined,
         ticket_url: data.ticket_url || undefined,
@@ -858,6 +871,83 @@ export default function EditEventPage({ params }: Props) {
                             placeholder="np. Małopolskie"
                           />
                         </div>
+                      </div>
+
+                      {/* Ręczne współrzędne – gdy adresu nie da się znaleźć na mapie */}
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowManualCoords((v) => !v)}
+                          className="text-sm text-primary-600 hover:text-primary-700 underline"
+                        >
+                          {showManualCoords
+                            ? 'Ukryj ręczne współrzędne'
+                            : 'Nie możesz znaleźć adresu? Wpisz współrzędne ręcznie'}
+                        </button>
+
+                        {showManualCoords && (
+                          <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-3">
+                              Otwórz miejsce w Mapach Google, kliknij na nim prawym przyciskiem
+                              i wybierz współrzędne, aby je skopiować, a następnie wklej je poniżej
+                              (np. <span className="font-mono">49.6210, 20.2540</span>).
+                            </p>
+
+                            <div className="mb-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Wklej współrzędne z Map Google
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className="input w-full"
+                                placeholder="np. 49.6210, 20.2540"
+                                onChange={(e) => {
+                                  const match = e.target.value.match(
+                                    /(-?\d{1,3}(?:[.,]\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:[.,]\d+)?)/
+                                  );
+                                  if (match) {
+                                    const lat = parseFloat(match[1].replace(',', '.'));
+                                    const lng = parseFloat(match[2].replace(',', '.'));
+                                    if (Number.isFinite(lat)) setValue('location_lat', lat);
+                                    if (Number.isFinite(lng)) setValue('location_lng', lng);
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Szerokość (latitude)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  {...register('location_lat', { valueAsNumber: true })}
+                                  className="input w-full"
+                                  placeholder="np. 49.6210"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Długość (longitude)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  {...register('location_lng', { valueAsNumber: true })}
+                                  className="input w-full"
+                                  placeholder="np. 20.2540"
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Współrzędne są opcjonalne – pomagają dokładnie pokazać wydarzenie
+                              na mapie, gdy adres nie zostanie rozpoznany automatycznie.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
