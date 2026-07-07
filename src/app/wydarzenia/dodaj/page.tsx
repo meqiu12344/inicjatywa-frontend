@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, KeyboardEvent, ChangeEvent } from 'react';
+import { useState, useEffect, KeyboardEvent, ChangeEvent, ClipboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -17,6 +17,7 @@ import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { paymentsApi } from '@/lib/api/payments';
 import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
+import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { TicketType, Category } from '@/types';
@@ -860,10 +861,17 @@ export default function CreateEventPage() {
     setImagePreview(null);
   };
 
-  const addTag = (tag: string) => {
-    const trimmedTag = tag.trim();
-    if (trimmedTag && !watchTags.includes(trimmedTag)) {
-      setValue('tags', [...watchTags, trimmedTag]);
+  const addTag = (raw: string) => {
+    // Split pasted / typed lists on commas, semicolons and newlines so each
+    // keyword becomes its own tag instead of one long tag.
+    const merged = [...watchTags];
+    for (const tag of splitTags(raw)) {
+      if (!merged.includes(tag)) {
+        merged.push(tag);
+      }
+    }
+    if (merged.length !== watchTags.length) {
+      setValue('tags', merged);
     }
     setTagInput('');
     setTagSuggestions([]);
@@ -874,9 +882,82 @@ export default function CreateEventPage() {
   };
 
   const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
+    if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
       e.preventDefault();
       addTag(tagInput);
+    }
+  };
+
+  const handleTagPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (/[,;\n\r]/.test(text)) {
+      e.preventDefault();
+      addTag(text);
+    }
+  };
+
+  // ---- Date / time copy-paste support -------------------------------------
+  // Native <input type="date|time"> do not accept pasted text in Chrome/Edge,
+  // so we parse the clipboard ourselves (via the paste event where available,
+  // and via Ctrl/Cmd+V where the browser swallows the paste event).
+  const setDateTimeValue = (field: keyof EventFormData, value: string) => {
+    setValue(field, value as never, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const applyPastedDate = (
+    text: string,
+    dateField: keyof EventFormData,
+    timeField?: keyof EventFormData
+  ): boolean => {
+    const { date, time } = parsePastedDateTime(text);
+    if (!date) return false;
+    setDateTimeValue(dateField, date);
+    if (timeField && time) setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const applyPastedTime = (text: string, timeField: keyof EventFormData): boolean => {
+    const { time } = parsePastedDateTime(text);
+    if (!time) return false;
+    setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const handleDatePaste = (
+    e: ClipboardEvent<HTMLInputElement>,
+    dateField: keyof EventFormData,
+    timeField?: keyof EventFormData
+  ) => {
+    if (applyPastedDate(e.clipboardData.getData('text'), dateField, timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTimePaste = (e: ClipboardEvent<HTMLInputElement>, timeField: keyof EventFormData) => {
+    if (applyPastedTime(e.clipboardData.getData('text'), timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDateKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    dateField: keyof EventFormData,
+    timeField?: keyof EventFormData
+  ) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedDate(text, dateField, timeField))
+        .catch(() => {});
+    }
+  };
+
+  const handleTimeKeyDown = (e: KeyboardEvent<HTMLInputElement>, timeField: keyof EventFormData) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedTime(text, timeField))
+        .catch(() => {});
     }
   };
 
@@ -1492,6 +1573,8 @@ export default function CreateEventPage() {
                       <input
                         type="date"
                         {...register('start_date', { required: 'Data jest wymagana' })}
+                        onPaste={(e) => handleDatePaste(e, 'start_date', 'start_time')}
+                        onKeyDown={(e) => handleDateKeyDown(e, 'start_date', 'start_time')}
                         className="form-input"
                       />
                       {errors.start_date && (
@@ -1503,6 +1586,8 @@ export default function CreateEventPage() {
                       <input
                         type="time"
                         {...register('start_time', { required: 'Godzina jest wymagana' })}
+                        onPaste={(e) => handleTimePaste(e, 'start_time')}
+                        onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')}
                         className="form-input"
                       />
                     </div>
@@ -1536,6 +1621,8 @@ export default function CreateEventPage() {
                           {...register('end_date', {
                             required: !watchIsPermanent ? 'Data zakończenia jest wymagana' : false
                           })}
+                          onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')}
+                          onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')}
                           className="form-input"
                         />
                         {errors.end_date && (
@@ -1552,6 +1639,8 @@ export default function CreateEventPage() {
                           {...register('end_time', {
                             required: !watchIsPermanent ? 'Godzina zakończenia jest wymagana' : false
                           })}
+                          onPaste={(e) => handleTimePaste(e, 'end_time')}
+                          onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')}
                           className="form-input"
                         />
                         {errors.end_time && (
@@ -1658,6 +1747,7 @@ export default function CreateEventPage() {
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleTagKeyDown}
+                        onPaste={handleTagPaste}
                         placeholder="Wpisz tag i naciśnij Enter"
                         className="flex-1 px-4 py-3 border-0 focus:ring-0 focus:outline-none"
                       />
@@ -2296,11 +2386,15 @@ export default function CreateEventPage() {
                           <input
                             type="date"
                             {...register('available_from_date')}
+                            onPaste={(e) => handleDatePaste(e, 'available_from_date', 'available_from_time')}
+                            onKeyDown={(e) => handleDateKeyDown(e, 'available_from_date', 'available_from_time')}
                             className="form-input"
                           />
                           <input
                             type="time"
                             {...register('available_from_time')}
+                            onPaste={(e) => handleTimePaste(e, 'available_from_time')}
+                            onKeyDown={(e) => handleTimeKeyDown(e, 'available_from_time')}
                             className="form-input"
                           />
                         </div>
@@ -2314,11 +2408,15 @@ export default function CreateEventPage() {
                           <input
                             type="date"
                             {...register('available_to_date')}
+                            onPaste={(e) => handleDatePaste(e, 'available_to_date', 'available_to_time')}
+                            onKeyDown={(e) => handleDateKeyDown(e, 'available_to_date', 'available_to_time')}
                             className="form-input"
                           />
                           <input
                             type="time"
                             {...register('available_to_time')}
+                            onPaste={(e) => handleTimePaste(e, 'available_to_time')}
+                            onKeyDown={(e) => handleTimeKeyDown(e, 'available_to_time')}
                             className="form-input"
                           />
                         </div>

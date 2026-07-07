@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { KeyboardEvent, ClipboardEvent } from 'react';
 import { use } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import toast from 'react-hot-toast';
 import { eventsApi } from '@/lib/api/events';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
+import { parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore } from '@/stores/authStore';
 import dynamic from 'next/dynamic';
 import { 
@@ -148,6 +150,71 @@ export default function EditEventPage({ params }: Props) {
   const watchAll = watch();
   const isTicketsDisabled = watchEventType !== 'platform';
   const hasSoldTickets = (ticketTypes || []).some((t: any) => (t.quantity_sold ?? 0) > 0);
+
+  // ---- Date / time copy-paste support -------------------------------------
+  // Native <input type="date|time"> do not accept pasted text in Chrome/Edge,
+  // so we parse the clipboard ourselves (via the paste event where available,
+  // and via Ctrl/Cmd+V where the browser swallows the paste event).
+  const setDateTimeValue = (field: keyof EditEventFormData, value: string) => {
+    setValue(field, value as never, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const applyPastedDate = (
+    text: string,
+    dateField: keyof EditEventFormData,
+    timeField?: keyof EditEventFormData
+  ): boolean => {
+    const { date, time } = parsePastedDateTime(text);
+    if (!date) return false;
+    setDateTimeValue(dateField, date);
+    if (timeField && time) setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const applyPastedTime = (text: string, timeField: keyof EditEventFormData): boolean => {
+    const { time } = parsePastedDateTime(text);
+    if (!time) return false;
+    setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const handleDatePaste = (
+    e: ClipboardEvent<HTMLInputElement>,
+    dateField: keyof EditEventFormData,
+    timeField?: keyof EditEventFormData
+  ) => {
+    if (applyPastedDate(e.clipboardData.getData('text'), dateField, timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTimePaste = (e: ClipboardEvent<HTMLInputElement>, timeField: keyof EditEventFormData) => {
+    if (applyPastedTime(e.clipboardData.getData('text'), timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDateKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    dateField: keyof EditEventFormData,
+    timeField?: keyof EditEventFormData
+  ) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedDate(text, dateField, timeField))
+        .catch(() => {});
+    }
+  };
+
+  const handleTimeKeyDown = (e: KeyboardEvent<HTMLInputElement>, timeField: keyof EditEventFormData) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedTime(text, timeField))
+        .catch(() => {});
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -667,15 +734,15 @@ export default function EditEventPage({ params }: Props) {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Data rozpoczęcia</label>
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="date" {...register('start_date')} className="input w-full" />
-                        <input type="time" {...register('start_time')} className="input w-full" />
+                        <input type="date" {...register('start_date')} onPaste={(e) => handleDatePaste(e, 'start_date', 'start_time')} onKeyDown={(e) => handleDateKeyDown(e, 'start_date', 'start_time')} className="input w-full" />
+                        <input type="time" {...register('start_time')} onPaste={(e) => handleTimePaste(e, 'start_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')} className="input w-full" />
                       </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Data zakończenia</label>
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="date" {...register('end_date')} className="input w-full" />
-                        <input type="time" {...register('end_time')} className="input w-full" />
+                        <input type="date" {...register('end_date')} onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')} onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')} className="input w-full" />
+                        <input type="time" {...register('end_time')} onPaste={(e) => handleTimePaste(e, 'end_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')} className="input w-full" />
                       </div>
                     </div>
                   </div>
@@ -1007,12 +1074,16 @@ export default function EditEventPage({ params }: Props) {
                               type="date"
                               {...register('available_from_date', {
                               })}
+                              onPaste={(e) => handleDatePaste(e, 'available_from_date', 'available_from_time')}
+                              onKeyDown={(e) => handleDateKeyDown(e, 'available_from_date', 'available_from_time')}
                               className="input w-full"
                             />
                             <input
                               type="time"
                               {...register('available_from_time', {
                               })}
+                              onPaste={(e) => handleTimePaste(e, 'available_from_time')}
+                              onKeyDown={(e) => handleTimeKeyDown(e, 'available_from_time')}
                               className="input w-full"
                             />
                           </div>
@@ -1024,12 +1095,16 @@ export default function EditEventPage({ params }: Props) {
                               type="date"
                               {...register('available_to_date', {
                               })}
+                              onPaste={(e) => handleDatePaste(e, 'available_to_date', 'available_to_time')}
+                              onKeyDown={(e) => handleDateKeyDown(e, 'available_to_date', 'available_to_time')}
                               className="input w-full"
                             />
                             <input
                               type="time"
                               {...register('available_to_time', {
                               })}
+                              onPaste={(e) => handleTimePaste(e, 'available_to_time')}
+                              onKeyDown={(e) => handleTimeKeyDown(e, 'available_to_time')}
                               className="input w-full"
                             />
                           </div>
