@@ -489,10 +489,10 @@ export default function EventPage({ params }: EventPageProps) {
                   <Image
                     src={event.image}
                     alt={event.title}
-                    width={0}
-                    height={0}
-                    sizes='100vh'
-                    style={{height: '100vh'}}
+                    width={800}
+                    height={450}
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 700px"
+                    priority
                     className="object-cover w-full h-full"
                   />
                 </div>
