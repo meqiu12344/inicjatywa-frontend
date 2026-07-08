@@ -78,7 +78,6 @@ export default function HeroGlobe() {
   const [windowWidth, setWindowWidth] = useState(600);
   const [windowHeight, setWindowHeight] = useState(600);
   const [events, setEvents] = useState<GlobeEvent[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -154,10 +153,6 @@ export default function HeroGlobe() {
   return (
     <>
       <div id="globe-container" className="absolute inset-0 w-full h-full flex items-center justify-center cursor-move z-0 transition-opacity duration-1000 translate-x-[10%] lg:translate-x-[25%] scale-110">
-<<<<<<< HEAD
-=======
-
->>>>>>> 892dbe99c9b44171ef5afabc7f144826bdf330a0
         {isMounted && (
           <Globe
             ref={globeEl}
