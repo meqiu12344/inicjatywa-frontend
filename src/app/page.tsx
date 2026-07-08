@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, MapPin, TrendingUp, ArrowRight, Star, Clock, Heart, AlertTriangle } from 'lucide-react';
+import { Calendar, MapPin, TrendingUp, ArrowRight, Star, Clock, Heart, AlertTriangle, Search } from 'lucide-react';
 import Link from 'next/link';
 import { EventSlider, GoldBanner, GoldBannerSkeleton, CategoryGrid, CategoryGridSkeleton } from '@/components/events';
 import AdBanner from '@/components/ads/AdBanner';
@@ -17,6 +17,7 @@ import {
   useRecommendedEvents,
 } from '@/hooks/useEvents';
 import { useAuth } from '@/hooks/useAuth';
+import PopupAd from '@/components/ads/PopupAd';
 
 function SectionLoadError({ message }: { message: string }) {
   return (
@@ -44,6 +45,7 @@ function HeroSection() {
 
   return (
     <section className="relative bg-[#050B14] text-white overflow-hidden min-h-[90vh] lg:min-h-screen flex items-center">
+      <PopupAd />
       {/* 3D Globe Background */}
       <div className="absolute inset-0 z-0">
         <HeroGlobe />
@@ -76,7 +78,7 @@ function HeroSection() {
           {/* Quick search form */}
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 max-w-xl">
             <div className="relative flex-1">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={cityInput}

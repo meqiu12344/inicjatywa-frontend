@@ -242,12 +242,14 @@ export default function PendingEventsPage() {
             {selectedEvent ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-4">
                 {selectedEvent.image_url && (
-                  <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-4">
+                  <div className="w-full bg-gray-200 rounded-lg overflow-hidden mb-4">
                     <Image
                       src={selectedEvent.image_url}
                       alt={selectedEvent.title}
-                      width={400}
-                      height={160}
+                      width={0}
+                      height={0}
+                      sizes='100vw'
+                      style={{height: 'auto'}}
                       className="object-cover w-full h-full"
                     />
                   </div>

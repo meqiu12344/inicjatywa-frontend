@@ -5,13 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  User, 
-  Share2, 
-  Ticket, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Share2,
+  Ticket,
   ExternalLink,
   Wifi,
   ArrowLeft,
@@ -39,9 +39,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import toast from 'react-hot-toast';
-import { 
-  isEventExpired, 
-  isEventOngoing, 
+import {
+  isEventExpired,
+  isEventOngoing,
   isEventUpcoming,
   canRegister as canRegisterCheck,
   canPromote as canPromoteCheck,
@@ -60,7 +60,7 @@ interface EventPageProps {
 // Promotion badge component
 function PromotionBadge({ level }: { level?: 'gold' | 'silver' | 'bronze' }) {
   if (!level) return null;
-  
+
   const config = {
     gold: {
       icon: Crown,
@@ -78,9 +78,9 @@ function PromotionBadge({ level }: { level?: 'gold' | 'silver' | 'bronze' }) {
       className: 'bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 text-orange-900 shadow-md shadow-orange-200/50 border border-orange-300',
     },
   };
-  
+
   const { icon: Icon, label, className } = config[level];
-  
+
   return (
     <span className={clsx('inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold', className)}>
       <Icon className="w-4 h-4" />
@@ -93,7 +93,7 @@ export default function EventPage({ params }: EventPageProps) {
   const resolvedParams = use(params);
   const slug = resolvedParams.slug;
   const router = useRouter();
-  
+
   const { data: event, isLoading, error } = useEvent(slug);
   const { isAuthenticated, user, isOrganizer } = useAuth();
   const registerMutation = useRegisterForEvent();
@@ -167,7 +167,7 @@ export default function EventPage({ params }: EventPageProps) {
   const startDate = new Date(event.start_date);
   const endDate = event.end_date ? new Date(event.end_date) : null;
   const now = new Date();
-  
+
   // Używamy logiki z eventUtils
   const effectiveStatus = getEffectiveStatus(event);
   const isClosed = effectiveStatus === 'closed';
@@ -175,7 +175,7 @@ export default function EventPage({ params }: EventPageProps) {
   const isPast = isEventExpired(event);
   const isUpcoming = isEventUpcoming(event);
   const isOwner = user && (user.is_staff || user.id === event.user.id);
-  
+
   // Sprawdzenie możliwości promocji używając eventUtils
   const promoteCheck = canPromoteCheck(event);
   const canPromote = promoteCheck.canPromote;
@@ -201,17 +201,17 @@ export default function EventPage({ params }: EventPageProps) {
     if (event.is_permanent) {
       return 'Wydarzenie trwa cały czas';
     }
-    
+
     const dateStr = format(startDate, 'd MMMM yyyy', { locale: pl });
     const timeStr = format(startDate, 'HH:mm');
-    
+
     if (endDate) {
       if (startDate.toDateString() === endDate.toDateString()) {
         return `${dateStr}, ${timeStr} - ${format(endDate, 'HH:mm')}`;
       }
       return `${dateStr} - ${format(endDate, 'd MMMM yyyy', { locale: pl })}`;
     }
-    
+
     return `${dateStr}, ${timeStr}`;
   };
 
@@ -224,6 +224,9 @@ export default function EventPage({ params }: EventPageProps) {
     email: `mailto:?subject=${encodedTitle}&body=${encodeURIComponent(`Sprawdź to wydarzenie: ${shareUrl}`)}`,
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${event.title} - ${shareUrl}`)}`,
   };
+
+  const organizerProfile = event.organizer_profile;
+  const organizerHref = organizerProfile?.slug ? `/organizatorzy/${organizerProfile.slug}` : null;
 
   const eventTypeLabels = {
     free: 'Wydarzenie darmowe',
@@ -439,120 +442,10 @@ export default function EventPage({ params }: EventPageProps) {
               )}
             </div>
 
-            {/* Organizer Info */}
-            {(event.organizer_profile || event.organizer) && (
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Organizator</h3>
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {event.organizer_profile?.logo ? (
-                      <Image
-                        src={event.organizer_profile.logo}
-                        alt={event.organizer_profile.name}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-8 h-8 text-slate-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-900 text-lg">
-                        {event.organizer_profile?.name || event.organizer}
-                      </span>
-                      {event.organizer_profile?.verified && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
-                          <CheckCircle className="w-3 h-3" />
-                          Zweryfikowany
-                        </span>
-                      )}
-                    </div>
-                    {event.organizer_profile?.description && (
-                      <p className="text-slate-600 mt-2 line-clamp-2">
-                        {event.organizer_profile.description}
-                      </p>
-                    )}
-                    {event.organizer_profile?.slug && (
-                      <Link
-                        href={`/organizatorzy/${event.organizer_profile.slug}`}
-                        className="inline-flex items-center gap-1.5 mt-3 text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        Zobacz profil organizatora
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Owner Tools */}
-            {isOwner && (
-              <div className="card p-6 bg-slate-50 border-2 border-slate-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <Settings className="w-5 h-5 text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Narzędzia organizatora</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Link
-                    href={`/moje-wydarzenia/${event.id}/rejestracje`}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors font-medium"
-                  >
-                    <Users className="w-5 h-5" />
-                    Zarządzaj rejestracjami
-                    {typeof event.registrations_count === 'number' && (
-                      <span className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-sm">
-                        {event.registrations_count}
-                      </span>
-                    )}
-                  </Link>
-                  
-                  <Link
-                    href={`/moje-wydarzenia/${event.id}/edytuj`}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors font-medium"
-                  >
-                    <Edit className="w-5 h-5" />
-                    Edytuj wydarzenie
-                  </Link>
-                  
-                  {event.event_type === 'platform' && (
-                    <Link
-                      href={`/bilety/organizator/zarzadzaj/${event.id}`}
-                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors font-medium"
-                    >
-                      <Ticket className="w-5 h-5" />
-                      Zarządzaj biletami
-                    </Link>
-                  )}
-                  
-                  {canPromote && isOrganizer ? (
-                    <Link
-                      href={`/wydarzenia/${event.slug}/promuj`}
-                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900 hover:from-amber-500 hover:to-yellow-600 transition-colors font-semibold shadow-md"
-                    >
-                      <TrendingUp className="w-5 h-5" />
-                      Promuj to wydarzenie
-                    </Link>
-                  ) : event.is_promoted ? (
-                    <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-medium">
-                      <CheckCircle className="w-5 h-5" />
-                      <span>
-                        Wydarzenie promowane
-                        {event.promotion_level && ` (${event.promotion_level})`}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            )}
-
             {/* About Section */}
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-black mb-4">O wydarzeniu</h3>
-              
+
               {/* Event Image */}
               {event.image && (
                 <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden bg-slate-100">
@@ -565,19 +458,79 @@ export default function EventPage({ params }: EventPageProps) {
                   />
                 </div>
               )}
-              
+
               {/* Description with HTML support */}
-              <div 
+              <div
                 className="prose prose-slate max-w-none prose-headings:font-display prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline"
                 dangerouslySetInnerHTML={{ __html: linkifyHtml(event.description) }}
               />
             </div>
 
+            {/* Organizer Info */}
+            {(organizerProfile || event.organizer) && (
+              organizerHref ? (
+                <Link href={organizerHref}>
+                  <div className="card p-6 mt-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Organizator</h3>
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {organizerProfile?.logo ? (
+                          <Image
+                            src={organizerProfile.logo}
+                            alt={organizerProfile.name}
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-8 h-8 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-slate-900 text-lg">
+                            {organizerProfile?.name || event.organizer}
+                          </span>
+                          {organizerProfile?.verified && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                              <CheckCircle className="w-3 h-3" />
+                              Zweryfikowany
+                            </span>
+                          )}
+                        </div>
+                        {organizerProfile?.description && (
+                          <p className="text-slate-600 mt-2 line-clamp-2">
+                            {organizerProfile.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ) : (
+                <div className="card p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Organizator</h3>
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <User className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-900 text-lg">
+                          {event.organizer}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+
             {/* Location Section */}
             {(event.location || event.online_event) && (
               <div className="card p-6">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Lokalizacja</h3>
-                
+
                 {event.online_event ? (
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
@@ -589,7 +542,7 @@ export default function EventPage({ params }: EventPageProps) {
                         </p>
                       </div>
                     </div>
-                    
+
                     {event.online_link && (
                       <a
                         href={event.online_link}
@@ -656,7 +609,7 @@ export default function EventPage({ params }: EventPageProps) {
             {/* Share Section */}
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-4">Udostępnij wydarzenie</h3>
-              
+
               <div className="flex flex-wrap gap-3">
                 <a
                   href={shareLinks.facebook}
@@ -667,7 +620,7 @@ export default function EventPage({ params }: EventPageProps) {
                   <Facebook className="w-5 h-5" />
                   Facebook
                 </a>
-                
+
                 <a
                   href={shareLinks.twitter}
                   target="_blank"
@@ -677,7 +630,7 @@ export default function EventPage({ params }: EventPageProps) {
                   <Twitter className="w-5 h-5" />
                   Twitter
                 </a>
-                
+
                 <a
                   href={shareLinks.email}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-600 text-white hover:bg-slate-700 transition-colors font-medium"
@@ -685,7 +638,7 @@ export default function EventPage({ params }: EventPageProps) {
                   <Mail className="w-5 h-5" />
                   Email
                 </a>
-                
+
                 <a
                   href={shareLinks.whatsapp}
                   target="_blank"
@@ -695,7 +648,7 @@ export default function EventPage({ params }: EventPageProps) {
                   <MessageCircle className="w-5 h-5" />
                   WhatsApp
                 </a>
-                
+
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(shareUrl);
@@ -729,11 +682,11 @@ export default function EventPage({ params }: EventPageProps) {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-6 sticky">
             {/* Quick Info Card */}
-            <div className="card p-6 sticky top-4">
+            <div className="card p-6 top-4">
               <h3 className="font-semibold text-slate-900 mb-4">Informacje</h3>
-              
+
               <div className="space-y-4">
                 {/* Date & Time */}
                 <div className="flex items-start gap-3">
@@ -864,6 +817,66 @@ export default function EventPage({ params }: EventPageProps) {
                 </Link>
               </div>
             </div>
+
+            {/* Owner Tools */}
+            {isOwner && (
+              <div className="card p-6 bg-slate-50 border-2 border-slate-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <Settings className="w-5 h-5 text-slate-600" />
+                  <h3 className="text-lg font-semibold text-slate-900">Narzędzia organizatora</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
+                  <Link
+                    href={`/moje-wydarzenia/${event.id}/rejestracje`}
+                    className="flex items-center justify-start gap-2 px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors font-medium"
+                  >
+                    {typeof event.registrations_count === 'number' && (
+                      <span className="px-1 py-0.2 rounded-full bg-primary-100 text-primary-700 text-sm">
+                        {event.registrations_count}
+                      </span>
+                    )}
+                    Zarządzaj rejestracjami
+                  </Link>
+
+                  <Link
+                    href={`/moje-wydarzenia/${event.id}/edytuj`}
+                    className="flex items-center justify-start gap-2 px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors font-medium"
+                  >
+                    <Edit className="w-5 h-5" />
+                    Edytuj wydarzenie
+                  </Link>
+
+                  {event.event_type === 'platform' && (
+                    <Link
+                      href={`/bilety/organizator/zarzadzaj/${event.id}`}
+                      className="flex items-center justify-start gap-2 px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors font-medium"
+                    >
+                      <Ticket className="w-5 h-5" />
+                      Zarządzaj biletami
+                    </Link>
+                  )}
+
+                  {canPromote && isOrganizer ? (
+                    <Link
+                      href={`/wydarzenia/${event.slug}/promuj`}
+                      className="flex items-center justify-start gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900 hover:from-amber-500 hover:to-yellow-600 transition-colors font-semibold shadow-md"
+                    >
+                      <TrendingUp className="w-5 h-5" />
+                      Promuj to wydarzenie
+                    </Link>
+                  ) : event.is_promoted ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-medium">
+                      <CheckCircle className="w-5 h-5" />
+                      <span>
+                        Wydarzenie promowane
+                        {event.promotion_level && ` (${event.promotion_level})`}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -880,7 +893,7 @@ function EventPageSkeleton() {
           <div className="h-5 w-32 skeleton rounded" />
         </div>
       </div>
-      
+
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
           <div className="h-5 w-48 skeleton rounded" />
@@ -891,7 +904,7 @@ function EventPageSkeleton() {
           </div>
         </div>
       </div>
-      
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">

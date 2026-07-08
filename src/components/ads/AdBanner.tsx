@@ -21,6 +21,8 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
   // No active ad assigned – show nothing (clean UX)
   if (ad === null) return null;
 
+  const imageSrc = ad.type === 'image' ? ad.imageUrl?.trim() || null : null;
+
   return (
     <div
       id={id}
@@ -31,7 +33,7 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
         <span className="ad-banner-label">Reklama</span>
 
         {/* ── Image ad ── */}
-        {ad.type === 'image' && (
+        {ad.type === 'image' && imageSrc && (
           <div className="ad-banner-content ad-banner-content--image">
             {ad.linkUrl ? (
               <a
@@ -41,18 +43,18 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
                 className="block w-full"
               >
                 <img
-                  src={ad.imageUrl}
+                  src={imageSrc}
                   alt={ad.name}
                   className="w-full object-contain"
-                  style={{ display: 'block', maxHeight: '200px' }}
+                  style={{ display: 'block' }}
                 />
               </a>
             ) : (
               <img
-                src={ad.imageUrl}
+                src={imageSrc}
                 alt={ad.name}
                 className="w-full object-contain"
-                style={{ display: 'block', maxHeight: '200px' }}
+                style={{ display: 'block' }}
               />
             )}
           </div>

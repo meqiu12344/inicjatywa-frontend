@@ -45,6 +45,12 @@ const DEFAULT_SLOTS: AdSlot[] = [
     description: 'Wyświetlany po sekcji Top 10, przed kategoriami.',
     adId: null,
   },
+  {
+    id: 'ad-popup-entry',
+    label: 'Popup – Modal przy wejściu',
+    description: 'Wyświetlany jako modal przy wejściu na stronę (np. wydarzenia).',
+    adId: null,
+  },
 ];
 
 const STORAGE_KEY_ADS = 'ik_ads';
@@ -62,7 +68,46 @@ function loadAds(): Ad[] {
 
 function saveAds(ads: Ad[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(ads));
+  try {
+    localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(ads));
+  } catch (err) {
+    // Handle quota exceeded or other localStorage errors by attempting to reduce payload
+    // 1) Remove large inline images (data:) and oversized HTML snippets
+    try {
+      const reduced = ads.map((a) => {
+        const copy: Ad = { ...a } as Ad;
+        if (copy.imageUrl && copy.imageUrl.startsWith('data:') && copy.imageUrl.length > 100 * 1024) {
+          copy.imageUrl = '';
+        }
+        if (copy.htmlCode && copy.htmlCode.length > 5 * 1024) {
+          copy.htmlCode = '';
+        }
+        return copy;
+      });
+      localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(reduced));
+      console.warn('Saved reduced ads payload to localStorage due to storage limits. Some large fields were removed.');
+    } catch (err2) {
+      // 2) As a last resort, save only metadata to avoid blowing the quota
+      try {
+        const meta = ads.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          linkUrl: a.linkUrl,
+          adsenseSlot: a.adsenseSlot,
+          active: a.active,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(meta));
+        console.warn('Saved ads metadata only to localStorage as a fallback due to storage limits.');
+      } catch (err3) {
+        // give up — log and continue without throwing to avoid breaking admin UI
+        // eslint-disable-next-line no-console
+        console.error('Failed to persist ads to localStorage after multiple fallbacks:', err3);
+      }
+    }
+  }
 }
 
 function loadSlots(): AdSlot[] {

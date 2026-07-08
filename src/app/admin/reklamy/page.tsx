@@ -431,13 +431,14 @@ interface AdRowProps {
 
 function AdRow({ ad, slots, onEdit, onDelete, onToggle }: AdRowProps) {
   const usedInSlot = slots.find((s) => s.adId === ad.id);
+  const imageSrc = ad.type === 'image' ? ad.imageUrl?.trim() || null : null;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-4">
       {/* Preview thumbnail */}
       <div className="shrink-0 w-16 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200">
-        {ad.type === 'image' && ad.imageUrl ? (
-          <img src={ad.imageUrl} alt={ad.name} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+        {ad.type === 'image' && imageSrc ? (
+          <img src={imageSrc} alt={ad.name} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
         ) : (
           <span className="text-gray-400">{AD_TYPE_ICONS[ad.type]}</span>
         )}
