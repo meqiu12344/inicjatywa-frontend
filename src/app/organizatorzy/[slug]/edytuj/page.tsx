@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import ImageCropper from '@/components/ImageCropper';
 import { 
   ArrowLeft, Save, Upload, Loader2, Building2, 
   Globe, Mail, Phone, Facebook, Instagram, Youtube, Twitter
@@ -40,6 +41,8 @@ export default function EditOrganizerPage() {
   const [formData, setFormData] = useState<Partial<OrganizerProfile>>({});
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [logoCropName, setLogoCropName] = useState<string>('organizer-logo.jpg');
 
   // Fetch organizer data
   const { data: organizer, isLoading, error } = useQuery<OrganizerProfile>({
@@ -95,13 +98,28 @@ export default function EditOrganizerPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setLogoFile(file);
+      setLogoCropName(file.name || 'organizer-logo.jpg');
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
+        setLogoCropSrc(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleLogoCropCancel = () => {
+    setLogoCropSrc(null);
+    setLogoCropName('organizer-logo.jpg');
+  };
+
+  const handleLogoCropComplete = (blob: Blob, dataUrl?: string) => {
+    const croppedFile = new File([blob], logoCropName || 'organizer-logo.jpg', {
+      type: blob.type || 'image/jpeg',
+    });
+
+    setLogoFile(croppedFile);
+    setLogoPreview(dataUrl || URL.createObjectURL(blob));
+    setLogoCropSrc(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -205,6 +223,14 @@ export default function EditOrganizerPage() {
                 </span>
               </label>
             </div>
+            {logoCropSrc && (
+              <ImageCropper
+                src={logoCropSrc}
+                aspect={1}
+                onCancel={handleLogoCropCancel}
+                onComplete={handleLogoCropComplete}
+              />
+            )}
           </div>
 
           {/* Basic Info */}

@@ -26,6 +26,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import ImageCropper from '@/components/ImageCropper';
 import { get, post } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 
@@ -112,6 +113,8 @@ export default function BecomeOrganizerPage() {
   
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [logoCropName, setLogoCropName] = useState<string>('organization-logo.jpg');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -152,22 +155,45 @@ export default function BecomeOrganizerPage() {
         setErrors(prev => ({ ...prev, logo: 'Plik jest za duży. Maksymalny rozmiar to 5MB' }));
         return;
       }
-      
-      setLogoFile(file);
+
+      setLogoCropName(file.name || 'organization-logo.jpg');
       setErrors(prev => ({ ...prev, logo: undefined }));
-      
-      // Create preview
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
+        setLogoCropSrc(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLogoCropCancel = () => {
+    setLogoCropSrc(null);
+    setLogoCropName('organization-logo.jpg');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoCropComplete = (blob: Blob, dataUrl?: string) => {
+    const croppedFile = new File([blob], logoCropName || 'organization-logo.jpg', {
+      type: blob.type || 'image/jpeg',
+    });
+
+    setLogoFile(croppedFile);
+    setLogoPreview(dataUrl || URL.createObjectURL(blob));
+    setLogoCropSrc(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const removeLogo = () => {
     setLogoFile(null);
     setLogoPreview(null);
+    setLogoCropSrc(null);
+    setLogoCropName('organization-logo.jpg');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -542,6 +568,15 @@ export default function BecomeOrganizerPage() {
                   </div>
                 </div>
               </div>
+
+              {logoCropSrc && (
+                <ImageCropper
+                  src={logoCropSrc}
+                  aspect={1}
+                  onCancel={handleLogoCropCancel}
+                  onComplete={handleLogoCropComplete}
+                />
+              )}
 
               {/* Organization ID */}
               <div>

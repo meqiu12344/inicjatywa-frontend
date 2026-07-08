@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import ImageCropper from '@/components/ImageCropper';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
@@ -74,6 +75,8 @@ export default function ProfilePage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [croppingImage, setCroppingImage] = useState<string | null>(null);
+  const [croppingFile, setCroppingFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const purchaseStatusMap: Record<PromotionPurchase['status'], { label: string; className: string }> = {
@@ -209,23 +212,38 @@ export default function ProfilePage() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
+        setCroppingImage(reader.result as string);
+        setCroppingFile(file);
       };
       reader.readAsDataURL(file);
+    }
+  };
 
-      // Upload avatar
+  const handleCropCancel = () => {
+    setCroppingImage(null);
+    setCroppingFile(null);
+  };
+
+  const handleCropComplete = async (blob: Blob, dataUrl?: string) => {
+    // upload the cropped blob
+    try {
       const formData = new FormData();
-      formData.append('avatar', file);
-      
-      try {
-        await apiClient.patch('/auth/profile/', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        toast.success('Zdjęcie profilowe zostało zaktualizowane');
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-      } catch {
-        toast.error('Nie udało się przesłać zdjęcia');
-      }
+      const filename = croppingFile?.name || 'avatar.jpg';
+      formData.append('avatar', blob, filename);
+
+      await apiClient.patch('/auth/profile/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setAvatarPreview(dataUrl || URL.createObjectURL(blob));
+      toast.success('Zdjęcie profilowe zostało zaktualizowane');
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    } catch (err) {
+      console.error(err);
+      toast.error('Nie udało się przesłać zdjęcia');
+    } finally {
+      setCroppingImage(null);
+      setCroppingFile(null);
     }
   };
 
@@ -400,6 +418,14 @@ export default function ProfilePage() {
                 Wyloguj się
               </button>
               
+              {croppingImage && (
+                <ImageCropper
+                  src={croppingImage}
+                  aspect={1}
+                  onCancel={handleCropCancel}
+                  onComplete={handleCropComplete}
+                />
+              )}
               <Link
                 href="/moje-bilety"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg transition-colors text-sm"
