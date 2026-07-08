@@ -1,14 +1,21 @@
 'use client';
 
-import { Suspense } from 'react';
-import Link from 'next/link';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
-
 function TicketPurchaseSuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order_number');
   const eventId = searchParams.get('event_id');
+
+  // Meta Pixel: zdarzenie Purchase z event_id spojnym z Conversions API
+  // (Django) => Meta deduplikuje i nie liczy zakupu podwojnie.
+  useEffect(() => {
+    if (!orderNumber) return;
+    const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq;
+    if (typeof fbq !== 'function') return;
+    fbq('track', 'Purchase', { currency: 'PLN' }, { eventID: `purchase.${orderNumber}` });
+  }, [orderNumber]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4 flex items-center justify-center">
@@ -26,13 +33,16 @@ function TicketPurchaseSuccessContent() {
               Numer zamówienia: <span className="font-semibold text-white">{orderNumber}</span>
             </div>
           )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="text-sm text-slate-400">
+            {/*
             <Link href="/moje-bilety" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition-colors">
               Moje bilety
             </Link>
             <Link href="/" className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors">
               Strona główna
             </Link>
+            */}
+            Przyciski po zakupie sa tymczasowo ukryte.
           </div>
         </div>
       </div>

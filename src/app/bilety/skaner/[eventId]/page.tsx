@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useRef, use } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ScanLine, CheckCircle, XCircle, Camera, CameraOff, Keyboard } from 'lucide-react';
+import { ScanLine, CheckCircle, XCircle, Camera, CameraOff, Keyboard, Wifi, WifiOff, Settings, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/store';
+import * as gate from '@/lib/gate/scanner';
 import toast from 'react-hot-toast';
 
 // Dynamically import QRScanner to avoid SSR issues with html5-qrcode
@@ -45,9 +46,102 @@ export default function TicketScannerPage({ params }: Props) {
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
+  // ── Gate mode (device token + offline) ──
+  const [gateToken, setGateToken] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [showGateSetup, setShowGateSetup] = useState(false);
+  const [gateTokenInput, setGateTokenInput] = useState('');
+  const [manifestInfo, setManifestInfo] = useState<{ valid_count: number; generated_at: string } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
   // Debounce: prevent re-processing the same code
   const lastScannedRef = useRef<string>('');
   const lastScanTimeRef = useRef<number>(0);
+
+  // Load device token + cached manifest on mount
+  useEffect(() => {
+    const token = gate.getDeviceToken(eventId);
+    setGateToken(token);
+    const cached = gate.getCachedManifest(eventId);
+    if (cached) setManifestInfo({ valid_count: cached.valid_count, generated_at: cached.generated_at });
+    setPendingCount(gate.getQueueLength(eventId));
+  }, [eventId]);
+
+  // Register the service worker (installable PWA + offline app shell)
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        /* SW opcjonalny — brak rejestracji nie blokuje skanera */
+      });
+    }
+  }, []);
+
+  // Online/offline detection + auto-reconcile on reconnect
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') setIsOnline(navigator.onLine);
+
+    const handleOnline = async () => {
+      setIsOnline(true);
+      if (gate.getDeviceToken(eventId) && gate.getQueueLength(eventId) > 0) {
+        const res = await gate.reconcile(eventId);
+        if (res && res.synced > 0) {
+          toast.success(`Zsynchronizowano ${res.synced} skanów offline`);
+          setPendingCount(gate.getQueueLength(eventId));
+        }
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [eventId]);
+
+  // Save device token + immediately sync manifest for offline use
+  const handleSaveGateToken = useCallback(async () => {
+    const trimmed = gateTokenInput.trim();
+    if (!trimmed) return;
+    gate.setDeviceToken(eventId, trimmed);
+    setGateToken(trimmed);
+    setSyncing(true);
+    try {
+      const manifest = await gate.fetchManifest(eventId, trimmed);
+      setManifestInfo({ valid_count: manifest.valid_count, generated_at: manifest.generated_at });
+      toast.success(`Bramka połączona — ${manifest.valid_count} ważnych biletów w cache offline`);
+      setShowGateSetup(false);
+      setGateTokenInput('');
+    } catch {
+      toast.error('Nie udało się pobrać manifestu — sprawdź token bramki');
+    } finally {
+      setSyncing(false);
+    }
+  }, [eventId, gateTokenInput]);
+
+  const handleSyncManifest = useCallback(async () => {
+    const token = gate.getDeviceToken(eventId);
+    if (!token) return;
+    setSyncing(true);
+    try {
+      const manifest = await gate.fetchManifest(eventId, token);
+      setManifestInfo({ valid_count: manifest.valid_count, generated_at: manifest.generated_at });
+      toast.success(`Zsynchronizowano: ${manifest.valid_count} ważnych biletów`);
+    } catch {
+      toast.error('Synchronizacja nie powiodła się');
+    } finally {
+      setSyncing(false);
+    }
+  }, [eventId]);
+
+  const handleDisconnectGate = useCallback(() => {
+    gate.clearDeviceToken(eventId);
+    setGateToken(null);
+    setManifestInfo(null);
+    setShowGateSetup(false);
+  }, [eventId]);
 
   // Redirect if not organizer
   useEffect(() => {
@@ -64,6 +158,39 @@ export default function TicketScannerPage({ params }: Props) {
       setErrorMessage('');
       setTicketDetails(null);
 
+      // ── GATE MODE: pojedynczy atomowy skan + obsługa offline ──
+      if (gate.getDeviceToken(eventId)) {
+        try {
+          const outcome = await gate.scan(eventId, code, { online: navigator.onLine });
+          setPendingCount(gate.getQueueLength(eventId));
+
+          const details: TicketDetails = {
+            attendee_name: outcome.ticket?.attendee,
+            ticket_code: outcome.ticket?.code || code,
+            ticket_type: outcome.ticket?.type,
+            used_at: outcome.ticket?.used_at || undefined,
+          };
+
+          if (outcome.admit) {
+            setTicketDetails(details);
+            setPhase('success');
+            setScanCount((c) => c + 1);
+          } else {
+            setErrorMessage(
+              (outcome.offline ? '[OFFLINE] ' : '') +
+                (outcome.message || 'Bilet odrzucony')
+            );
+            setTicketDetails(details);
+            setPhase('error');
+          }
+        } catch {
+          setErrorMessage('Błąd skanowania');
+          setPhase('error');
+        }
+        return;
+      }
+
+      // ── LEGACY MODE: organizator online (verify + mark) ──
       try {
         // Step 1: Verify
         const verifyRes = await apiClient.post('/tickets/verify/', {
@@ -183,6 +310,29 @@ export default function TicketScannerPage({ params }: Props) {
               Zeskanowano: <span className="text-white font-medium">{scanCount}</span>
             </span>
           )}
+          {gateToken && (
+            <span
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                isOnline ? 'bg-green-900/60 text-green-300' : 'bg-amber-900/60 text-amber-300'
+              }`}
+              title={isOnline ? 'Online' : 'Offline — skany w kolejce'}
+            >
+              {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              {isOnline ? 'Online' : 'Offline'}
+              {pendingCount > 0 && (
+                <span className="ml-1 bg-white/20 rounded px-1">{pendingCount}</span>
+              )}
+            </span>
+          )}
+          <button
+            onClick={() => setShowGateSetup((s) => !s)}
+            className={`p-2 rounded-lg transition-colors ${
+              gateToken ? 'bg-indigo-700 text-white' : 'bg-gray-800 text-gray-300 hover:text-white'
+            }`}
+            title="Ustawienia bramki"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <button
             onClick={() => setShowManualInput(!showManualInput)}
             className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-white transition-colors"
@@ -192,6 +342,66 @@ export default function TicketScannerPage({ params }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Gate setup panel */}
+      {showGateSetup && (
+        <div className="bg-gray-800 px-4 py-4 z-10 border-b border-gray-700 space-y-3">
+          {gateToken ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-300">
+                  <p className="text-white font-medium">Bramka połączona</p>
+                  {manifestInfo ? (
+                    <p className="text-xs text-gray-400">
+                      Cache offline: {manifestInfo.valid_count} biletów ·{' '}
+                      {new Date(manifestInfo.generated_at).toLocaleString('pl-PL')}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-400">Brak manifestu — zsynchronizuj dla trybu offline</p>
+                  )}
+                </div>
+                <button
+                  onClick={handleSyncManifest}
+                  disabled={syncing || !isOnline}
+                  className="flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-indigo-700 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  Synchronizuj
+                </button>
+              </div>
+              <button
+                onClick={handleDisconnectGate}
+                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+              >
+                Odłącz bramkę
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-300">
+                Wklej token bramki, aby włączyć tryb urządzenia (atomowy skan + tryb offline).
+              </p>
+              <div className="flex gap-2">
+                <input
+                  value={gateTokenInput}
+                  onChange={(e) => setGateTokenInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveGateToken()}
+                  placeholder="Token bramki (X-Gate-Token)..."
+                  className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveGateToken}
+                  disabled={!gateTokenInput.trim() || syncing}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-indigo-700 transition-colors"
+                >
+                  {syncing ? 'Łączenie...' : 'Połącz'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Manual input bar */}
       {showManualInput && (

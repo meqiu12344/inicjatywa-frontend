@@ -27,6 +27,7 @@ interface Props {
 export default function CheckoutPage({ params }: Props) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const purchaseDisabledMessage = 'Finalizacja zakupu jest tymczasowo wylaczona do czasu weryfikacji procesu biletowego.';
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hydrated = useHydration();
@@ -117,20 +118,23 @@ export default function CheckoutPage({ params }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    try {
-      const response = await apiClient.post(`/tickets/event/${resolvedParams.eventId}/checkout/`, {
-        ...formData,
-        items,
-      });
-      const { checkout_url } = response.data as { checkout_url: string };
-      window.location.href = checkout_url;
-    } catch (error: any) {
-      setErrorMessage(error?.response?.data?.message || 'Nie udało się utworzyć płatności.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Tymczasowo wylaczone do czasu potwierdzenia poprawnosci checkoutu.
+    // setIsSubmitting(true);
+    // setErrorMessage(null);
+    // try {
+    //   const response = await apiClient.post(`/tickets/event/${resolvedParams.eventId}/checkout/`, {
+    //     ...formData,
+    //     items,
+    //   });
+    //   const { checkout_url } = response.data as { checkout_url: string };
+    //   window.location.href = checkout_url;
+    // } catch (error: any) {
+    //   setErrorMessage(error?.response?.data?.message || 'Nie udało się utworzyć płatności.');
+    // } finally {
+    //   setIsSubmitting(false);
+    // }
+    setErrorMessage(purchaseDisabledMessage);
+    toast.error(purchaseDisabledMessage);
   };
 
   return (
@@ -147,6 +151,10 @@ export default function CheckoutPage({ params }: Props) {
               <div className="text-lg font-semibold text-gray-900">{data.event.title}</div>
             </div>
           )}
+
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {purchaseDisabledMessage}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -204,19 +212,26 @@ export default function CheckoutPage({ params }: Props) {
               <div className="text-red-600 text-sm">{errorMessage}</div>
             )}
 
+            {/*
             <button
               type="submit"
-              disabled={isSubmitting || items.length === 0}
+              disabled
               className="px-6 py-2 bg-indigo-600 text-white rounded-md disabled:opacity-50"
             >
               {isSubmitting ? 'Przekierowanie...' : 'Przejdź do płatności'}
             </button>
+            */}
+
+            <div className="text-sm font-medium text-amber-700">
+              Przycisk finalizacji platnosci jest tymczasowo ukryty.
+            </div>
           </form>
 
           <div className="flex gap-4 mt-6">
-            <Link href={`/bilety/zakup/${resolvedParams.eventId}`} className="text-indigo-600 hover:underline">
+            {/* <Link href={`/bilety/zakup/${resolvedParams.eventId}`} className="text-indigo-600 hover:underline">
               ← Wróć do wyboru biletów
-            </Link>
+            </Link> */}
+            <span className="text-slate-500">Powrot do wyboru biletow jest tymczasowo ukryty.</span>
             <Link href="/moje-bilety" className="text-indigo-600 hover:underline">
               Moje bilety
             </Link>

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Menu, X, Search, User, Calendar, Plus, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AdminNotificationBadge } from '@/components/AdminNotificationBadge';
+import { PendingEventsBadge } from '@/components/PendingEventsBadge';
 import { clsx } from 'clsx';
 import Image from 'next/image'
 
@@ -66,6 +67,9 @@ export function Navbar() {
               <>
                 {/* Admin notifications badge */}
                 {user?.is_staff && <AdminNotificationBadge />}
+
+                {/* Pending events badge */}
+                {user?.is_staff && <PendingEventsBadge />}
 
                 {/* Add event button - only for organizers/admins */}
                 {canCreateEvent && (

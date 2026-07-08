@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { KeyboardEvent, ClipboardEvent } from 'react';
 import { use } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +11,8 @@ import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, Gl
 import toast from 'react-hot-toast';
 import { eventsApi } from '@/lib/api/events';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
-import { locationsApi } from '@/lib/api/locations';
+import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
+import { parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore } from '@/stores/authStore';
 import dynamic from 'next/dynamic';
 import { 
@@ -47,6 +49,8 @@ interface EditEventFormData {
   location_city: string;
   location_postal_code: string;
   location_region: string;
+  location_lat: number | null;
+  location_lng: number | null;
   ticket_price: number | null;
   ticket_url: string;
   participant_limit: number | null;
@@ -67,6 +71,7 @@ export default function EditEventPage({ params }: Props) {
   const [activeTab, setActiveTab] = useState<'basic' | 'tickets' | 'stats'>('basic');
   const [description, setDescription] = useState('');
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
+  const [showManualCoords, setShowManualCoords] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
@@ -128,6 +133,8 @@ export default function EditEventPage({ params }: Props) {
       location_city: '',
       location_postal_code: '',
       location_region: '',
+      location_lat: null,
+      location_lng: null,
       ticket_price: null,
       ticket_url: '',
       participant_limit: null,
@@ -143,6 +150,71 @@ export default function EditEventPage({ params }: Props) {
   const watchAll = watch();
   const isTicketsDisabled = watchEventType !== 'platform';
   const hasSoldTickets = (ticketTypes || []).some((t: any) => (t.quantity_sold ?? 0) > 0);
+
+  // ---- Date / time copy-paste support -------------------------------------
+  // Native <input type="date|time"> do not accept pasted text in Chrome/Edge,
+  // so we parse the clipboard ourselves (via the paste event where available,
+  // and via Ctrl/Cmd+V where the browser swallows the paste event).
+  const setDateTimeValue = (field: keyof EditEventFormData, value: string) => {
+    setValue(field, value as never, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const applyPastedDate = (
+    text: string,
+    dateField: keyof EditEventFormData,
+    timeField?: keyof EditEventFormData
+  ): boolean => {
+    const { date, time } = parsePastedDateTime(text);
+    if (!date) return false;
+    setDateTimeValue(dateField, date);
+    if (timeField && time) setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const applyPastedTime = (text: string, timeField: keyof EditEventFormData): boolean => {
+    const { time } = parsePastedDateTime(text);
+    if (!time) return false;
+    setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const handleDatePaste = (
+    e: ClipboardEvent<HTMLInputElement>,
+    dateField: keyof EditEventFormData,
+    timeField?: keyof EditEventFormData
+  ) => {
+    if (applyPastedDate(e.clipboardData.getData('text'), dateField, timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTimePaste = (e: ClipboardEvent<HTMLInputElement>, timeField: keyof EditEventFormData) => {
+    if (applyPastedTime(e.clipboardData.getData('text'), timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDateKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    dateField: keyof EditEventFormData,
+    timeField?: keyof EditEventFormData
+  ) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedDate(text, dateField, timeField))
+        .catch(() => {});
+    }
+  };
+
+  const handleTimeKeyDown = (e: KeyboardEvent<HTMLInputElement>, timeField: keyof EditEventFormData) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedTime(text, timeField))
+        .catch(() => {});
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -201,6 +273,8 @@ export default function EditEventPage({ params }: Props) {
       location_city: event.location?.city || '',
       location_postal_code: event.location?.postal_code || '',
       location_region: event.location?.region || '',
+      location_lat: event.location?.latitude ?? null,
+      location_lng: event.location?.longitude ?? null,
       ticket_price: event.ticket_price !== undefined && event.ticket_price !== null ? Number(event.ticket_price) : null,
       ticket_url: event.ticket_url || '',
       participant_limit: event.participant_limit || null,
@@ -236,23 +310,32 @@ export default function EditEventPage({ params }: Props) {
     const controller = new AbortController();
     setIsSearchingLocation(true);
 
-    fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5`,
-      {
-        headers: { 'Accept-Language': 'pl' },
-        signal: controller.signal,
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        setLocationResults(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
+    const search = async (q: string) => {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
+        { signal: controller.signal }
+      );
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    };
+
+    (async () => {
+      try {
+        let data = await search(locationQuery);
+        // Brak wyników? Spróbuj z wyczyszczonym zapytaniem (bez "ul.", inicjałów typu "K." itp.)
+        if (data.length === 0) {
+          const cleaned = normalizeAddressQuery(locationQuery);
+          if (cleaned && cleaned !== locationQuery) {
+            data = await search(cleaned);
+          }
+        }
+        setLocationResults(data);
+      } catch {
         setLocationResults([]);
-      })
-      .finally(() => {
+      } finally {
         setIsSearchingLocation(false);
-      });
+      }
+    })();
 
     return () => controller.abort();
   }, [locationQuery]);
@@ -313,9 +396,14 @@ export default function EditEventPage({ params }: Props) {
       const result = await locationsApi.validateAddress(normalizedAddress, city);
 
       if (!result.valid) {
-        setAddressValidationMessage({ type: 'error', message: result.error || 'Nie znaleziono podanego adresu' });
+        // Nie każdy adres jest w bazie OpenStreetMap (domy rekolekcyjne, małe
+        // miejscowości). Nie blokujemy zapisu — pokazujemy tylko podpowiedź.
+        setAddressValidationMessage({
+          type: 'suggestion',
+          message: 'Nie udało się automatycznie potwierdzić adresu w mapach. Jeśli jest poprawny, możesz kontynuować.',
+        });
         setIsValidatingAddress(false);
-        return false;
+        return true;
       }
 
       if (result.city && result.city.toLowerCase() !== city.toLowerCase()) {
@@ -346,11 +434,15 @@ export default function EditEventPage({ params }: Props) {
     const street = [address.road, address.house_number].filter(Boolean).join(' ');
     const postal = address.postcode || '';
     const region = address.state || '';
+    const parsedLat = item.lat !== undefined ? parseFloat(item.lat) : NaN;
+    const parsedLng = item.lon !== undefined ? parseFloat(item.lon) : NaN;
 
     setValue('location_address', street);
     setValue('location_city', city);
     setValue('location_postal_code', postal);
     setValue('location_region', region);
+    if (Number.isFinite(parsedLat)) setValue('location_lat', parsedLat);
+    if (Number.isFinite(parsedLng)) setValue('location_lng', parsedLng);
     setLocationQuery(item.display_name || `${street}, ${city}`);
     setLocationResults([]);
   };
@@ -421,6 +513,8 @@ export default function EditEventPage({ params }: Props) {
           city: data.location_city,
           postal_code: data.location_postal_code || undefined,
           region: data.location_region || undefined,
+          latitude: data.location_lat ?? undefined,
+          longitude: data.location_lng ?? undefined,
         } : undefined,
         ticket_price: data.ticket_price || undefined,
         ticket_url: data.ticket_url || undefined,
@@ -640,15 +734,15 @@ export default function EditEventPage({ params }: Props) {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Data rozpoczęcia</label>
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="date" {...register('start_date')} className="input w-full" />
-                        <input type="time" {...register('start_time')} className="input w-full" />
+                        <input type="date" {...register('start_date')} onPaste={(e) => handleDatePaste(e, 'start_date', 'start_time')} onKeyDown={(e) => handleDateKeyDown(e, 'start_date', 'start_time')} className="input w-full" />
+                        <input type="time" {...register('start_time')} onPaste={(e) => handleTimePaste(e, 'start_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')} className="input w-full" />
                       </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Data zakończenia</label>
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="date" {...register('end_date')} className="input w-full" />
-                        <input type="time" {...register('end_time')} className="input w-full" />
+                        <input type="date" {...register('end_date')} onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')} onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')} className="input w-full" />
+                        <input type="time" {...register('end_time')} onPaste={(e) => handleTimePaste(e, 'end_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')} className="input w-full" />
                       </div>
                     </div>
                   </div>
@@ -845,6 +939,83 @@ export default function EditEventPage({ params }: Props) {
                           />
                         </div>
                       </div>
+
+                      {/* Ręczne współrzędne – gdy adresu nie da się znaleźć na mapie */}
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowManualCoords((v) => !v)}
+                          className="text-sm text-primary-600 hover:text-primary-700 underline"
+                        >
+                          {showManualCoords
+                            ? 'Ukryj ręczne współrzędne'
+                            : 'Nie możesz znaleźć adresu? Wpisz współrzędne ręcznie'}
+                        </button>
+
+                        {showManualCoords && (
+                          <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-3">
+                              Otwórz miejsce w Mapach Google, kliknij na nim prawym przyciskiem
+                              i wybierz współrzędne, aby je skopiować, a następnie wklej je poniżej
+                              (np. <span className="font-mono">49.6210, 20.2540</span>).
+                            </p>
+
+                            <div className="mb-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Wklej współrzędne z Map Google
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className="input w-full"
+                                placeholder="np. 49.6210, 20.2540"
+                                onChange={(e) => {
+                                  const match = e.target.value.match(
+                                    /(-?\d{1,3}(?:[.,]\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:[.,]\d+)?)/
+                                  );
+                                  if (match) {
+                                    const lat = parseFloat(match[1].replace(',', '.'));
+                                    const lng = parseFloat(match[2].replace(',', '.'));
+                                    if (Number.isFinite(lat)) setValue('location_lat', lat);
+                                    if (Number.isFinite(lng)) setValue('location_lng', lng);
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Szerokość (latitude)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  {...register('location_lat', { valueAsNumber: true })}
+                                  className="input w-full"
+                                  placeholder="np. 49.6210"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Długość (longitude)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  {...register('location_lng', { valueAsNumber: true })}
+                                  className="input w-full"
+                                  placeholder="np. 20.2540"
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Współrzędne są opcjonalne – pomagają dokładnie pokazać wydarzenie
+                              na mapie, gdy adres nie zostanie rozpoznany automatycznie.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -903,12 +1074,16 @@ export default function EditEventPage({ params }: Props) {
                               type="date"
                               {...register('available_from_date', {
                               })}
+                              onPaste={(e) => handleDatePaste(e, 'available_from_date', 'available_from_time')}
+                              onKeyDown={(e) => handleDateKeyDown(e, 'available_from_date', 'available_from_time')}
                               className="input w-full"
                             />
                             <input
                               type="time"
                               {...register('available_from_time', {
                               })}
+                              onPaste={(e) => handleTimePaste(e, 'available_from_time')}
+                              onKeyDown={(e) => handleTimeKeyDown(e, 'available_from_time')}
                               className="input w-full"
                             />
                           </div>
@@ -920,12 +1095,16 @@ export default function EditEventPage({ params }: Props) {
                               type="date"
                               {...register('available_to_date', {
                               })}
+                              onPaste={(e) => handleDatePaste(e, 'available_to_date', 'available_to_time')}
+                              onKeyDown={(e) => handleDateKeyDown(e, 'available_to_date', 'available_to_time')}
                               className="input w-full"
                             />
                             <input
                               type="time"
                               {...register('available_to_time', {
                               })}
+                              onPaste={(e) => handleTimePaste(e, 'available_to_time')}
+                              onKeyDown={(e) => handleTimeKeyDown(e, 'available_to_time')}
                               className="input w-full"
                             />
                           </div>

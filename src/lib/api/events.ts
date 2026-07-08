@@ -70,9 +70,13 @@ export const eventsApi = {
     return get<{ events: EventListItem[]; has_preferences: boolean; categories?: string[]; message?: string }>(`${EVENTS_BASE}/recommended/`);
   },
 
-  // Get events by category
+  // Get events by category (uses the list endpoint's category filter;
+  // backend has no dedicated /by-category/ route, so we filter + slice client-side)
   getEventsByCategory: async (categoryId: number, limit = 10): Promise<EventListItem[]> => {
-    return get<EventListItem[]>(`${EVENTS_BASE}/by-category/${categoryId}/?limit=${limit}`);
+    const response = await get<PaginatedResponse<EventListItem>>(
+      `${EVENTS_BASE}/?category=${categoryId}`
+    );
+    return response.results.slice(0, limit);
   },
 
   // Get category sliders data (categories with their events)

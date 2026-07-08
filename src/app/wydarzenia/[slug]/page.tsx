@@ -99,6 +99,7 @@ export default function EventPage({ params }: EventPageProps) {
   const registerMutation = useRegisterForEvent();
   const cancelMutation = useCancelRegistration();
   const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [shareUrl, setShareUrl] = useState('');
   const API_BASE = (typeof window !== 'undefined') ? '' : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl');
 
@@ -138,22 +139,56 @@ export default function EventPage({ params }: EventPageProps) {
   }, []);
 
   useEffect(() => {
-    const fetchCoords = async () => {
-      if (!event || !event.location) return;
+    let cancelled = false;
+
+    const resolveCoords = async () => {
+      if (!event || !event.location) {
+        if (!cancelled) setMapStatus('unavailable');
+        return;
+      }
+
+      // 1) Prefer coordinates already stored on the event's location.
+      const storedLat = Number(event.location.latitude);
+      const storedLon = Number(event.location.longitude);
+      if (
+        event.location.latitude != null && event.location.longitude != null &&
+        Number.isFinite(storedLat) && Number.isFinite(storedLon)
+      ) {
+        if (!cancelled) {
+          setMapCoords({ lat: storedLat, lon: storedLon });
+          setMapStatus('ready');
+        }
+        return;
+      }
+
+      // 2) Fall back to text geocoding via the Nominatim proxy.
       const query = `${event.location.address || ''} ${event.location.city || ''}`.trim();
-      if (!query) return;
+      if (!query) {
+        if (!cancelled) setMapStatus('unavailable');
+        return;
+      }
       try {
         const response = await fetch(`${API_BASE}/nominatim/?q=${encodeURIComponent(query)}`);
         const data = await response.json();
+        if (cancelled) return;
         if (Array.isArray(data) && data[0]?.lat && data[0]?.lon) {
           setMapCoords({ lat: Number(data[0].lat), lon: Number(data[0].lon) });
+          setMapStatus('ready');
+        } else {
+          setMapStatus('unavailable');
         }
-      } catch (err) {
-        setMapCoords(null);
+      } catch {
+        if (!cancelled) setMapStatus('unavailable');
       }
     };
 
-    fetchCoords();
+    setMapStatus('loading');
+    setMapCoords(null);
+    resolveCoords();
+
+    return () => {
+      cancelled = true;
+    };
   }, [event?.location, API_BASE]);
 
   if (isLoading) {
@@ -301,13 +336,13 @@ export default function EventPage({ params }: EventPageProps) {
               <div className="flex flex-wrap gap-3">
                 {/* Platform tickets */}
                 {hasTicketsForSale && event.event_type === 'platform' && !isClosed && !(isOngoing && !event.is_permanent) && (
-                  <Link
-                    href={`/bilety/zakup/${event.id}`}
-                    className="btn btn-primary flex items-center gap-2"
+                  <div
+                    className="btn flex items-center gap-2 cursor-not-allowed bg-slate-300 text-slate-700"
+                    aria-disabled="true"
                   >
                     <Ticket className="w-5 h-5" />
-                    Kup bilety{minTicketPrice !== null ? ` - od ${minTicketPrice.toFixed(2)} zł` : ''}
-                  </Link>
+                    Zakup chwilowo wyłączony{minTicketPrice !== null ? ` - od ${minTicketPrice.toFixed(2)} zł` : ''}
+                  </div>
                 )}
 
                 {/* External tickets */}
@@ -339,7 +374,9 @@ export default function EventPage({ params }: EventPageProps) {
                   <div className="flex items-start gap-2 px-4 py-2 rounded-lg bg-amber-50 text-amber-800 text-sm border border-amber-200">
                     <AlertTriangle className="w-4 h-4 mt-0.5" />
                     <span>
-                      Rejestracja odbywa się poprzez zakup biletu.
+                      {event.event_type === 'platform'
+                        ? 'Zakup biletow przez platforme jest chwilowo wylaczony.'
+                        : 'Rejestracja odbywa sie poprzez zakup biletu.'}
                     </span>
                   </div>
                 )}
@@ -576,7 +613,7 @@ export default function EventPage({ params }: EventPageProps) {
 
                     {/* Map */}
                     <div className="rounded-xl overflow-hidden">
-                      {mapCoords ? (
+                      {mapStatus === 'ready' && mapCoords ? (
                         <LeafletMap
                           lat={mapCoords.lat}
                           lon={mapCoords.lon}
@@ -585,7 +622,9 @@ export default function EventPage({ params }: EventPageProps) {
                         />
                       ) : (
                         <div className="h-[300px] bg-slate-100 flex items-center justify-center">
-                          <div className="text-slate-500">Ładowanie mapy...</div>
+                          <div className="text-slate-500">
+                            {mapStatus === 'loading' ? '\u0141adowanie mapy...' : 'Mapa niedost\u0119pna dla tej lokalizacji'}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -782,13 +821,13 @@ export default function EventPage({ params }: EventPageProps) {
               {/* Quick action buttons */}
               <div className="mt-6 pt-6 border-t border-slate-200 space-y-3">
                 {hasTicketsForSale && event.event_type === 'platform' && !isClosed && !(isOngoing && !event.is_permanent) && (
-                  <Link
-                    href={`/bilety/zakup/${event.id}`}
-                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                  <div
+                    className="btn w-full flex items-center justify-center gap-2 cursor-not-allowed bg-slate-300 text-slate-700"
+                    aria-disabled="true"
                   >
                     <Ticket className="w-4 h-4" />
-                    Kup bilety
-                  </Link>
+                    Zakup chwilowo wyłączony
+                  </div>
                 )}
 
                 {event.can_register && !event.is_registered && !event.is_fully_booked && !isClosed && !['paid', 'platform'].includes(event.event_type) && !(isOngoing && !event.is_permanent) && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, KeyboardEvent, ChangeEvent } from 'react';
+import { useState, useEffect, KeyboardEvent, ChangeEvent, ClipboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -16,7 +16,8 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { paymentsApi } from '@/lib/api/payments';
-import { locationsApi } from '@/lib/api/locations';
+import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
+import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { TicketType, Category } from '@/types';
@@ -55,6 +56,8 @@ interface EventFormData {
   location_city: string;
   location_postal_code: string;
   location_region: string;
+  location_lat: number | null;
+  location_lng: number | null;
   participant_limit: number | null;
   is_limited: boolean;
   is_fully_booked: boolean;
@@ -513,6 +516,7 @@ export default function CreateEventPage() {
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
+  const [showManualCoords, setShowManualCoords] = useState(false);
   
   // Location validation states
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
@@ -563,6 +567,8 @@ export default function CreateEventPage() {
       location_city: '',
       location_postal_code: '',
       location_region: '',
+      location_lat: null,
+      location_lng: null,
       participant_limit: null,
       is_limited: true,
       is_fully_booked: false,
@@ -626,19 +632,24 @@ export default function CreateEventPage() {
 
     const timeout = setTimeout(async () => {
       setIsSearchingLocation(true);
-      try {
-        // Use Nominatim directly instead of Django proxy
+      const search = async (q: string) => {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&addressdetails=1&limit=5`,
-          {
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': 'CatholicEvents/1.0'
-            }
-          }
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&accept-language=pl`,
+          { headers: { 'Accept': 'application/json' } }
         );
         const data = await response.json();
-        setLocationResults(Array.isArray(data) ? data : []);
+        return Array.isArray(data) ? data : [];
+      };
+      try {
+        let data = await search(locationQuery);
+        // Brak wyników? Spróbuj z wyczyszczonym zapytaniem (bez "ul.", inicjałów typu "K." itp.)
+        if (data.length === 0) {
+          const cleaned = normalizeAddressQuery(locationQuery);
+          if (cleaned && cleaned !== locationQuery) {
+            data = await search(cleaned);
+          }
+        }
+        setLocationResults(data);
       } catch {
         setLocationResults([]);
       } finally {
@@ -705,6 +716,8 @@ export default function CreateEventPage() {
             city: data.location_city,
             postal_code: data.location_postal_code,
             region: data.location_region,
+            latitude: data.location_lat,
+            longitude: data.location_lng,
           } : undefined,
           event_type: data.event_type,
           participant_limit: data.is_limited ? null : data.participant_limit,
@@ -785,6 +798,8 @@ export default function CreateEventPage() {
             city: data.location_city,
             postal_code: data.location_postal_code,
             region: data.location_region,
+            latitude: data.location_lat,
+            longitude: data.location_lng,
           } : undefined,
           event_type: data.event_type,
           participant_limit: data.is_limited ? null : data.participant_limit,
@@ -846,10 +861,17 @@ export default function CreateEventPage() {
     setImagePreview(null);
   };
 
-  const addTag = (tag: string) => {
-    const trimmedTag = tag.trim();
-    if (trimmedTag && !watchTags.includes(trimmedTag)) {
-      setValue('tags', [...watchTags, trimmedTag]);
+  const addTag = (raw: string) => {
+    // Split pasted / typed lists on commas, semicolons and newlines so each
+    // keyword becomes its own tag instead of one long tag.
+    const merged = [...watchTags];
+    for (const tag of splitTags(raw)) {
+      if (!merged.includes(tag)) {
+        merged.push(tag);
+      }
+    }
+    if (merged.length !== watchTags.length) {
+      setValue('tags', merged);
     }
     setTagInput('');
     setTagSuggestions([]);
@@ -860,9 +882,82 @@ export default function CreateEventPage() {
   };
 
   const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
+    if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
       e.preventDefault();
       addTag(tagInput);
+    }
+  };
+
+  const handleTagPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (/[,;\n\r]/.test(text)) {
+      e.preventDefault();
+      addTag(text);
+    }
+  };
+
+  // ---- Date / time copy-paste support -------------------------------------
+  // Native <input type="date|time"> do not accept pasted text in Chrome/Edge,
+  // so we parse the clipboard ourselves (via the paste event where available,
+  // and via Ctrl/Cmd+V where the browser swallows the paste event).
+  const setDateTimeValue = (field: keyof EventFormData, value: string) => {
+    setValue(field, value as never, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const applyPastedDate = (
+    text: string,
+    dateField: keyof EventFormData,
+    timeField?: keyof EventFormData
+  ): boolean => {
+    const { date, time } = parsePastedDateTime(text);
+    if (!date) return false;
+    setDateTimeValue(dateField, date);
+    if (timeField && time) setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const applyPastedTime = (text: string, timeField: keyof EventFormData): boolean => {
+    const { time } = parsePastedDateTime(text);
+    if (!time) return false;
+    setDateTimeValue(timeField, time);
+    return true;
+  };
+
+  const handleDatePaste = (
+    e: ClipboardEvent<HTMLInputElement>,
+    dateField: keyof EventFormData,
+    timeField?: keyof EventFormData
+  ) => {
+    if (applyPastedDate(e.clipboardData.getData('text'), dateField, timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTimePaste = (e: ClipboardEvent<HTMLInputElement>, timeField: keyof EventFormData) => {
+    if (applyPastedTime(e.clipboardData.getData('text'), timeField)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDateKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    dateField: keyof EventFormData,
+    timeField?: keyof EventFormData
+  ) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedDate(text, dateField, timeField))
+        .catch(() => {});
+    }
+  };
+
+  const handleTimeKeyDown = (e: KeyboardEvent<HTMLInputElement>, timeField: keyof EventFormData) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      navigator.clipboard?.readText?.()
+        .then((text) => applyPastedTime(text, timeField))
+        .catch(() => {});
     }
   };
 
@@ -894,11 +989,15 @@ export default function CreateEventPage() {
     const street = [address.road, address.house_number].filter(Boolean).join(' ');
     const postal = address.postcode || '';
     const region = address.state || '';
+    const parsedLat = item.lat !== undefined ? parseFloat(item.lat) : NaN;
+    const parsedLng = item.lon !== undefined ? parseFloat(item.lon) : NaN;
 
     setValue('location_address', street);
     setValue('location_city', city);
     setValue('location_postal_code', postal);
     setValue('location_region', region);
+    setValue('location_lat', Number.isFinite(parsedLat) ? parsedLat : null);
+    setValue('location_lng', Number.isFinite(parsedLng) ? parsedLng : null);
     setLocationQuery(item.display_name || `${street}, ${city}`);
     setLocationResults([]);
   };
@@ -982,9 +1081,14 @@ export default function CreateEventPage() {
       const result = await locationsApi.validateAddress(normalizedAddress, city);
       
       if (!result.valid) {
-        setAddressValidationMessage({ type: 'error', message: result.error || 'Nie znaleziono podanego adresu' });
+        // Nie każdy adres jest w bazie OpenStreetMap (domy rekolekcyjne, małe
+        // miejscowości). Nie blokujemy zapisu — pokazujemy tylko podpowiedź.
+        setAddressValidationMessage({
+          type: 'suggestion',
+          message: 'Nie udało się automatycznie potwierdzić adresu w mapach. Jeśli jest poprawny, możesz kontynuować.',
+        });
         setIsValidatingAddress(false);
-        return false;
+        return true;
       }
 
       // Suggest city if different
@@ -1469,6 +1573,8 @@ export default function CreateEventPage() {
                       <input
                         type="date"
                         {...register('start_date', { required: 'Data jest wymagana' })}
+                        onPaste={(e) => handleDatePaste(e, 'start_date', 'start_time')}
+                        onKeyDown={(e) => handleDateKeyDown(e, 'start_date', 'start_time')}
                         className="form-input"
                       />
                       {errors.start_date && (
@@ -1480,6 +1586,8 @@ export default function CreateEventPage() {
                       <input
                         type="time"
                         {...register('start_time', { required: 'Godzina jest wymagana' })}
+                        onPaste={(e) => handleTimePaste(e, 'start_time')}
+                        onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')}
                         className="form-input"
                       />
                     </div>
@@ -1513,6 +1621,8 @@ export default function CreateEventPage() {
                           {...register('end_date', {
                             required: !watchIsPermanent ? 'Data zakończenia jest wymagana' : false
                           })}
+                          onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')}
+                          onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')}
                           className="form-input"
                         />
                         {errors.end_date && (
@@ -1529,6 +1639,8 @@ export default function CreateEventPage() {
                           {...register('end_time', {
                             required: !watchIsPermanent ? 'Godzina zakończenia jest wymagana' : false
                           })}
+                          onPaste={(e) => handleTimePaste(e, 'end_time')}
+                          onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')}
                           className="form-input"
                         />
                         {errors.end_time && (
@@ -1635,6 +1747,7 @@ export default function CreateEventPage() {
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleTagKeyDown}
+                        onPaste={handleTagPaste}
                         placeholder="Wpisz tag i naciśnij Enter"
                         className="flex-1 px-4 py-3 border-0 focus:ring-0 focus:outline-none"
                       />
@@ -1902,6 +2015,77 @@ export default function CreateEventPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Ręczne współrzędne – gdy adresu nie da się znaleźć na mapie */}
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowManualCoords((v) => !v)}
+                        className="text-sm text-blue-600 hover:text-blue-700 underline"
+                      >
+                        {showManualCoords
+                          ? 'Ukryj ręczne współrzędne'
+                          : 'Nie możesz znaleźć adresu? Wpisz współrzędne ręcznie'}
+                      </button>
+
+                      {showManualCoords && (
+                        <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-gray-600 mb-3">
+                            Otwórz miejsce w Mapach Google, kliknij na nim prawym przyciskiem
+                            i wybierz współrzędne, aby je skopiować, a następnie wklej je poniżej
+                            (np. <span className="font-mono">49.6210, 20.2540</span>).
+                          </p>
+
+                          <div className="mb-3">
+                            <label className="form-label-small">Wklej współrzędne z Map Google</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="form-input"
+                              placeholder="np. 49.6210, 20.2540"
+                              onChange={(e) => {
+                                const match = e.target.value.match(
+                                  /(-?\d{1,3}(?:[.,]\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:[.,]\d+)?)/
+                                );
+                                if (match) {
+                                  const lat = parseFloat(match[1].replace(',', '.'));
+                                  const lng = parseFloat(match[2].replace(',', '.'));
+                                  if (Number.isFinite(lat)) setValue('location_lat', lat);
+                                  if (Number.isFinite(lng)) setValue('location_lng', lng);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="form-label-small">Szerokość (latitude)</label>
+                              <input
+                                type="number"
+                                step="any"
+                                {...register('location_lat', { valueAsNumber: true })}
+                                className="form-input"
+                                placeholder="np. 49.6210"
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label-small">Długość (longitude)</label>
+                              <input
+                                type="number"
+                                step="any"
+                                {...register('location_lng', { valueAsNumber: true })}
+                                className="form-input"
+                                placeholder="np. 20.2540"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Współrzędne są opcjonalne – pomagają dokładnie pokazać wydarzenie na mapie,
+                            gdy adres nie zostanie rozpoznany automatycznie.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -2000,7 +2184,8 @@ export default function CreateEventPage() {
                       </div>
                     </div>
 
-                    {/* Platform Tickets */}
+                    {/* Platform Tickets - tymczasowo wylaczone */}
+                    {/*
                     <div
                       onClick={() => setValue('event_type', 'platform')}
                       className={`event-type-option ${watchEventType === 'platform' ? 'selected' : ''}`}
@@ -2021,6 +2206,7 @@ export default function CreateEventPage() {
                         </div>
                       </div>
                     </div>
+                    */}
 
                     {/* External Tickets */}
                     <div
@@ -2200,11 +2386,15 @@ export default function CreateEventPage() {
                           <input
                             type="date"
                             {...register('available_from_date')}
+                            onPaste={(e) => handleDatePaste(e, 'available_from_date', 'available_from_time')}
+                            onKeyDown={(e) => handleDateKeyDown(e, 'available_from_date', 'available_from_time')}
                             className="form-input"
                           />
                           <input
                             type="time"
                             {...register('available_from_time')}
+                            onPaste={(e) => handleTimePaste(e, 'available_from_time')}
+                            onKeyDown={(e) => handleTimeKeyDown(e, 'available_from_time')}
                             className="form-input"
                           />
                         </div>
@@ -2218,11 +2408,15 @@ export default function CreateEventPage() {
                           <input
                             type="date"
                             {...register('available_to_date')}
+                            onPaste={(e) => handleDatePaste(e, 'available_to_date', 'available_to_time')}
+                            onKeyDown={(e) => handleDateKeyDown(e, 'available_to_date', 'available_to_time')}
                             className="form-input"
                           />
                           <input
                             type="time"
                             {...register('available_to_time')}
+                            onPaste={(e) => handleTimePaste(e, 'available_to_time')}
+                            onKeyDown={(e) => handleTimeKeyDown(e, 'available_to_time')}
                             className="form-input"
                           />
                         </div>

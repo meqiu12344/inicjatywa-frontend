@@ -47,6 +47,7 @@ export default function EventTicketsPage({ params }: Props) {
   const router = useRouter();
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [redirected, setRedirected] = useState(false);
+  const purchaseDisabledMessage = 'Zakup biletow jest tymczasowo wylaczony do czasu weryfikacji tej funkcji.';
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hydrated = useHydration();
 
@@ -129,18 +130,20 @@ export default function EventTicketsPage({ params }: Props) {
   };
 
   const handleProceed = () => {
-    const items = Object.entries(quantities)
-      .filter(([, qty]) => qty > 0)
-      .map(([ticketTypeId, qty]) => ({
-        ticket_type_id: Number(ticketTypeId),
-        quantity: qty,
-      }));
-
-    localStorage.setItem(
-      `ticketSelections:${resolvedParams.eventId}`,
-      JSON.stringify(items)
-    );
-    router.push(`/bilety/zakup/${resolvedParams.eventId}/finalizuj`);
+    // Tymczasowo wylaczone do czasu potwierdzenia poprawnosci procesu zakupu.
+    // const items = Object.entries(quantities)
+    //   .filter(([, qty]) => qty > 0)
+    //   .map(([ticketTypeId, qty]) => ({
+    //     ticket_type_id: Number(ticketTypeId),
+    //     quantity: qty,
+    //   }));
+    //
+    // localStorage.setItem(
+    //   `ticketSelections:${resolvedParams.eventId}`,
+    //   JSON.stringify(items)
+    // );
+    // router.push(`/bilety/zakup/${resolvedParams.eventId}/finalizuj`);
+    toast.error(purchaseDisabledMessage);
   };
 
   return (
@@ -156,6 +159,10 @@ export default function EventTicketsPage({ params }: Props) {
             <div className="text-gray-600">Ładowanie biletów...</div>
           ) : data ? (
             <>
+              <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {purchaseDisabledMessage}
+              </div>
+
               <div className="mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">{data.event.title}</h2>
                 <div className="mt-2 space-y-2 text-gray-600">
@@ -203,7 +210,7 @@ export default function EventTicketsPage({ params }: Props) {
                           value={quantities[tt.id] || 0}
                           onChange={(e) => handleQuantityChange(tt.id, Number(e.target.value))}
                           className="w-20 border rounded-md px-2 py-1"
-                          disabled={tt.is_sold_out || tt.quantity_available <= 0 || !isWithinSaleWindow(tt)}
+                          disabled
                         />
                       </div>
                     </div>
@@ -213,13 +220,18 @@ export default function EventTicketsPage({ params }: Props) {
 
               <div className="mt-6 flex items-center justify-between">
                 <div className="text-lg font-semibold">Suma: {total.toFixed(2)} PLN</div>
+                {/*
                 <button
                   onClick={handleProceed}
-                  disabled={total <= 0}
+                  disabled
                   className="px-6 py-2 bg-indigo-600 text-white rounded-md disabled:opacity-50"
                 >
                   Przejdź do płatności
                 </button>
+                */}
+                <span className="text-sm font-medium text-amber-700">
+                  Przejscie do platnosci jest tymczasowo ukryte.
+                </span>
               </div>
             </>
           ) : (
