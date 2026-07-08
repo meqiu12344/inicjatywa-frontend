@@ -77,6 +77,7 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [croppingImage, setCroppingImage] = useState<string | null>(null);
   const [croppingFile, setCroppingFile] = useState<File | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const purchaseStatusMap: Record<PromotionPurchase['status'], { label: string; className: string }> = {
@@ -158,9 +159,15 @@ export default function ProfilePage() {
 
   const newPassword = watchPassword('new_password');
 
-  // Mutacja aktualizacji profilu
+  // Mutacja aktualizacji profilu (obsługuje obiekt JSON lub FormData z avatar)
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: ProfileFormData) => {
+    mutationFn: async (data: ProfileFormData | FormData) => {
+      if (data instanceof FormData) {
+        const response = await apiClient.patch('/auth/profile/', data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+      }
       const response = await apiClient.patch('/auth/profile/', data);
       return response.data;
     },
@@ -225,22 +232,16 @@ export default function ProfilePage() {
   };
 
   const handleCropComplete = async (blob: Blob, dataUrl?: string) => {
-    // upload the cropped blob
+    // don't upload immediately — store cropped file and preview, upload on final submit
     try {
-      const formData = new FormData();
       const filename = croppingFile?.name || 'avatar.jpg';
-      formData.append('avatar', blob, filename);
-
-      await apiClient.patch('/auth/profile/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
+      const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+      setAvatarFile(file);
       setAvatarPreview(dataUrl || URL.createObjectURL(blob));
-      toast.success('Zdjęcie profilowe zostało zaktualizowane');
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Obraz został przygotowany do wysłania');
     } catch (err) {
       console.error(err);
-      toast.error('Nie udało się przesłać zdjęcia');
+      toast.error('Nie udało się przygotować obrazu');
     } finally {
       setCroppingImage(null);
       setCroppingFile(null);
@@ -254,7 +255,17 @@ export default function ProfilePage() {
   };
 
   const onSubmitProfile = (data: ProfileFormData) => {
-    updateProfileMutation.mutate(data);
+    // If avatarFile exists, send FormData with avatar + profile fields
+    if (avatarFile) {
+      const formData = new FormData();
+      formData.append('avatar', avatarFile, avatarFile.name);
+      formData.append('username', data.username);
+      formData.append('email', data.email);
+      formData.append('bio', data.bio || '');
+      updateProfileMutation.mutate(formData);
+    } else {
+      updateProfileMutation.mutate(data);
+    }
   };
 
   const onSubmitPassword = (data: PasswordFormData) => {

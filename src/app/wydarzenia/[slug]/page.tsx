@@ -485,13 +485,15 @@ export default function EventPage({ params }: EventPageProps) {
 
               {/* Event Image */}
               {event.image && (
-                <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden bg-slate-100">
+                <div className="relative w-full mb-6 rounded-xl overflow-hidden bg-slate-100">
                   <Image
                     src={event.image}
                     alt={event.title}
-                    fill
-                    className="object-cover"
-                    priority
+                    width={0}
+                    height={0}
+                    sizes='100vh'
+                    style={{height: '100vh'}}
+                    className="object-cover w-full h-full"
                   />
                 </div>
               )}
