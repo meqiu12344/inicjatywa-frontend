@@ -11,6 +11,7 @@ import {
   Globe, Mail, Phone, Facebook, Instagram, Youtube, Twitter
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { bustCache } from '@/lib/utils/media';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -45,7 +46,7 @@ export default function EditOrganizerPage() {
   const [logoCropName, setLogoCropName] = useState<string>('organizer-logo.jpg');
 
   // Fetch organizer data
-  const { data: organizer, isLoading, error } = useQuery<OrganizerProfile>({
+  const { data: organizer, isLoading, error, dataUpdatedAt: organizerUpdatedAt } = useQuery<OrganizerProfile>({
     queryKey: ['organizer-edit', slug],
     queryFn: async () => {
       const response = await apiClient.get(`/organizers/${slug}/`);
@@ -71,10 +72,10 @@ export default function EditOrganizerPage() {
         is_public: organizer.is_public,
       });
       if (organizer.logo) {
-        setLogoPreview(organizer.logo);
+        setLogoPreview(bustCache(organizer.logo, organizerUpdatedAt));
       }
     }
-  }, [organizer]);
+  }, [organizer, organizerUpdatedAt]);
 
   // Update mutation
   const updateMutation = useMutation({
