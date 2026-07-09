@@ -15,6 +15,7 @@ import ImageCropper from '@/components/ImageCropper';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
+import { bustCache } from '@/lib/utils/media';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -126,7 +127,7 @@ export default function ProfilePage() {
   });
 
   // Pobierz dane organizatora
-  const { data: organizerData } = useQuery({
+  const { data: organizerData, dataUpdatedAt: organizerUpdatedAt } = useQuery({
     queryKey: ['organizer-profile'],
     queryFn: async () => {
       const response = await apiClient.get('/auth/organizer-profile/');
@@ -173,6 +174,7 @@ export default function ProfilePage() {
     },
     onSuccess: () => {
       toast.success('Profil został zaktualizowany');
+      setAvatarFile(null);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
     onError: (error) => {
@@ -457,7 +459,7 @@ export default function ProfilePage() {
                 <div className="flex-shrink-0">
                   {organizerData.organization_logo ? (
                     <Image
-                      src={organizerData.organization_logo}
+                      src={bustCache(organizerData.organization_logo, organizerUpdatedAt) || organizerData.organization_logo}
                       alt={organizerData.organization_name}
                       width={80}
                       height={80}
@@ -624,7 +626,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    disabled={updateProfileMutation.isPending || !isDirty}
+                    disabled={updateProfileMutation.isPending || (!isDirty && !avatarFile)}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-slate-900 font-medium rounded-lg transition-colors"
                   >
                     {updateProfileMutation.isPending ? 'Zapisywanie...' : 'Zapisz zmiany'}
