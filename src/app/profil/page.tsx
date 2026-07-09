@@ -68,7 +68,7 @@ type TabType = 'profile' | 'history' | 'purchases' | 'settings';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, updateProfile } = useAuthStore();
   const hydrated = useHydration();
   const queryClient = useQueryClient();
   
@@ -78,7 +78,6 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [croppingImage, setCroppingImage] = useState<string | null>(null);
   const [croppingFile, setCroppingFile] = useState<File | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const purchaseStatusMap: Record<PromotionPurchase['status'], { label: string; className: string }> = {
@@ -174,11 +173,33 @@ export default function ProfilePage() {
     },
     onSuccess: () => {
       toast.success('Profil został zaktualizowany');
-      setAvatarFile(null);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, 'Nie udało się zaktualizować profilu'));
+    },
+  });
+
+  // Mutacja natychmiastowego zapisu zdjęcia profilowego (dodawanie/zmiana)
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('avatar', file, file.name);
+      const response = await apiClient.patch('/auth/profile/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success('Zdjęcie profilowe zostało zaktualizowane');
+      // Podmień podgląd na świeży adres z serwera (z cache-bustingiem)
+      setAvatarPreview(bustCache(data?.profile?.avatar, Date.now()));
+      updateProfile({ avatar: data?.profile?.avatar });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+    onError: (error) => {
+      setAvatarPreview(null);
+      toast.error(getErrorMessage(error, 'Nie udało się zaktualizować zdjęcia profilowego'));
     },
   });
 
@@ -234,13 +255,12 @@ export default function ProfilePage() {
   };
 
   const handleCropComplete = async (blob: Blob, dataUrl?: string) => {
-    // don't upload immediately — store cropped file and preview, upload on final submit
+    // Zapisz zdjęcie od razu po przycięciu — pokaż podgląd i wyślij na serwer
     try {
       const filename = croppingFile?.name || 'avatar.jpg';
       const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
-      setAvatarFile(file);
       setAvatarPreview(dataUrl || URL.createObjectURL(blob));
-      toast.success('Obraz został przygotowany do wysłania');
+      uploadAvatarMutation.mutate(file);
     } catch (err) {
       console.error(err);
       toast.error('Nie udało się przygotować obrazu');
@@ -257,17 +277,7 @@ export default function ProfilePage() {
   };
 
   const onSubmitProfile = (data: ProfileFormData) => {
-    // If avatarFile exists, send FormData with avatar + profile fields
-    if (avatarFile) {
-      const formData = new FormData();
-      formData.append('avatar', avatarFile, avatarFile.name);
-      formData.append('username', data.username);
-      formData.append('email', data.email);
-      formData.append('bio', data.bio || '');
-      updateProfileMutation.mutate(formData);
-    } else {
-      updateProfileMutation.mutate(data);
-    }
+    updateProfileMutation.mutate(data);
   };
 
   const onSubmitPassword = (data: PasswordFormData) => {
@@ -358,13 +368,19 @@ export default function ProfilePage() {
                     <User className="w-14 h-14" />
                   </div>
                 )}
+                {uploadAvatarMutation.isPending && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 rounded-full">
+                    <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
-              <label className="absolute bottom-0 right-0 p-2.5 bg-amber-500 text-slate-900 rounded-full cursor-pointer hover:bg-amber-400 transition-colors shadow-lg">
+              <label className={`absolute bottom-0 right-0 p-2.5 bg-amber-500 text-slate-900 rounded-full transition-colors shadow-lg ${uploadAvatarMutation.isPending ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-amber-400'}`}>
                 <Camera className="w-4 h-4" />
                 <input
                   type="file"
                   className="hidden"
                   accept="image/*"
+                  disabled={uploadAvatarMutation.isPending}
                   onChange={handleAvatarChange}
                 />
               </label>
@@ -626,7 +642,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    disabled={updateProfileMutation.isPending || (!isDirty && !avatarFile)}
+                    disabled={updateProfileMutation.isPending || !isDirty}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-slate-900 font-medium rounded-lg transition-colors"
                   >
                     {updateProfileMutation.isPending ? 'Zapisywanie...' : 'Zapisz zmiany'}

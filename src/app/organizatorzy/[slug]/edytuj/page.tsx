@@ -40,7 +40,6 @@ export default function EditOrganizerPage() {
   const slug = params.slug as string;
 
   const [formData, setFormData] = useState<Partial<OrganizerProfile>>({});
-  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
   const [logoCropName, setLogoCropName] = useState<string>('organizer-logo.jpg');
@@ -96,6 +95,30 @@ export default function EditOrganizerPage() {
     },
   });
 
+  // Mutacja natychmiastowego zapisu logo (dodawanie/zmiana)
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const data = new FormData();
+      data.append('logo', file, file.name);
+      const response = await apiClient.patch(`/organizers/${slug}/`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success('Logo zostało zaktualizowane');
+      // Podmień podgląd na świeży adres z serwera (z cache-bustingiem)
+      if (data?.logo) {
+        setLogoPreview(bustCache(data.logo, Date.now()));
+      }
+      queryClient.invalidateQueries({ queryKey: ['organizer', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer-edit', slug] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Nie udało się zaktualizować logo');
+    },
+  });
+
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -118,9 +141,10 @@ export default function EditOrganizerPage() {
       type: blob.type || 'image/jpeg',
     });
 
-    setLogoFile(croppedFile);
+    // Zapisz logo od razu po przycięciu
     setLogoPreview(dataUrl || URL.createObjectURL(blob));
     setLogoCropSrc(null);
+    uploadLogoMutation.mutate(croppedFile);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -132,11 +156,7 @@ export default function EditOrganizerPage() {
         data.append(key, String(value));
       }
     });
-    
-    if (logoFile) {
-      data.append('logo', logoFile);
-    }
-    
+
     updateMutation.mutate(data);
   };
 
@@ -198,7 +218,7 @@ export default function EditOrganizerPage() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Logo organizacji</h2>
             <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+              <div className="relative w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                 {logoPreview ? (
                   <Image
                     src={logoPreview}
@@ -210,17 +230,23 @@ export default function EditOrganizerPage() {
                 ) : (
                   <Building2 className="w-12 h-12 text-gray-400" />
                 )}
+                {uploadLogoMutation.isPending && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Loader2 className="w-7 h-7 text-white animate-spin" />
+                  </div>
+                )}
               </div>
-              <label className="cursor-pointer">
+              <label className={uploadLogoMutation.isPending ? 'cursor-not-allowed' : 'cursor-pointer'}>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleLogoChange}
+                  disabled={uploadLogoMutation.isPending}
                   className="hidden"
                 />
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${uploadLogoMutation.isPending ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
                   <Upload className="w-4 h-4" />
-                  Zmień logo
+                  {uploadLogoMutation.isPending ? 'Zapisywanie...' : 'Zmień logo'}
                 </span>
               </label>
             </div>
