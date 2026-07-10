@@ -17,6 +17,7 @@ import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
+import { bustCache } from '@/lib/utils/media';
 import { EventListItem } from '@/types';
 
 // Types
@@ -406,7 +407,7 @@ export default function OrganizerProfilePage() {
   const [comment, setComment] = useState('');
 
   // Fetch organizer data
-  const { data: organizer, isLoading: isLoadingOrganizer, error } = useQuery({
+  const { data: organizer, isLoading: isLoadingOrganizer, error, dataUpdatedAt: organizerUpdatedAt } = useQuery({
     queryKey: ['organizer', slug],
     queryFn: async () => {
       const response = await apiClient.get(`/organizers/${slug}/`);
@@ -561,7 +562,7 @@ export default function OrganizerProfilePage() {
               <div className="w-28 h-28 md:w-32 md:h-32 rounded-xl overflow-hidden bg-white shadow-lg">
                 {organizer.logo ? (
                   <img
-                    src={organizer.logo}
+                    src={bustCache(organizer.logo, organizerUpdatedAt) || undefined}
                     alt={organizer.name}
                     className="w-full h-full object-cover"
                   />

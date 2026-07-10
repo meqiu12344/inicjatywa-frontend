@@ -57,9 +57,30 @@ export default function ImageCropper({ src, aspect = 1, onCancel, onComplete }: 
   }, []);
 
   const handleConfirm = useCallback(async () => {
-    if (!croppedAreaPixels) return;
     try {
-      const blob = await getCroppedImg(src, croppedAreaPixels);
+      // If the user clicks "Zatwierdź" without moving/zooming the image,
+      // react-easy-crop may not have reported a crop area yet. Fall back to
+      // the full image so the logo still gets applied.
+      let area = croppedAreaPixels;
+      if (!area) {
+        const image = await createImage(src);
+        const iw = image.naturalWidth;
+        const ih = image.naturalHeight;
+        // Largest centered rectangle matching the target aspect ratio.
+        let w = iw;
+        let h = iw / aspect;
+        if (h > ih) {
+          h = ih;
+          w = ih * aspect;
+        }
+        area = {
+          x: (iw - w) / 2,
+          y: (ih - h) / 2,
+          width: w,
+          height: h,
+        };
+      }
+      const blob = await getCroppedImg(src, area);
       if (blob) {
         // optional dataUrl for preview
         const reader = new FileReader();
@@ -71,7 +92,7 @@ export default function ImageCropper({ src, aspect = 1, onCancel, onComplete }: 
     } catch (err) {
       console.error('Crop failed', err);
     }
-  }, [croppedAreaPixels, src, onComplete]);
+  }, [croppedAreaPixels, src, aspect, onComplete]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
