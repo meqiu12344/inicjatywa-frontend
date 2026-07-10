@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Eye,
@@ -67,7 +67,6 @@ interface RegisterFormData {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { register: registerUser, isRegistering, isAuthenticated, isLoading } = useAuth();
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
@@ -79,11 +78,16 @@ export default function RegisterPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [isAddEventRedirect, setIsAddEventRedirect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
-  const rawRedirect = searchParams.get('redirect') || searchParams.get('next') || '/';
-  const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
-  const isAddEventRedirect = redirectUrl === '/wydarzenia/dodaj';
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const rawRedirect = searchParams.get('redirect') || searchParams.get('next') || '/';
+    const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+    setIsAddEventRedirect(redirectUrl === '/wydarzenia/dodaj');
+  }, []);
 
   const resetRecaptcha = () => {
     try {
