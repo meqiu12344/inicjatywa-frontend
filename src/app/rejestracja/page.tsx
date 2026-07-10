@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Eye,
@@ -67,6 +67,7 @@ interface RegisterFormData {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register: registerUser, isRegistering, isAuthenticated, isLoading } = useAuth();
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
@@ -80,6 +81,9 @@ export default function RegisterPage() {
   const [logoError, setLogoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
+  const rawRedirect = searchParams.get('redirect') || searchParams.get('next') || '/';
+  const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+  const isAddEventRedirect = redirectUrl === '/wydarzenia/dodaj';
 
   const resetRecaptcha = () => {
     try {
@@ -349,10 +353,12 @@ export default function RegisterPage() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-display text-3xl font-bold text-white mb-2">
-              Stwórz konto
+              {isAddEventRedirect ? 'Stwórz konto, aby dodać wydarzenie' : 'Stwórz konto'}
             </h1>
             <p className="text-slate-400">
-              Dołącz do nas i odkrywaj wydarzenia katolickie.
+              {isAddEventRedirect
+                ? 'Załóż konto, aby opublikować swoje wydarzenie i dotrzeć do uczestników.'
+                : 'Dołącz do nas i odkrywaj wydarzenia katolickie.'}
             </p>
           </div>
 

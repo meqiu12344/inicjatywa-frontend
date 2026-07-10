@@ -66,6 +66,7 @@ function LoginContent() {
   // Get redirect URL from query params — validate it's a relative path to prevent open redirect
   const rawRedirect = searchParams.get('redirect') || searchParams.get('next') || '/';
   const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+  const isAddEventRedirect = redirectUrl === '/wydarzenia/dodaj';
   const verified = searchParams.get('verified');
   const registered = searchParams.get('registered');
   const reason = searchParams.get('reason'); // e.g. 'session-expired'
@@ -196,10 +197,12 @@ function LoginContent() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-display text-3xl font-bold text-white mb-2">
-              Zaloguj się
+              {isAddEventRedirect ? 'Stwórz konto, aby dodać wydarzenie' : 'Zaloguj się'}
             </h1>
             <p className="text-slate-400">
-              Witaj ponownie! Zaloguj się do swojego konta.
+              {isAddEventRedirect
+                ? 'Załóż konto lub zaloguj się, aby przejść do dodawania wydarzenia.'
+                : 'Witaj ponownie! Zaloguj się do swojego konta.'}
             </p>
           </div>
 
