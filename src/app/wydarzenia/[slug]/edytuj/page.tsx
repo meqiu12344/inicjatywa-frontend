@@ -306,7 +306,13 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         })) : undefined,
       };
       
-      return eventsApi.updateEvent(eventId, eventData);
+      const updatedEvent = await eventsApi.updateEvent(eventId, eventData);
+
+      if (imageFile) {
+        await eventsApi.uploadImage(eventId, imageFile);
+      }
+
+      return updatedEvent;
     },
     onSuccess: async (data) => {
       toast.success('Wydarzenie zostało zaktualizowane!');
