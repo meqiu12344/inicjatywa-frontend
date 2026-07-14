@@ -156,8 +156,8 @@ export function Navbar() {
                   <LogIn className="w-4 h-4" />
                   <span>Zaloguj</span>
                 </Link>
-                <Link href="/rejestracja" className="btn-primary">
-                  Dołącz
+                <Link href="/rejestracja?redirect=/wydarzenia/dodaj" className="btn-primary">
+                  Dodaj wydarzenie
                 </Link>
               </div>
             )}

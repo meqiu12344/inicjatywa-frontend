@@ -78,8 +78,16 @@ export default function RegisterPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [isAddEventRedirect, setIsAddEventRedirect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const rawRedirect = searchParams.get('redirect') || searchParams.get('next') || '/';
+    const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+    setIsAddEventRedirect(redirectUrl === '/wydarzenia/dodaj');
+  }, []);
 
   const resetRecaptcha = () => {
     try {
@@ -349,10 +357,12 @@ export default function RegisterPage() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-display text-3xl font-bold text-white mb-2">
-              Stwórz konto
+              {isAddEventRedirect ? 'Stwórz konto, aby dodać wydarzenie' : 'Stwórz konto'}
             </h1>
             <p className="text-slate-400">
-              Dołącz do nas i odkrywaj wydarzenia katolickie.
+              {isAddEventRedirect
+                ? 'Załóż konto, aby opublikować swoje wydarzenie i dotrzeć do uczestników.'
+                : 'Dołącz do nas i odkrywaj wydarzenia katolickie.'}
             </p>
           </div>
 
