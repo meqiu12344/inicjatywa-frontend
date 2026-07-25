@@ -94,7 +94,7 @@ function PaymentSuccessContent() {
                 <>
                   Dziękujemy za zamówienie plakatu! Twoje wydarzenie zostało zapisane 
                   ze statusem <strong>&quot;Oczekujące&quot;</strong>. Plakat zostanie 
-                  stworzony w ciągu 4-5 dni roboczych.
+                  stworzony w ciągu 1 dnia roboczego.
                 </>
               ) : (
                 <>

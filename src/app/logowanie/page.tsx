@@ -275,7 +275,7 @@ function LoginContent() {
             {/* Email/Username Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email
+                Email lub nazwa użytkownika
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -283,10 +283,10 @@ function LoginContent() {
                   type="text"
                   id="email"
                   autoComplete="username"
-                  placeholder="twoj@email.pl"
+                  placeholder="twoj@email.pl lub nazwa użytkownika"
                   aria-invalid={!!errors.email}
                   {...register('email', {
-                    required: 'Podaj swój adres email',
+                    required: 'Podaj email lub nazwę użytkownika',
                   })}
                   className={clsx(
                     'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',

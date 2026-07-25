@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Calendar, MapPin, TrendingUp, ArrowRight, Star, Clock, Heart, AlertTriangle, Search } from 'lucide-react';
 import Link from 'next/link';
 import { EventSlider, GoldBanner, GoldBannerSkeleton, CategoryGrid, CategoryGridSkeleton } from '@/components/events';
 import AdBanner from '@/components/ads/AdBanner';
-import HeroGlobe from '@/components/layout/HeroGlobe';
+
+// Leaflet needs the browser (window), so load the hero map client-side only.
+const HeroPolandMap = dynamic(() => import('@/components/layout/HeroPolandMap'), { ssr: false });
 import {
   useLatestEvents,
   useTop10Events,
@@ -46,9 +49,9 @@ function HeroSection() {
   return (
     <section className="relative bg-[#050B14] text-white overflow-hidden min-h-[90vh] lg:min-h-screen flex items-center">
       <PopupAd />
-      {/* 3D Globe Background */}
+      {/* Interactive Poland map background */}
       <div className="absolute inset-0 z-0">
-        <HeroGlobe />
+        <HeroPolandMap />
       </div>
 
       {/* Dark overlay for readability on the left side */}

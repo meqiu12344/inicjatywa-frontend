@@ -1516,7 +1516,7 @@ export default function CreateEventPage() {
                     
                     <p className="text-red-600 font-semibold text-sm mb-2">
                       <AlertCircle className="w-4 h-4 inline mr-1" />
-                      OSTRZEŻENIE: Plakat zostanie stworzony w ciągu 4-5 dni roboczych.
+                      OSTRZEŻENIE: Plakat zostanie stworzony w ciągu 1 dnia roboczego.
                     </p>
                     <p className="text-sm text-gray-600 mb-4">
                       Do tego czasu Twoje wydarzenie będzie posiadało status <strong>Oczekującego</strong> i nie będzie widoczne publicznie. 
@@ -2372,6 +2372,9 @@ export default function CreateEventPage() {
                             <ExternalLink className="w-5 h-5 text-gray-500" />
                           </div>
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Jeśli nie posiadasz systemu biletowego, możesz podać adres swojej strony internetowej.
+                        </p>
                       </div>
                     </div>
 
@@ -2494,7 +2497,7 @@ export default function CreateEventPage() {
 
                     <p className="text-gray-600 text-center">
                       Wybrałeś/aś opcję stworzenia plakatu wydarzenia przez naszych specjalistów. 
-                      Zostanie ona zrealizowana w ciągu 4-5 dni roboczych. 
+                      Zostanie ona zrealizowana w ciągu 1 dnia roboczego. 
                       Po dokonaniu płatności Twoje wydarzenie otrzyma status <strong>Oczekującego</strong>.
                     </p>
 

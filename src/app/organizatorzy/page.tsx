@@ -345,6 +345,8 @@ export default function OrganizersListPage() {
                         {/* Action Button */}
                         <Link
                           href={`/organizatorzy/${organizer.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="block w-full py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-center rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
                         >
                           Zobacz profil
@@ -415,6 +417,8 @@ export default function OrganizersListPage() {
                         <div className="flex-shrink-0">
                           <Link
                             href={`/organizatorzy/${organizer.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="inline-flex items-center justify-center py-2.5 px-6 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md whitespace-nowrap"
                           >
                             Zobacz profil
