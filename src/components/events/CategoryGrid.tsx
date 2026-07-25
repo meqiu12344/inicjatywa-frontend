@@ -68,7 +68,7 @@ export function CategoryGrid({ categories, initialVisibleCount = 9 }: CategoryGr
               categoryColors[index % categoryColors.length]
             )}
           >
-            {category.name}
+            <span className="capitalize">{category.name}</span>
             {category.event_count !== undefined && category.event_count > 0 && (
               <span className="block text-xs opacity-70 mt-0.5">
                 {category.event_count} {category.event_count === 1 ? 'wydarzenie' : (category.event_count % 10 >= 2 && category.event_count % 10 <= 4 && (category.event_count % 100 < 10 || category.event_count % 100 >= 20)) ? 'wydarzenia' : 'wydarzeń'}
