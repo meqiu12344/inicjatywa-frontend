@@ -17,6 +17,7 @@ import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { paymentsApi } from '@/lib/api/payments';
 import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
+import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -524,7 +525,7 @@ export default function CreateEventPage() {
   const [addressValidationMessage, setAddressValidationMessage] = useState<{type: 'success' | 'error' | 'suggestion', message: string} | null>(null);
   const [postalCodeValidationMessage, setPostalCodeValidationMessage] = useState<{type: 'success' | 'error' | 'suggestion', message: string} | null>(null);
 
-  const API_BASE = (typeof window !== 'undefined') ? '' : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl');
+  const API_BASE = (typeof window !== 'undefined') ? getPublicApiBaseUrl() : getBackendUrl();
 
   // Redirect if not authenticated or not organizer
   useEffect(() => {

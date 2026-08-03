@@ -15,6 +15,7 @@ import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { getErrorMessage } from '@/lib/api/client';
 import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
+import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { TicketType, Category, Event } from '@/types';
@@ -68,7 +69,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
   const [eventId, setEventId] = useState<number | null>(null);
 
-  const API_BASE = (typeof window !== 'undefined') ? '' : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl');
+  const API_BASE = (typeof window !== 'undefined') ? getPublicApiBaseUrl() : getBackendUrl();
 
   // Fetch event data
   const { data: event, isLoading: isLoadingEvent, error: eventError } = useQuery({

@@ -36,6 +36,11 @@ const nextConfig = {
         hostname: 'api-test.inicjatywakatolicka.pl',
         pathname: '/media/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.inicjatywakatolicka.pl',
+        pathname: '/media/**',
+      },
     ],
   },
   async rewrites() {
@@ -44,14 +49,6 @@ const nextConfig = {
       {
         source: '/ckeditor5/:path*',
         destination: `${backendUrl}/ckeditor5/:path*`,
-      },
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-      {
-        source: '/media/:path*',
-        destination: `${backendUrl}/media/:path*`,
       },
     ];
   },
