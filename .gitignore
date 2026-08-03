@@ -38,8 +38,4 @@ cloudflare-env.d.ts
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
-
-.env
-.dev.vars
-.wrangler/
-.open-next/
+tsc_output.txt
