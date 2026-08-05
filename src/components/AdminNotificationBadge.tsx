@@ -11,7 +11,7 @@ export function AdminNotificationBadge() {
 
   return (
     <div className="admin-notification-badge">
-      <a href="/admin/pending-requests" className="notification-link">
+      <a href="/admin/wnioski-organizatorow" className="notification-link">
         <div className="badge-container">
           <span className="badge-icon">📋</span>
           <span className="badge-text">Nowe wnioski</span>
@@ -41,7 +41,7 @@ export function AdminNotificationBadge() {
               </div>
             ))}
           </div>
-          <a href="/admin/pending-requests" className="preview-footer">
+          <a href="/admin/wnioski-organizatorow" className="preview-footer">
             Przejdź do panelu →
           </a>
         </div>
