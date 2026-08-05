@@ -6,6 +6,7 @@ import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { MarketingTags } from "@/components/analytics/MarketingTags";
+import { ComingSoonCounter } from "../components/ComingSoonCounter";
 import "@/lib/logger"; // Initialize console logger
 
 const inter = Inter({
@@ -49,15 +50,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-slate-50 overflow-hidden" suppressHydrationWarning>
         <MarketingTags />
         <Providers>
+          {/* MAINTENANCE MODE - Coming Soon Counter */}
+          <ComingSoonCounter />
+          
+          {/* ORIGINAL LAYOUT - COMMENTED OUT DURING MAINTENANCE
           <Navbar />
           
           <main className="">
             {children}
           </main>
           <Footer />
+          */}
         </Providers>
       </body>
     </html>
