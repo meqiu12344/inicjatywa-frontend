@@ -36,6 +36,11 @@ const nextConfig = {
         hostname: 'api-test.inicjatywakatolicka.pl',
         pathname: '/media/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.inicjatywakatolicka.pl',
+        pathname: '/media/**',
+      },
     ],
   },
   async rewrites() {

@@ -38,6 +38,7 @@ import { useEvent, useRegisterForEvent, useCancelRegistration } from '@/hooks/us
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import toast from 'react-hot-toast';
 import {
   isEventExpired,
@@ -101,7 +102,7 @@ export default function EventPage({ params }: EventPageProps) {
   const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [shareUrl, setShareUrl] = useState('');
-  const API_BASE = (typeof window !== 'undefined') ? '' : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://test.inicjatywakatolicka.pl');
+  const API_BASE = (typeof window !== 'undefined') ? getPublicApiBaseUrl() : getBackendUrl();
 
   const { data: ticketTypes } = useQuery({
     queryKey: ['ticket-types', event?.id],

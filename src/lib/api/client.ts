@@ -1,11 +1,11 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
-import { getBackendUrl } from '@/lib/env';
+import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 
 const isServer = typeof window === 'undefined';
 const API_URL = isServer
   ? getBackendUrl()
-  : '';
+  : getPublicApiBaseUrl();
 
 if (typeof window !== 'undefined') {
   console.log('[API] Client-side initialization. API_URL:', API_URL);

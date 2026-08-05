@@ -23,11 +23,19 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local env files
+.env
 .env*.local
 
 # Vercel
 .vercel
 
+# Cloudflare
+.wrangler/
+.open-next/
+.dev.vars*
+cloudflare-env.d.ts
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+tsc_output.txt

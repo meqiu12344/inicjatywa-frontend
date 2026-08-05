@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { getBackendUrl } from '@/lib/env';
+import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 
-const API_BASE = (typeof window !== 'undefined') 
-  ? '' 
+const API_BASE = (typeof window !== 'undefined')
+  ? getPublicApiBaseUrl()
   : getBackendUrl();
 
 export interface ValidatePostalCodeResponse {
