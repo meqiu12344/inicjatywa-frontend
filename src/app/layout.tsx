@@ -54,16 +54,15 @@ export default function RootLayout({
         <MarketingTags />
         <Providers>
           {/* MAINTENANCE MODE - Coming Soon Counter */}
-          <ComingSoonCounter />
+          {/* <ComingSoonCounter /> */}
           
-          {/* ORIGINAL LAYOUT - COMMENTED OUT DURING MAINTENANCE
+          {/* ORIGINAL LAYOUT - COMMENTED OUT DURING MAINTENANCE */}
           <Navbar />
           
           <main className="">
             {children}
           </main>
           <Footer />
-          */}
         </Providers>
       </body>
     </html>
