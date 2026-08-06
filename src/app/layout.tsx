@@ -50,7 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="min-h-screen flex flex-col bg-slate-50 overflow-hidden" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden" suppressHydrationWarning>
         <MarketingTags />
         <Providers>
           {/* MAINTENANCE MODE - Coming Soon Counter */}
