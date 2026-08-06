@@ -32,11 +32,11 @@ interface OrganizersResponse {
   results: Organizer[];
 }
 
-type SortOption = 'events' | 'rating' | 'newest';
+type SortOption = 'ranking' | 'events' | 'rating' | 'newest';
 
 export default function OrganizersListPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('events');
+  const [sortBy, setSortBy] = useState<SortOption>('ranking');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
@@ -53,6 +53,9 @@ export default function OrganizersListPage() {
       
       // Map sort options to API ordering
       switch (sortBy) {
+        case 'ranking':
+          params.ordering = 'ranking';
+          break;
         case 'events':
           params.ordering = '-events_count';
           break;
@@ -73,11 +76,16 @@ export default function OrganizersListPage() {
   const totalCount = data?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  // Filter organizers by search query (client-side for immediate feedback)
+  const hasValidSlug = (slug: string | null) => {
+    return typeof slug === 'string' && slug.trim().length > 0;
+  };
+
+  // Filter organizers by search query and hide unavailable profiles.
   const filteredOrganizers = useMemo(() => {
-    if (!searchQuery.trim()) return organizers;
+    const available = organizers.filter((org) => hasValidSlug(org.slug));
+    if (!searchQuery.trim()) return available;
     const query = searchQuery.toLowerCase();
-    return organizers.filter(org => 
+    return available.filter(org => 
       org.name.toLowerCase().includes(query)
     );
   }, [organizers, searchQuery]);
@@ -152,10 +160,6 @@ export default function OrganizersListPage() {
     return text.slice(0, maxLength).trim() + '...';
   };
 
-  const hasValidSlug = (slug: string | null) => {
-    return typeof slug === 'string' && slug.trim().length > 0;
-  };
-
   // Handle search with debounce reset of page
   const handleSearch = (value: string) => {
     setSearchQuery(value);
@@ -208,6 +212,7 @@ export default function OrganizersListPage() {
                   onChange={(e) => handleSortChange(e.target.value as SortOption)}
                   className="w-full pl-11 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all cursor-pointer"
                 >
+                  <option value="ranking">Według miejsca w rankingu</option>
                   <option value="events">Według liczby wydarzeń</option>
                   <option value="rating">Według oceny</option>
                   <option value="newest">Najnowsi</option>
