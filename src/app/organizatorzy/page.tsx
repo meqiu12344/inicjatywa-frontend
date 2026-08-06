@@ -322,7 +322,7 @@ export default function OrganizersListPage() {
                               <h3 className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors line-clamp-2 leading-tight">
                                 {organizer.name}
                               </h3>
-                              {sortBy === 'events' && getRankingBadge(rankingPosition)}
+                              {sortBy === 'ranking' && getRankingBadge(rankingPosition)}
                             </div>
                             {organizer.verified && (
                               <div className="flex items-center gap-1 text-blue-600">
@@ -413,7 +413,7 @@ export default function OrganizersListPage() {
                                 <span className="text-xs font-medium">Zweryfikowany</span>
                               </div>
                             )}
-                            {sortBy === 'events' && getRankingBadge(rankingPosition)}
+                            {sortBy === 'ranking' && getRankingBadge(rankingPosition)}
                           </div>
 
                           <div className="flex flex-wrap items-center gap-4 mb-2">
