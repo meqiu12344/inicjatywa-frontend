@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_URL = 'https://api-test.inicjatywakatolicka.pl';
+const DEFAULT_BACKEND_URL = 'https://api.inicjatywakatolicka.pl';
 
 function stripWrappingQuotes(value: string): string {
   return value.replace(/^['"]|['"]$/g, '');
