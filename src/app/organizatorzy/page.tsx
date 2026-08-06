@@ -14,7 +14,7 @@ import { apiClient } from '@/lib/api/client';
 interface Organizer {
   id: number;
   name: string;
-  slug: string;
+  slug: string | null;
   logo: string | null;
   description: string | null;
   verified: boolean;
@@ -150,6 +150,10 @@ export default function OrganizersListPage() {
     if (!text) return 'Brak opisu';
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength).trim() + '...';
+  };
+
+  const hasValidSlug = (slug: string | null) => {
+    return typeof slug === 'string' && slug.trim().length > 0;
   };
 
   // Handle search with debounce reset of page
@@ -343,14 +347,23 @@ export default function OrganizersListPage() {
                         </p>
 
                         {/* Action Button */}
-                        <Link
-                          href={`/organizatorzy/${organizer.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block w-full py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-center rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
-                        >
-                          Zobacz profil
-                        </Link>
+                        {hasValidSlug(organizer.slug) ? (
+                          <Link
+                            href={`/organizatorzy/${organizer.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-center rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                          >
+                            Zobacz profil
+                          </Link>
+                        ) : (
+                          <span
+                            className="block w-full py-2.5 px-4 bg-gray-200 text-gray-500 text-center rounded-xl font-medium cursor-not-allowed"
+                            title="Profil niedostępny"
+                          >
+                            Profil niedostępny
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -415,14 +428,23 @@ export default function OrganizersListPage() {
 
                         {/* Action */}
                         <div className="flex-shrink-0">
-                          <Link
-                            href={`/organizatorzy/${organizer.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center py-2.5 px-6 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md whitespace-nowrap"
-                          >
-                            Zobacz profil
-                          </Link>
+                          {hasValidSlug(organizer.slug) ? (
+                            <Link
+                              href={`/organizatorzy/${organizer.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center py-2.5 px-6 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md whitespace-nowrap"
+                            >
+                              Zobacz profil
+                            </Link>
+                          ) : (
+                            <span
+                              className="inline-flex items-center justify-center py-2.5 px-6 bg-gray-200 text-gray-500 rounded-xl font-medium cursor-not-allowed whitespace-nowrap"
+                              title="Profil niedostępny"
+                            >
+                              Profil niedostępny
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
