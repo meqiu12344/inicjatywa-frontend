@@ -1337,6 +1337,18 @@ export default function CreateEventPage() {
     }
   };
 
+  const goToStep = async (targetStep: number) => {
+    if (targetStep === currentStep) return;
+
+    if (targetStep > currentStep) {
+      const isValid = await validateCurrentStep();
+      if (!isValid) return;
+    }
+
+    setCurrentStep(targetStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (!hydrated || !isAuthenticated) {
     return null;
   }
@@ -1388,14 +1400,15 @@ export default function CreateEventPage() {
                 <button
                   key={step.id}
                   type="button"
-                  onClick={() => step.id <= currentStep && setCurrentStep(step.id)}
+                  onClick={() => goToStep(step.id)}
                   className={`
                     flex flex-col items-center gap-1 p-2 rounded-lg transition-all
                     ${isActive ? 'bg-blue-100 text-blue-700' : ''}
                     ${isCompleted ? 'text-blue-600' : 'text-gray-400'}
-                    ${step.id <= currentStep ? 'cursor-pointer hover:bg-blue-50' : 'cursor-not-allowed'}
+                    cursor-pointer hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
                   `}
-                  disabled={step.id > currentStep}
+                  aria-current={isActive ? 'step' : undefined}
+                  aria-label={`Przejdź do sekcji: ${step.name}`}
                 >
                   <div className={`
                     w-8 h-8 rounded-full flex items-center justify-center
