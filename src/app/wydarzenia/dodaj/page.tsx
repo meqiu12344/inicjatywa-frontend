@@ -547,6 +547,8 @@ export default function CreateEventPage() {
     handleSubmit,
     watch,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors },
     trigger,
   } = useForm<EventFormData>({
@@ -1118,9 +1120,15 @@ export default function CreateEventPage() {
   };
 
   // Validation matching Django exactly
-  const validateCurrentStep = async (): Promise<boolean> => {
-    switch (currentStep) {
+  const validateStep = async (step: number): Promise<boolean> => {
+    switch (step) {
       case 1:
+        if (!watchAll.title?.trim()) {
+          setError('title', { type: 'required', message: 'Nazwa wydarzenia jest wymagana' });
+          toast.error('Nazwa wydarzenia jest wymagana');
+          return false;
+        }
+        clearErrors('title');
         const titleValid = await trigger(['title']);
         if (!titleValid) {
           if (errors.title?.message) {
@@ -1130,6 +1138,13 @@ export default function CreateEventPage() {
         }
         return true;
       case 2:
+        if (!watchAll.start_date || !watchAll.start_time) {
+          setError('start_date', { type: 'required', message: 'Data rozpoczęcia jest wymagana' });
+          setError('start_time', { type: 'required', message: 'Godzina rozpoczęcia jest wymagana' });
+          toast.error('Data i godzina rozpoczęcia są wymagane');
+          return false;
+        }
+        clearErrors(['start_date', 'start_time']);
         const startValid = await trigger(['start_date', 'start_time']);
         if (!startValid) {
           const firstError = errors.start_date || errors.start_time;
@@ -1148,6 +1163,13 @@ export default function CreateEventPage() {
         
         // Validate end date if not permanent
         if (!watchIsPermanent) {
+          if (!watchAll.end_date || !watchAll.end_time) {
+            setError('end_date', { type: 'required', message: 'Data zakończenia jest wymagana' });
+            setError('end_time', { type: 'required', message: 'Godzina zakończenia jest wymagana' });
+            toast.error('Data i godzina zakończenia są wymagane');
+            return false;
+          }
+          clearErrors(['end_date', 'end_time']);
           const endValid = await trigger(['end_date', 'end_time']);
           if (!endValid) {
             const firstError = errors.end_date || errors.end_time;
@@ -1176,6 +1198,12 @@ export default function CreateEventPage() {
         return true;
       case 4:
         if (watchOnlineEvent) {
+          if (!watchAll.online_link?.trim()) {
+            setError('online_link', { type: 'required', message: 'Link do wydarzenia online jest wymagany' });
+            toast.error('Link do wydarzenia online jest wymagany');
+            return false;
+          }
+          clearErrors('online_link');
           const linkValid = await trigger(['online_link']);
           if (!linkValid) {
             if (errors.online_link?.message) {
@@ -1185,6 +1213,13 @@ export default function CreateEventPage() {
           }
           return true;
         }
+
+        if (!watchAll.location_city?.trim()) {
+          setError('location_city', { type: 'required', message: 'Miasto jest wymagane' });
+          toast.error('Miasto jest wymagane');
+          return false;
+        }
+        clearErrors('location_city');
         
         const cityValid = await trigger(['location_city']);
         if (!cityValid) {
@@ -1298,9 +1333,11 @@ export default function CreateEventPage() {
         // Manual validation for description since it's controlled by CKEditor
         const description = watchAll.description?.trim() || '';
         if (!description || description === '<p></p>' || description === '') {
+          setError('description', { type: 'required', message: 'Opis jest wymagany' });
           toast.error('Opis jest wymagany');
           return false;
         }
+        clearErrors('description');
         return true;
       case 7:
         if (watchMakeDonation && watchDonationAmount <= 0 && !watchNeedsPoster) {
@@ -1311,6 +1348,29 @@ export default function CreateEventPage() {
       default:
         return true;
     }
+  };
+
+  const validateCurrentStep = () => validateStep(currentStep);
+
+  const validateAllSteps = async (): Promise<boolean> => {
+    for (let step = 1; step <= TOTAL_STEPS; step++) {
+      const isValid = await validateStep(step);
+      if (!isValid) {
+        setCurrentStep(step);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const isValid = await validateAllSteps();
+    if (!isValid) return;
+
+    await handleSubmit(onSubmit)();
   };
 
   const nextStep = async (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -1427,15 +1487,7 @@ export default function CreateEventPage() {
         </div>
 
         {/* Form */}
-        <form 
-          onSubmit={(e) => {
-            if (currentStep !== TOTAL_STEPS) {
-              e.preventDefault();
-              return;
-            }
-            handleSubmit(onSubmit)(e);
-          }}
-        >
+        <form onSubmit={handleFormSubmit}>
           <div className="form-step-container">
             
             {/* ===== STEP 1: Basic Info ===== */}
