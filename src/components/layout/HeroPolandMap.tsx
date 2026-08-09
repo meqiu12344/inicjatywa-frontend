@@ -127,13 +127,12 @@ export default function HeroPolandMap() {
     L.control.attribution({ position: 'bottomleft' }).addTo(map);
 
     // Dark tiles to match the dark hero and show Poland's borders clearly.
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 12,
     }).addTo(map);
-
     map.fitBounds(PL_BOUNDS);
 
     // Navigate on popup click (SPA navigation).
