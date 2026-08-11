@@ -161,6 +161,8 @@ export interface EventFilters {
   categories?: number[];
   city?: string;
   region?: string;
+  radius_km?: number;
+  radius_city?: string;
   date_from?: string;
   date_to?: string;
   event_type?: EventType;

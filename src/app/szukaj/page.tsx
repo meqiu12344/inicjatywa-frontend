@@ -104,6 +104,9 @@ function SearchPageContent() {
   const [debouncedCitySearch, setDebouncedCitySearch] = useState('');
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState(searchParams.get('region') || '');
+  const [useRadius, setUseRadius] = useState(searchParams.get('radius_km') ? true : false);
+  const [radiusKm, setRadiusKm] = useState(parseFloat(searchParams.get('radius_km') || '25'));
+  const [radiusCity, setRadiusCity] = useState(searchParams.get('radius_city') || selectedCity);
 
   const datePresets = useMemo(() => getDatePresets(), []);
 
@@ -135,8 +138,10 @@ function SearchPageContent() {
   // Build filters object
   const filters: EventFilters = useMemo(() => ({
     search: debouncedQuery || undefined,
-    city: selectedCity || undefined,
+    city: useRadius ? undefined : (selectedCity || undefined),
     region: selectedRegion || undefined,
+    radius_km: useRadius ? radiusKm : undefined,
+    radius_city: useRadius ? radiusCity : undefined,
     categories: selectedCategories.length > 0 
       ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
       : undefined,
@@ -147,7 +152,7 @@ function SearchPageContent() {
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [debouncedQuery, selectedCity, selectedRegion, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
+  }), [debouncedQuery, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
@@ -176,7 +181,11 @@ function SearchPageContent() {
   useEffect(() => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    if (selectedCity) params.set('city', selectedCity);
+    if (!useRadius && selectedCity) params.set('city', selectedCity);
+    if (useRadius) {
+      params.set('radius_km', radiusKm.toString());
+      params.set('radius_city', radiusCity);
+    }
     if (selectedRegion) params.set('region', selectedRegion);
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
     if (dateFrom) params.set('date_from', dateFrom);
@@ -189,7 +198,7 @@ function SearchPageContent() {
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, selectedCity, selectedRegion, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
+  }, [query, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
 
   // Apply date preset
   const applyDatePreset = useCallback((preset: typeof datePresets[0]) => {
@@ -222,6 +231,9 @@ function SearchPageContent() {
     setQuery('');
     setSelectedCity('');
     setSelectedRegion('');
+    setUseRadius(false);
+    setRadiusKm(25);
+    setRadiusCity('');
     setSelectedCategories([]);
     setDateFrom('');
     setDateTo('');
@@ -232,7 +244,7 @@ function SearchPageContent() {
     setPage(1);
   }, []);
 
-  const hasActiveFilters = query || selectedCity || selectedRegion || selectedCategories.length > 0 || 
+  const hasActiveFilters = query || selectedCity || selectedRegion || useRadius || selectedCategories.length > 0 || 
     dateFrom || dateTo || eventType || onlineOnly;
 
   const filteredCities = citiesData || [];
@@ -280,7 +292,7 @@ function SearchPageContent() {
                 </div>
 
                 {/* City dropdown */}
-                <div className="relative md:min-w-[200px]">
+                <div className="relative md:min-w-[200px]" style={{ opacity: useRadius ? 0.5 : 1, pointerEvents: useRadius ? 'none' : 'auto' }}>
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
                   <div className="relative">
                     <input
@@ -291,8 +303,9 @@ function SearchPageContent() {
                         setShowCityDropdown(true);
                       }}
                       onFocus={() => setShowCityDropdown(true)}
-                      placeholder="Miasto"
-                      className="w-full pl-12 pr-10 py-3.5 text-lg border-0 focus:ring-0 rounded-xl bg-slate-50 focus:bg-white transition-colors"
+                      placeholder={useRadius ? "Radius search active" : "Miasto"}
+                      disabled={useRadius}
+                      className="w-full pl-12 pr-10 py-3.5 text-lg border-0 focus:ring-0 rounded-xl bg-slate-50 focus:bg-white transition-colors disabled:opacity-60"
                     />
                     {selectedCity && (
                       <button
@@ -534,6 +547,59 @@ function SearchPageContent() {
                 </select>
               </div>
 
+              {/* Radius Search */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={useRadius}
+                    onChange={(e) => {
+                      setUseRadius(e.target.checked);
+                      setPage(1);
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <MapPin className="w-4 h-4" />
+                  Szukaj w promieniu
+                </label>
+                {useRadius && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-2">Miasto bazowe</label>
+                      <input
+                        type="text"
+                        value={radiusCity}
+                        onChange={(e) => {
+                          setRadiusCity(e.target.value);
+                          setPage(1);
+                        }}
+                        placeholder="np. Warszawa"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-2">Promień: {radiusKm} km</label>
+                      <input
+                        type="range"
+                        min="5"
+                        max="100"
+                        step="5"
+                        value={radiusKm}
+                        onChange={(e) => {
+                          setRadiusKm(parseFloat(e.target.value));
+                          setPage(1);
+                        }}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                      />
+                      <div className="flex justify-between text-xs text-slate-400 mt-1">
+                        <span>5 km</span>
+                        <span>100 km</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Sort */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-3">
@@ -633,11 +699,20 @@ function SearchPageContent() {
                 </button>
               </span>
             )}
-            {selectedCity && (
+            {selectedCity && !useRadius && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
                 <MapPin className="w-3.5 h-3.5" />
                 {selectedCity}
                 <button onClick={() => { setSelectedCity(''); setPage(1); }} className="hover:text-primary-900">
+                  <X className="w-4 h-4" />
+                </button>
+              </span>
+            )}
+            {useRadius && radiusCity && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">
+                <MapPin className="w-3.5 h-3.5" />
+                {radiusKm}km od {radiusCity}
+                <button onClick={() => { setUseRadius(false); setPage(1); }} className="hover:text-orange-900">
                   <X className="w-4 h-4" />
                 </button>
               </span>

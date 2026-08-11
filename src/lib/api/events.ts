@@ -75,6 +75,12 @@ export const eventsApi = {
     return get<string[]>(`${EVENTS_BASE}/cities/${qs}`);
   },
 
+  getCityCoords: async (city: string): Promise<{ city: string; lat: number; lng: number }> => {
+    return get<{ city: string; lat: number; lng: number }>(
+      `${EVENTS_BASE}/city-coords/?city=${encodeURIComponent(city)}`
+    );
+  },
+
   // Get events by category (uses the list endpoint's category filter;
   // backend has no dedicated /by-category/ route, so we filter + slice client-side)
   getEventsByCategory: async (categoryId: number, limit = 10): Promise<EventListItem[]> => {
