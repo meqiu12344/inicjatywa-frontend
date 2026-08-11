@@ -53,10 +53,6 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden" suppressHydrationWarning>
         <MarketingTags />
         <Providers>
-          {/* MAINTENANCE MODE - Coming Soon Counter */}
-          {/* <ComingSoonCounter /> */}
-          
-          {/* ORIGINAL LAYOUT - COMMENTED OUT DURING MAINTENANCE */}
           <Navbar />
           
           <main className="">
