@@ -70,12 +70,11 @@ const eventTypeOptions: { value: EventType | ''; label: string }[] = [
   { value: 'voluntary', label: 'Dobrowolna wpłata' },
 ];
 
-// Polish cities
-const cities = [
-  'Warszawa', 'Kraków', 'Łódź', 'Wrocław', 'Poznań', 'Gdańsk', 
-  'Szczecin', 'Bydgoszcz', 'Lublin', 'Białystok', 'Katowice', 
-  'Gdynia', 'Częstochowa', 'Radom', 'Sosnowiec', 'Toruń',
-  'Kielce', 'Rzeszów', 'Gliwice', 'Zabrze', 'Olsztyn', 'Opole'
+const VOIVODESHIPS = [
+  'Dolnośląskie', 'Kujawsko-pomorskie', 'Lubelskie', 'Lubuskie',
+  'Łódzkie', 'Małopolskie', 'Mazowieckie', 'Opolskie',
+  'Podkarpackie', 'Podlaskie', 'Pomorskie', 'Śląskie',
+  'Świętokrzyskie', 'Warmińsko-mazurskie', 'Wielkopolskie', 'Zachodniopomorskie',
 ];
 
 function SearchPageContent() {
@@ -102,15 +101,29 @@ function SearchPageContent() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
   const [citySearch, setCitySearch] = useState('');
+  const [debouncedCitySearch, setDebouncedCitySearch] = useState('');
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState(searchParams.get('region') || '');
 
   const datePresets = useMemo(() => getDatePresets(), []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCitySearch(citySearch), 300);
+    return () => clearTimeout(t);
+  }, [citySearch]);
 
   // Debounce search query to prevent flickering results
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(timer);
   }, [query]);
+
+  const { data: citiesData } = useQuery({
+    queryKey: ['event-cities', debouncedCitySearch],
+    queryFn: () => eventsApi.getCities(debouncedCitySearch || undefined),
+    staleTime: 1000 * 60 * 2,
+    enabled: showCityDropdown,
+  });
 
   // Get categories
   const { data: categories } = useQuery({
@@ -123,6 +136,7 @@ function SearchPageContent() {
   const filters: EventFilters = useMemo(() => ({
     search: debouncedQuery || undefined,
     city: selectedCity || undefined,
+    region: selectedRegion || undefined,
     categories: selectedCategories.length > 0 
       ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
       : undefined,
@@ -133,7 +147,7 @@ function SearchPageContent() {
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [debouncedQuery, selectedCity, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
+  }), [debouncedQuery, selectedCity, selectedRegion, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
@@ -163,6 +177,7 @@ function SearchPageContent() {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (selectedCity) params.set('city', selectedCity);
+    if (selectedRegion) params.set('region', selectedRegion);
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
@@ -174,7 +189,7 @@ function SearchPageContent() {
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, selectedCity, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
+  }, [query, selectedCity, selectedRegion, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
 
   // Apply date preset
   const applyDatePreset = useCallback((preset: typeof datePresets[0]) => {
@@ -206,6 +221,7 @@ function SearchPageContent() {
   const clearFilters = useCallback(() => {
     setQuery('');
     setSelectedCity('');
+    setSelectedRegion('');
     setSelectedCategories([]);
     setDateFrom('');
     setDateTo('');
@@ -216,16 +232,10 @@ function SearchPageContent() {
     setPage(1);
   }, []);
 
-  const hasActiveFilters = query || selectedCity || selectedCategories.length > 0 || 
+  const hasActiveFilters = query || selectedCity || selectedRegion || selectedCategories.length > 0 || 
     dateFrom || dateTo || eventType || onlineOnly;
 
-  // Filter cities based on search
-  const filteredCities = useMemo(() => {
-    if (!citySearch) return cities;
-    return cities.filter(city => 
-      city.toLowerCase().includes(citySearch.toLowerCase())
-    );
-  }, [citySearch]);
+  const filteredCities = citiesData || [];
 
   // Handle search form submit
   const handleSearch = (e: React.FormEvent) => {
@@ -305,7 +315,7 @@ function SearchPageContent() {
                         className="fixed inset-0 z-10" 
                         onClick={() => setShowCityDropdown(false)} 
                       />
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 max-h-60 overflow-y-auto z-20">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-slate-200 max-h-60 overflow-y-auto z-40">
                         <button
                           type="button"
                           onClick={() => {
@@ -388,7 +398,7 @@ function SearchPageContent() {
               Więcej filtrów
               {hasActiveFilters && (
                 <span className="w-5 h-5 rounded-full bg-primary-600 text-white text-xs flex items-center justify-center">
-                  {[query, selectedCity, selectedCategories.length > 0, dateFrom || dateTo, eventType, onlineOnly].filter(Boolean).length}
+                  {[query, selectedCity, selectedRegion, selectedCategories.length > 0, dateFrom || dateTo, eventType, onlineOnly].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -506,6 +516,24 @@ function SearchPageContent() {
                 </div>
               </div>
 
+              {/* Voivodeship */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  <MapPin className="w-4 h-4 inline mr-2" />
+                  Województwo
+                </label>
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => { setSelectedRegion(e.target.value); setPage(1); }}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Wszystkie województwa</option>
+                  {VOIVODESHIPS.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Sort */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-3">
@@ -610,6 +638,15 @@ function SearchPageContent() {
                 <MapPin className="w-3.5 h-3.5" />
                 {selectedCity}
                 <button onClick={() => { setSelectedCity(''); setPage(1); }} className="hover:text-primary-900">
+                  <X className="w-4 h-4" />
+                </button>
+              </span>
+            )}
+            {selectedRegion && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
+                <MapPin className="w-3.5 h-3.5" />
+                woj. {selectedRegion}
+                <button onClick={() => { setSelectedRegion(''); setPage(1); }} className="hover:text-primary-900">
                   <X className="w-4 h-4" />
                 </button>
               </span>

@@ -141,6 +141,7 @@ export default function EventPage({ params }: EventPageProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const resolveCoords = async () => {
       if (!event || !event.location) {
@@ -169,7 +170,15 @@ export default function EventPage({ params }: EventPageProps) {
         return;
       }
       try {
-        const response = await fetch(`${API_BASE}/nominatim/?q=${encodeURIComponent(query)}`);
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(`${API_BASE}/nominatim/?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         const data = await response.json();
         if (cancelled) return;
         if (Array.isArray(data) && data[0]?.lat && data[0]?.lon) {
@@ -189,6 +198,9 @@ export default function EventPage({ params }: EventPageProps) {
 
     return () => {
       cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [event?.location, API_BASE]);
 

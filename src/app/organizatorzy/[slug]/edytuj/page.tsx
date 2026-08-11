@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 
 interface OrganizerProfile {
   id: number;
+  user_id?: number;
   name: string;
   slug: string;
   description: string;
@@ -30,6 +31,7 @@ interface OrganizerProfile {
   twitter: string | null;
   city: string;
   is_public: boolean;
+  can_edit?: boolean;
 }
 
 export default function EditOrganizerPage() {
@@ -189,6 +191,22 @@ export default function EditOrganizerPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Nie znaleziono organizatora</h1>
           <Link href="/profil" className="text-indigo-600 hover:underline">
             Wróć do profilu
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (organizer.can_edit === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Brak uprawnień</h1>
+          <p className="text-gray-600 mb-5">
+            Nie możesz edytować profilu innego organizatora.
+          </p>
+          <Link href={`/organizatorzy/${slug}`} className="text-indigo-600 hover:underline">
+            Wróć do profilu organizatora
           </Link>
         </div>
       </div>

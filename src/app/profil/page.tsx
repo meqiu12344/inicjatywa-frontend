@@ -79,6 +79,8 @@ export default function ProfilePage() {
   const [croppingImage, setCroppingImage] = useState<string | null>(null);
   const [croppingFile, setCroppingFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
 
   const purchaseStatusMap: Record<PromotionPurchase['status'], { label: string; className: string }> = {
     active: { label: 'Aktywna', className: 'bg-emerald-500/20 text-emerald-400' },
@@ -223,12 +225,17 @@ export default function ProfilePage() {
 
   // Mutacja usuwania konta
   const deleteAccountMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.delete('/auth/delete-account/');
+    mutationFn: async (password: string) => {
+      const refresh = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+      const response = await apiClient.delete('/auth/delete-account/', {
+        data: { password, refresh },
+      });
       return response.data;
     },
     onSuccess: () => {
       toast.success('Konto zostało usunięte');
+      setDeletePassword('');
+      setShowDeleteConfirm(false);
       logout();
       router.push('/');
     },
@@ -945,16 +952,46 @@ export default function ProfilePage() {
                   ) : (
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-white font-medium mb-3">Czy na pewno chcesz usunąć konto?</p>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Potwierdź hasłem
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showDeletePassword ? 'text' : 'password'}
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Wpisz aktualne hasło"
+                            className="w-full px-4 py-3 pr-12 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-colors"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowDeletePassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                          >
+                            {showDeletePassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
                       <div className="flex gap-3">
                         <button
-                          onClick={() => deleteAccountMutation.mutate()}
+                          onClick={() => {
+                            if (!deletePassword.trim()) {
+                              toast.error('Podaj hasło, aby usunąć konto');
+                              return;
+                            }
+                            deleteAccountMutation.mutate(deletePassword);
+                          }}
                           disabled={deleteAccountMutation.isPending}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
                         >
                           {deleteAccountMutation.isPending ? 'Usuwanie...' : 'Tak, usuń konto'}
                         </button>
                         <button
-                          onClick={() => setShowDeleteConfirm(false)}
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            setDeletePassword('');
+                          }}
                           className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white font-medium rounded-lg transition-colors"
                         >
                           Anuluj

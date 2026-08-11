@@ -161,7 +161,15 @@ export const authApi = {
    * Delete account
    */
   deleteAccount: async (data: { password: string }) => {
-    const response = await apiClient.post('/auth/delete-account/', data);
+    const refreshToken = typeof window !== 'undefined'
+      ? localStorage.getItem('refresh_token')
+      : null;
+    const response = await apiClient.delete('/auth/delete-account/', {
+      data: {
+        password: data.password,
+        refresh: refreshToken,
+      },
+    });
     return response.data;
   },
 
