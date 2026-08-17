@@ -40,13 +40,21 @@ export default function CalendarPage() {
 
   usePromotionImpressions(events);
 
-  // Grupuj wydarzenia według daty
+  // Show multi-day events on every calendar day they cover.
   const eventsByDate = events.reduce((acc: Record<string, EventListItem[]>, event) => {
-    const dateStr = event.start_date.split('T')[0];
-    if (!acc[dateStr]) {
-      acc[dateStr] = [];
-    }
-    acc[dateStr].push(event);
+    const start = parseISO(event.start_date);
+    const end = event.end_date ? parseISO(event.end_date) : start;
+    const eventStart = start < monthStart ? monthStart : start;
+    const eventEnd = end > monthEnd ? monthEnd : end;
+
+    eachDayOfInterval({ start: eventStart, end: eventEnd }).forEach((day) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      if (!acc[dateStr]) {
+        acc[dateStr] = [];
+      }
+      acc[dateStr].push(event);
+    });
+
     return acc;
   }, {});
 
