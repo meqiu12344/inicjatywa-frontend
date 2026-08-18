@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, Plus, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, Plus, ExternalLink, Infinity as InfinityIcon } from 'lucide-react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/events';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
@@ -40,8 +40,12 @@ export default function CalendarPage() {
 
   usePromotionImpressions(events);
 
+  // Wydarzenia stałe trwają latami, więc nie trafiają do siatki dni ani do listy miesiąca.
+  const datedEvents = useMemo(() => events.filter((event) => !event.is_permanent), [events]);
+  const permanentEvents = useMemo(() => events.filter((event) => event.is_permanent), [events]);
+
   // Show multi-day events on every calendar day they cover.
-  const eventsByDate = events.reduce((acc: Record<string, EventListItem[]>, event) => {
+  const eventsByDate = datedEvents.reduce((acc: Record<string, EventListItem[]>, event) => {
     const start = parseISO(event.start_date);
     const end = event.end_date ? parseISO(event.end_date) : start;
     const eventStart = start < monthStart ? monthStart : start;
@@ -346,7 +350,7 @@ export default function CalendarPage() {
               </span>
             </h2>
             <span className="text-slate-400 text-sm">
-              {events.length} {events.length === 1 ? 'wydarzenie' : events.length < 5 ? 'wydarzenia' : 'wydarzeń'}
+              {datedEvents.length} {datedEvents.length === 1 ? 'wydarzenie' : datedEvents.length < 5 ? 'wydarzenia' : 'wydarzeń'}
             </span>
           </div>
 
@@ -360,9 +364,9 @@ export default function CalendarPage() {
                 </div>
               ))}
             </div>
-          ) : events.length > 0 ? (
+          ) : datedEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {events.map((event) => (
+              {datedEvents.map((event) => (
                 <Link
                   key={event.id}
                   href={`/wydarzenia/${event.slug}`}
@@ -420,6 +424,55 @@ export default function CalendarPage() {
             </div>
           )}
         </div>
+
+        {/* Wydarzenia trwające cały czas — bez przypisania do konkretnego dnia */}
+        {!isLoading && permanentEvents.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-white">
+                Wydarzenia trwające <span className="text-amber-400">cały czas</span>
+              </h2>
+              <span className="text-slate-400 text-sm">
+                {permanentEvents.length} {permanentEvents.length === 1 ? 'wydarzenie' : permanentEvents.length < 5 ? 'wydarzenia' : 'wydarzeń'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {permanentEvents.map((event) => (
+                <Link
+                  key={event.id}
+                  href={`/wydarzenia/${event.slug}`}
+                  className="bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-amber-500/30 transition-all shadow-lg hover:shadow-amber-500/5 group"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-xl flex items-center justify-center border border-amber-500/20">
+                      <InfinityIcon className="w-6 h-6 text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white line-clamp-2 group-hover:text-amber-400 transition-colors">
+                        {event.title}
+                      </h3>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-slate-400">Wydarzenie trwa cały czas</p>
+                        {event.location && (
+                          <p className="text-sm text-slate-400 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-amber-500/70" />
+                            <span className="line-clamp-1">{event.location.city}</span>
+                          </p>
+                        )}
+                      </div>
+                      {event.category && (
+                        <span className="inline-block mt-2 px-2 py-0.5 bg-amber-500/10 text-amber-400 text-xs font-medium rounded">
+                          {event.category.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

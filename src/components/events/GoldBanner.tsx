@@ -44,8 +44,9 @@ export function GoldBanner({ events }: GoldBannerProps) {
 
 function GoldBannerCard({ event }: { event: EventListItem }) {
   const eventUrl = `/wydarzenia/${event.slug}`;
-  const startDate = new Date(event.start_date);
-  const formattedDate = format(startDate, 'd.MM.yyyy', { locale: pl });
+  const formattedDate = event.is_permanent
+    ? 'Wydarzenie trwa cały czas'
+    : format(new Date(event.start_date), 'd.MM.yyyy', { locale: pl });
 
   return (
     <Link href={eventUrl} className="block group" onClick={() => { if (event.is_promoted && event.promotion_id) eventsApi.recordClick(event.promotion_id); }}>

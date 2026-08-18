@@ -134,6 +134,7 @@ export interface EventListItem {
   slug: string;
   start_date: string;
   end_date?: string;
+  is_permanent?: boolean;
   location?: {
     city: string;
     region?: string;

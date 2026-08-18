@@ -27,9 +27,12 @@ export function EventCard({ event, featured = false }: EventCardProps) {
   }
 
   const eventUrl = `/wydarzenia/${event.slug}`;
-  const startDate = new Date(event.start_date);
-  const formattedDate = format(startDate, 'd MMMM yyyy', { locale: pl });
-  const formattedTime = format(startDate, 'HH:mm');
+  const dateDisplay = event.is_permanent
+    ? 'Wydarzenie trwa cały czas'
+    : (() => {
+        const startDate = new Date(event.start_date);
+        return `${format(startDate, 'd MMMM yyyy', { locale: pl })} • ${format(startDate, 'HH:mm')}`;
+      })();
 
   return (
     <Link
@@ -108,9 +111,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
           {/* Date */}
           <div className="flex items-center gap-2 text-sm text-primary-600 font-medium mb-2">
             <Calendar className="w-4 h-4" />
-            <span>{formattedDate}</span>
-            <span className="text-slate-400">•</span>
-            <span>{formattedTime}</span>
+            <span>{dateDisplay}</span>
           </div>
 
           {/* Title */}

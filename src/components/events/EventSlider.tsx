@@ -49,10 +49,15 @@ function getPriceDisplay(event: EventListItem) {
 function SliderEventCard({ event, showPromoBadge = false }: { event: EventListItem; showPromoBadge?: boolean }) {
   const [isHovered, setIsHovered] = useState(false);
   const eventUrl = `/wydarzenia/${event.slug}`;
-  const startDate = new Date(event.start_date);
-  const formattedDate = format(startDate, 'd.MM.yyyy', { locale: pl });
-  const endDate = event.end_date ? new Date(event.end_date) : null;
-  const formattedEndDate = endDate ? format(endDate, 'd.MM.yyyy', { locale: pl }) : null;
+  const dateDisplay = event.is_permanent
+    ? 'Wydarzenie trwa cały czas'
+    : (() => {
+        const startDate = new Date(event.start_date);
+        const endDate = event.end_date ? new Date(event.end_date) : null;
+        const formattedDate = format(startDate, 'd.MM.yyyy', { locale: pl });
+        const formattedEndDate = endDate ? format(endDate, 'd.MM.yyyy', { locale: pl }) : null;
+        return formattedEndDate ? `${formattedDate} - ${formattedEndDate}` : formattedDate;
+      })();
   const price = getPriceDisplay(event);
 
   return (
@@ -103,8 +108,7 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
             <div className="text-white space-y-2">
               <p className="flex items-center gap-2 text-sm">
                 <Calendar className="w-4 h-4" />
-                {formattedDate}
-                {formattedEndDate && ` - ${formattedEndDate}`}
+                {dateDisplay}
               </p>
               {event.location && (
                 <p className="flex items-center gap-2 text-sm">
