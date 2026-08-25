@@ -64,6 +64,8 @@ interface EventFormData {
   is_fully_booked: boolean;
   ticket_price: number | null;
   ticket_url: string;
+  organizer: string;
+  organizer_website: string;
   online_event: boolean;
   online_link: string;
   needs_poster: boolean;
@@ -577,6 +579,8 @@ export default function CreateEventPage() {
       is_fully_booked: false,
       ticket_price: null,
       ticket_url: '',
+      organizer: '',
+      organizer_website: '',
       online_event: false,
       online_link: '',
       needs_poster: false,
@@ -727,6 +731,8 @@ export default function CreateEventPage() {
           is_limited: data.is_limited,
           ticket_price: data.ticket_price,
           ticket_url: data.ticket_url || undefined,
+          organizer: data.organizer || undefined,
+          organizer_website: data.organizer_website || undefined,
           available_from: availableFrom,
           available_to: availableTo,
           online_event: data.online_event,
@@ -809,6 +815,8 @@ export default function CreateEventPage() {
           is_limited: data.is_limited,
           ticket_price: data.ticket_price,
           ticket_url: data.ticket_url || undefined,
+          organizer: data.organizer || undefined,
+          organizer_website: data.organizer_website || undefined,
           available_from: availableFrom,
           available_to: availableTo,
           online_event: data.online_event,
@@ -1513,6 +1521,37 @@ export default function CreateEventPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Dane prawdziwego organizatora — tylko dla zespołu dodającego wydarzenie w cudzym imieniu */}
+                {user?.is_staff && (
+                  <div className="bg-amber-50 rounded-xl p-5 border-2 border-amber-200 space-y-4">
+                    <div>
+                      <span className="font-bold text-gray-900">Dane organizatora wydarzenia</span>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Wypełnij, jeśli dodajesz wydarzenie w imieniu innego organizatora.
+                        Te dane pojawią się w sekcji „Organizator” zamiast profilu InicjatywaKatolicka.pl.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label-small">Nazwa organizatora</label>
+                        <input
+                          {...register('organizer')}
+                          className="form-input"
+                          placeholder="np. Parafia św. Jana"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label-small">Strona organizatora</label>
+                        <input
+                          {...register('organizer_website')}
+                          className="form-input"
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* AI Poster Option */}
                 <div className="ai-plakat-option">

@@ -275,6 +275,9 @@ export default function EventPage({ params }: EventPageProps) {
 
   const organizerProfile = event.organizer_profile;
   const organizerHref = organizerProfile?.slug ? `/organizatorzy/${organizerProfile.slug}` : null;
+  // Wydarzenie dodane przez redakcję — nie jesteśmy jego organizatorem.
+  const isPlatformEvent = Boolean(organizerProfile?.is_platform);
+  const organizerSiteHref = event.organizer_website || organizerHref;
 
   const eventTypeLabels = {
     free: 'Wydarzenie darmowe',
@@ -519,7 +522,89 @@ export default function EventPage({ params }: EventPageProps) {
             </div>
 
             {/* Organizer Info */}
-            {(organizerProfile || event.organizer) && (
+            {isPlatformEvent ? (
+              <>
+                <div className="card p-6 mt-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Organizator</h3>
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <User className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {event.organizer && (
+                        <span className="font-semibold text-slate-900 text-lg block">
+                          {event.organizer}
+                        </span>
+                      )}
+                      {organizerSiteHref && (
+                        event.organizer_website ? (
+                          <a
+                            href={event.organizer_website}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="inline-flex items-center gap-2 mt-1 font-medium text-primary-600 hover:underline"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Zobacz stronę organizatora
+                          </a>
+                        ) : (
+                          <Link
+                            href={organizerSiteHref}
+                            className="inline-flex items-center gap-2 mt-1 font-medium text-primary-600 hover:underline"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Zobacz stronę organizatora
+                          </Link>
+                        )
+                      )}
+                      <p className="text-sm text-slate-500 mt-2">
+                        Wydarzenie dodane przez zespół InicjatywaKatolicka.pl
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card p-6 mt-6 border-amber-200 bg-amber-50">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3">
+                    Jesteś Organizatorem tego wydarzenia?
+                  </h3>
+                  <div className="space-y-3 text-slate-700">
+                    <p>
+                      To wydarzenie zostało dodane przez zespół{' '}
+                      <strong>InicjatywaKatolicka.pl</strong>, aby pomóc dotrzeć z informacją
+                      o nim do większej liczby osób.
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      Nie jesteśmy Organizatorem tego wydarzenia.
+                    </p>
+                    <p>
+                      Jeśli to Twoje wydarzenie, dołącz do nas! Zarejestruj się{' '}
+                      <strong>bezpłatnie</strong> i samodzielnie dodawaj kolejne wydarzenia
+                      na InicjatywaKatolicka.pl.
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      Ty organizujesz. My pomagamy innym Cię odnaleźć.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 mt-5">
+                    <Link
+                      href="/rejestracja"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold transition-colors"
+                    >
+                      <Users className="w-4 h-4" />
+                      Załóż bezpłatne konto
+                    </Link>
+                    <Link
+                      href={`/wydarzenia/${event.slug}/zglos-blad`}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold transition-colors"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      Zgłoś zmianę w tym wydarzeniu
+                    </Link>
+                  </div>
+                </div>
+              </>
+            ) : (organizerProfile || event.organizer) && (
               organizerHref ? (
                 <Link href={organizerHref}>
                   <div className="card p-6 mt-6">

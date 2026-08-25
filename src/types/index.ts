@@ -92,6 +92,7 @@ export interface Event {
   tags: Tag[];
   location?: Location;
   organizer?: string;
+  organizer_website?: string;
   image?: string;
   image_thumbnail?: string;
   event_type: EventType;
@@ -125,6 +126,7 @@ export interface Event {
     logo?: string | null;
     verified: boolean;
     description?: string | null;
+    is_platform?: boolean;
   } | null;
 }
 
@@ -190,6 +192,7 @@ export interface CreateEventData {
     country?: string;
   };
   organizer?: string;
+  organizer_website?: string;
   event_type?: EventType;
   ticket_price?: number;
   participant_limit?: number | null;

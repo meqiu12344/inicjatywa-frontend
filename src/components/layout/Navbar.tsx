@@ -9,10 +9,10 @@ import { PendingEventsBadge } from '@/components/PendingEventsBadge';
 import { clsx } from 'clsx';
 import Image from 'next/image'
 
+// Katalog organizatorów tymczasowo ukryty w nawigacji — profile pod /organizatorzy/[slug] działają dalej.
 const navigation = [
   { name: 'Wydarzenia', href: '/' },
   { name: 'Kalendarz', href: '/kalendarz' },
-  { name: 'Organizatorzy', href: '/organizatorzy' },
   { name: 'Newsletter', href: '/newsletter' },
 ];
 

@@ -20,6 +20,8 @@ export interface CreateEventPaymentData {
     is_limited: boolean;
     ticket_price?: number | null;
     ticket_url?: string;
+    organizer?: string;
+    organizer_website?: string;
     available_from?: string;
     available_to?: string;
     online_event: boolean;
