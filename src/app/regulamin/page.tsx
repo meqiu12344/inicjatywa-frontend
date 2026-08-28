@@ -77,8 +77,8 @@ export default function TermsOfServicePage() {
               <span className="font-bold text-indigo-600 flex-shrink-0">9.</span>
               <div>
                 <strong>Reklamacje i kontakt:</strong> Wszelkie pytania i reklamacje należy kierować na adres:{' '}
-                <a href="mailto:kontakt@wydarzeniakatolickie.pl" className="text-indigo-600 hover:underline">
-                  kontakt@wydarzeniakatolickie.pl
+                <a href="mailto:media@inicjatywakatolicka.pl" className="text-indigo-600 hover:underline">
+                  media@inicjatywakatolicka.pl
                 </a>
               </div>
             </li>
