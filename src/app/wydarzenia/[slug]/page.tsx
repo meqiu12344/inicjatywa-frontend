@@ -745,79 +745,6 @@ export default function EventPage({ params }: EventPageProps) {
               </div>
             )}
 
-            {/* Share Section */}
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Udostępnij wydarzenie</h3>
-
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href={shareLinks.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1877F2] text-white hover:bg-[#166FE5] transition-colors font-medium"
-                >
-                  <Facebook className="w-5 h-5" />
-                  Facebook
-                </a>
-
-                <a
-                  href={shareLinks.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1DA1F2] text-white hover:bg-[#1A94DA] transition-colors font-medium"
-                >
-                  <Twitter className="w-5 h-5" />
-                  Twitter
-                </a>
-
-                <a
-                  href={shareLinks.email}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-600 text-white hover:bg-slate-700 transition-colors font-medium"
-                >
-                  <Mail className="w-5 h-5" />
-                  Email
-                </a>
-
-                <a
-                  href={shareLinks.whatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25D366] text-black hover:bg-[#20BD5A] transition-colors font-medium"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  WhatsApp
-                </a>
-
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareUrl);
-                    toast.success('Link skopiowany do schowka!');
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-medium border border-slate-200"
-                >
-                  <Share2 className="w-5 h-5" />
-                  Kopiuj link
-                </button>
-              </div>
-            </div>
-
-            {/* Tags */}
-            {event.tags?.length > 0 && (
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Tagi</h3>
-                <div className="flex flex-wrap gap-2">
-                  {event.tags.map((tag) => (
-                    <Link
-                      key={tag.id}
-                      href={`/?tag=${tag.id}`}
-                      className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm hover:bg-slate-200 transition-colors"
-                    >
-                      #{tag.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -1013,6 +940,80 @@ export default function EventPage({ params }: EventPageProps) {
                       </span>
                     </div>
                   ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Share Section */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Udostępnij wydarzenie</h3>
+
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href={shareLinks.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1877F2] text-white hover:bg-[#166FE5] transition-colors font-medium"
+                >
+                  <Facebook className="w-5 h-5" />
+                  Facebook
+                </a>
+
+                <a
+                  href={shareLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1DA1F2] text-white hover:bg-[#1A94DA] transition-colors font-medium"
+                >
+                  <Twitter className="w-5 h-5" />
+                  Twitter
+                </a>
+
+                <a
+                  href={shareLinks.email}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-600 text-white hover:bg-slate-700 transition-colors font-medium"
+                >
+                  <Mail className="w-5 h-5" />
+                  Email
+                </a>
+
+                <a
+                  href={shareLinks.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25D366] text-black hover:bg-[#20BD5A] transition-colors font-medium"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  WhatsApp
+                </a>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    toast.success('Link skopiowany do schowka!');
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-medium border border-slate-200"
+                >
+                  <Share2 className="w-5 h-5" />
+                  Kopiuj link
+                </button>
+              </div>
+            </div>
+
+            {/* Tags */}
+            {event.tags?.length > 0 && (
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Tagi</h3>
+                <div className="flex flex-wrap gap-2">
+                  {event.tags.map((tag) => (
+                    <Link
+                      key={tag.id}
+                      href={`/?tag=${tag.id}`}
+                      className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm hover:bg-slate-200 transition-colors"
+                    >
+                      #{tag.name}
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}

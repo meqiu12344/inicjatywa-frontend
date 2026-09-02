@@ -57,31 +57,31 @@ export function Navbar() {
                 href="https://www.facebook.com/inicjatywakatolicka"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-slate-500 hover:text-[#1877F2] hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2.5 text-[#1877F2] hover:text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                 aria-label="Facebook"
                 title="Facebook"
               >
-                <Facebook className="w-4 h-4" />
+                <Facebook className="w-5 h-5" />
               </a>
               <a
                 href="https://www.instagram.com/inicjatywakatolicka/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-slate-500 hover:text-[#E4405F] hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2.5 text-[#E4405F] hover:text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                 aria-label="Instagram"
                 title="Instagram"
               >
-                <Instagram className="w-4 h-4" />
+                <Instagram className="w-5 h-5" />
               </a>
               <a
                 href="https://www.youtube.com/@inicjatywakatolicka"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-slate-500 hover:text-[#FF0000] hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2.5 text-[#FF0000] hover:text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                 aria-label="YouTube"
                 title="YouTube"
               >
-                <Youtube className="w-4 h-4" />
+                <Youtube className="w-5 h-5" />
               </a>
             </div>
 
