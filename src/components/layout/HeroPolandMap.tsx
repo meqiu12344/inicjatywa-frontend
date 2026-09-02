@@ -117,8 +117,10 @@ export default function HeroPolandMap() {
       scrollWheelZoom: false, // let the page scroll over the map
       zoomControl: false,
       attributionControl: false,
-      minZoom: 5,
+      minZoom: 6,
       maxZoom: 12,
+      maxBounds: PL_BOUNDS,
+      maxBoundsViscosity: 0.8,
     });
 
     // Keep zoom buttons on the right, clear of the hero text on the left,
@@ -131,7 +133,7 @@ export default function HeroPolandMap() {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
     }).addTo(map);
-    map.fitBounds(PL_BOUNDS);
+    map.fitBounds(PL_BOUNDS, { padding: [8, 8] });
 
     // Navigate on popup click (SPA navigation).
     map.on('popupopen', (e: L.PopupEvent) => {

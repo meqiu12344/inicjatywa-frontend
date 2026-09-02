@@ -40,7 +40,7 @@ function HeroSection() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (cityInput.trim()) {
-      router.push(`/szukaj?city=${encodeURIComponent(cityInput.trim())}`);
+      router.push(`/szukaj?q=${encodeURIComponent(cityInput.trim())}`);
     } else {
       router.push('/szukaj');
     }
@@ -86,7 +86,7 @@ function HeroSection() {
                 type="text"
                 value={cityInput}
                 onChange={(e) => setCityInput(e.target.value)}
-                placeholder="Wpisz miasto..."
+                placeholder="Szukaj wydarzeń..."
                 className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 backdrop-blur-md shadow-2xl"
               />
             </div>
