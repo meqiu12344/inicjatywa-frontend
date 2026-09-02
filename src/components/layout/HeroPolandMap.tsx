@@ -131,7 +131,8 @@ export default function HeroPolandMap() {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
     }).addTo(map);
-    map.fitBounds(PL_BOUNDS, { padding: [8, 8] });
+    // Keep a predictable initial view centered on Poland on every screen size.
+    map.setView([52.1, 19.4], 6);
 
     // Navigate on popup click (SPA navigation).
     map.on('popupopen', (e: L.PopupEvent) => {
