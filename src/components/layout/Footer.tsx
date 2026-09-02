@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Facebook, Instagram, Mail, MapPin, Phone } from 'lucide-react';
+import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from 'lucide-react';
 import { post } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 
@@ -72,7 +72,7 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-3">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/inicjatywakatolicka"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 bg-slate-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors"
@@ -81,13 +81,22 @@ export function Footer() {
                 <Facebook className="w-4 h-4" />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/inicjatywakatolicka/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 bg-slate-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href="https://www.youtube.com/@inicjatywakatolicka"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-slate-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors"
+                aria-label="YouTube"
+              >
+                <Youtube className="w-4 h-4" />
               </a>
               <a
                 href="mailto:kontakt@wydarzeniakatolickie.pl"

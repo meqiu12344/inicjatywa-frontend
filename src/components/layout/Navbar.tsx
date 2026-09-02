@@ -54,7 +54,7 @@ export function Navbar() {
             {/* Social media links */}
             <div className="hidden sm:flex items-center gap-1 mr-2">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/inicjatywakatolicka"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-slate-500 hover:text-[#1877F2] hover:bg-slate-100 rounded-lg transition-colors"
@@ -64,7 +64,7 @@ export function Navbar() {
                 <Facebook className="w-4 h-4" />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/inicjatywakatolicka/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-slate-500 hover:text-[#E4405F] hover:bg-slate-100 rounded-lg transition-colors"
@@ -74,7 +74,7 @@ export function Navbar() {
                 <Instagram className="w-4 h-4" />
               </a>
               <a
-                href="https://youtube.com"
+                href="https://www.youtube.com/@inicjatywakatolicka"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-slate-500 hover:text-[#FF0000] hover:bg-slate-100 rounded-lg transition-colors"
