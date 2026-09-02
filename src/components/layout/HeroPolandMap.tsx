@@ -131,7 +131,10 @@ export default function HeroPolandMap() {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 12,
     }).addTo(map);
-    map.fitBounds(PL_BOUNDS, { padding: [8, 8] });
+    map.fitBounds(PL_BOUNDS, {
+      paddingTopLeft: [800, 8],
+      paddingBottomRight: [8, 8],
+    });
 
     // Navigate on popup click (SPA navigation).
     map.on('popupopen', (e: L.PopupEvent) => {
