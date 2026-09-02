@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Menu, X, User, Calendar, Plus, LogIn } from 'lucide-react';
+import { Menu, X, User, Calendar, Plus, LogIn, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AdminNotificationBadge } from '@/components/AdminNotificationBadge';
 import { PendingEventsBadge } from '@/components/PendingEventsBadge';
@@ -51,6 +51,40 @@ export function Navbar() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-2">
+            {/* Social media links */}
+            <div className="hidden sm:flex items-center gap-1 mr-2">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-slate-500 hover:text-[#1877F2] hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Facebook"
+                title="Facebook"
+              >
+                <Facebook className="w-4 h-4" />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-slate-500 hover:text-[#E4405F] hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Instagram"
+                title="Instagram"
+              >
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-slate-500 hover:text-[#FF0000] hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="YouTube"
+                title="YouTube"
+              >
+                <Youtube className="w-4 h-4" />
+              </a>
+            </div>
+
             {isLoading ? (
               <div className="w-8 h-8 bg-slate-100 rounded-full animate-pulse" />
             ) : isAuthenticated ? (

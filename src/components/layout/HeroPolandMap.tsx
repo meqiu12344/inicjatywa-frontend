@@ -119,8 +119,6 @@ export default function HeroPolandMap() {
       attributionControl: false,
       minZoom: 6,
       maxZoom: 12,
-      maxBounds: PL_BOUNDS,
-      maxBoundsViscosity: 0.8,
     });
 
     // Keep zoom buttons on the right, clear of the hero text on the left,
