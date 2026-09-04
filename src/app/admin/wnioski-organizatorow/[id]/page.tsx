@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/api/client';
@@ -13,6 +14,7 @@ import {
   MapPin,
   Globe,
   Briefcase,
+  Building2,
 } from 'lucide-react';
 
 interface RequestDetail {
@@ -50,6 +52,7 @@ interface RequestDetail {
   slug?: string;
   public_email?: string;
   public_phone?: string;
+  contact_phone?: string;
   facebook_url?: string;
   instagram_url?: string;
   youtube_url?: string;
@@ -212,10 +215,25 @@ export default function AdminRequestDetailPage(props: { params: Promise<{ id: st
               <div className="lg:col-span-2 space-y-6">
                 {/* Status badge */}
                 <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-slate-900">
-                      {request.organization_name}
-                    </h2>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                        {request.logo_url ? (
+                          <Image
+                            src={request.logo_url}
+                            alt={`Logo ${request.organization_name}`}
+                            width={64}
+                            height={64}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Building2 className="h-8 w-8 text-slate-400" />
+                        )}
+                      </div>
+                      <h2 className="truncate text-xl font-semibold text-slate-900">
+                        {request.organization_name}
+                      </h2>
+                    </div>
                     <span
                       className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm ${
                         request.status === 'pending'
@@ -289,12 +307,12 @@ export default function AdminRequestDetailPage(props: { params: Promise<{ id: st
                       </div>
                     )}
 
-                    {request.public_phone && (
+                    {(request.contact_phone || request.public_phone) && (
                       <div>
                         <label className="text-sm font-medium text-slate-600">
                           Telefon:
                         </label>
-                        <p className="text-slate-900 mt-1">{request.public_phone}</p>
+                        <p className="text-slate-900 mt-1">{request.contact_phone || request.public_phone}</p>
                       </div>
                     )}
 
