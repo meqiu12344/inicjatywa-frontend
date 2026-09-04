@@ -339,7 +339,7 @@ export default function AdminRequestDetailPage(props: { params: Promise<{ id: st
                           <Briefcase className="w-4 h-4" />
                           Opis organizacji:
                         </label>
-                        <p className="text-slate-700 mt-2 whitespace-pre-wrap">
+                        <p className="mt-2 whitespace-pre-wrap break-words text-slate-700">
                           {request.description}
                         </p>
                       </div>
@@ -350,7 +350,7 @@ export default function AdminRequestDetailPage(props: { params: Promise<{ id: st
                         <label className="text-sm font-medium text-slate-600">
                           Motywacja:
                         </label>
-                        <p className="text-slate-700 mt-2 whitespace-pre-wrap">
+                        <p className="mt-2 whitespace-pre-wrap break-words text-slate-700">
                           {request.motivation}
                         </p>
                       </div>
