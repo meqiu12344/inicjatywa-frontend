@@ -192,8 +192,8 @@ export function useRegisterForEvent() {
   
   return useMutation({
     mutationFn: (eventId: number) => eventsApi.registerForEvent(eventId),
-    onSuccess: (_, eventId) => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.details() });
       toast.success('Zarejestrowano na wydarzenie!');
     },
     onError: (error) => {
@@ -207,8 +207,8 @@ export function useCancelRegistration() {
   
   return useMutation({
     mutationFn: (eventId: number) => eventsApi.cancelRegistration(eventId),
-    onSuccess: (_, eventId) => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.details() });
       toast.success('Rejestracja anulowana');
     },
     onError: (error) => {
