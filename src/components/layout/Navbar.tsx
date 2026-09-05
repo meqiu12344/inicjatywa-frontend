@@ -21,7 +21,7 @@ export function Navbar() {
   const { user, profile, isAuthenticated, isLoading, isOrganizer, isAdmin, canCreateEvent, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200">
+    <header className="sticky top-0 z-[1001] bg-white/95 md:backdrop-blur-sm border-b border-slate-200">
       <nav className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
         <div className="flex items-center justify-between h-[10vh] 2xl:h-[12vh] min-h-[80px]">
           {/* Logo */}
@@ -191,6 +191,7 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
               aria-label="Menu"
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? (
                 <X className="w-5 h-5" />
@@ -206,11 +207,22 @@ export function Navbar() {
       {/* Mobile menu */}
       <div
         className={clsx(
-          'md:hidden fixed inset-0 top-[10vh] 2xl:top-[12vh] bg-white z-40 transition-all duration-300 mt-0 min-h-[calc(100vh-80px)]',
-          mobileMenuOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'
+          'md:hidden fixed inset-x-0 bottom-0 top-20 z-[1000] overflow-hidden transition-opacity duration-300',
+          mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         )}
       >
-        <div className="p-4 space-y-2 bg-white/95">
+        <button
+          type="button"
+          aria-label="Zamknij menu"
+          onClick={() => setMobileMenuOpen(false)}
+          className="absolute inset-0 z-0 bg-slate-950/35"
+        />
+        <div
+          className={clsx(
+            'absolute inset-y-0 right-0 z-10 w-[85vw] max-w-sm overflow-y-auto bg-white p-4 space-y-2 shadow-xl transition-transform duration-300',
+            mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          )}
+        >
           {navigation.map((item) => (
             <Link
               key={item.name}
