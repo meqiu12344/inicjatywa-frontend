@@ -117,9 +117,9 @@ export default function OrganizerRequestsPage() {
             <ArrowLeft className="h-5 w-5" />
             Powrót do panelu
           </Link>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Wnioski organizatorów</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Wnioski organizatorów</h1>
               <p className="text-gray-600 mt-1">Zarządzaj wnioskami o rolę organizatora</p>
             </div>
             <div className="flex gap-4">
@@ -133,10 +133,10 @@ export default function OrganizerRequestsPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Filter className="h-5 w-5 text-gray-400" />
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <Filter className="h-5 w-5 text-gray-400 shrink-0" />
             <span className="text-sm font-medium text-gray-700">Status:</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { value: 'all', label: 'Wszystkie' },
                 { value: 'pending', label: 'Oczekujące' },
@@ -197,13 +197,13 @@ export default function OrganizerRequestsPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900 truncate">
+                          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                            <h3 className="font-semibold text-gray-900 truncate min-w-0">
                               {request.organization_name}
                             </h3>
-                            {getStatusBadge(request.status)}
+                            <span className="shrink-0">{getStatusBadge(request.status)}</span>
                           </div>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 break-words">
                             {request.user.username} ({request.user.email})
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
@@ -246,8 +246,8 @@ export default function OrganizerRequestsPage() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Użytkownik</p>
-                    <p className="text-gray-900">{selectedRequest.user.username}</p>
-                    <p className="text-sm text-gray-600">{selectedRequest.user.email}</p>
+                    <p className="text-gray-900 break-words">{selectedRequest.user.username}</p>
+                    <p className="text-sm text-gray-600 break-words">{selectedRequest.user.email}</p>
                   </div>
 
                   {selectedRequest.organization_id && (
@@ -259,12 +259,12 @@ export default function OrganizerRequestsPage() {
 
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Opis działalności</p>
-                    <p className="text-gray-900 text-sm">{selectedRequest.description}</p>
+                    <p className="text-gray-900 text-sm break-words">{selectedRequest.description}</p>
                   </div>
 
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Motywacja</p>
-                    <p className="text-gray-900 text-sm">{selectedRequest.motivation}</p>
+                    <p className="text-gray-900 text-sm break-words">{selectedRequest.motivation}</p>
                   </div>
 
                   {selectedRequest.official_website && (
@@ -274,11 +274,11 @@ export default function OrganizerRequestsPage() {
                         href={selectedRequest.official_website} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-indigo-600 hover:underline flex items-center gap-1 text-sm"
+                        className="text-indigo-600 hover:underline flex items-center gap-1 text-sm break-all"
                       >
-                        <Globe className="h-4 w-4" />
+                        <Globe className="h-4 w-4 shrink-0" />
                         {selectedRequest.official_website}
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
                   )}
