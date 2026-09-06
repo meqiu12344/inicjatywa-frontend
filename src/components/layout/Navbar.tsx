@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, X, User, Calendar, Plus, LogIn, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminNotifications } from '@/hooks/useAdminNotifications';
+import { usePendingEventsNotifications } from '@/hooks/usePendingEventsNotifications';
 import { AdminNotificationBadge } from '@/components/AdminNotificationBadge';
 import { PendingEventsBadge } from '@/components/PendingEventsBadge';
 import { clsx } from 'clsx';
@@ -19,6 +21,8 @@ const navigation = [
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, isAuthenticated, isLoading, isOrganizer, isAdmin, canCreateEvent, logout } = useAuth();
+  const { notifications: adminNotifications } = useAdminNotifications();
+  const { notifications: pendingEventNotifications } = usePendingEventsNotifications();
 
   return (
     <header className="sticky top-0 z-[1001] bg-white/95 md:backdrop-blur-sm border-b border-slate-200">
@@ -89,11 +93,19 @@ export function Navbar() {
               <div className="w-8 h-8 bg-slate-100 rounded-full animate-pulse" />
             ) : isAuthenticated ? (
               <>
-                {/* Admin notifications badge */}
-                {user?.is_staff && <AdminNotificationBadge />}
+                {/* Admin notifications badge - hidden on mobile so the hamburger button stays reachable */}
+                {user?.is_staff && (
+                  <div className="hidden lg:block">
+                    <AdminNotificationBadge />
+                  </div>
+                )}
 
-                {/* Pending events badge */}
-                {user?.is_staff && <PendingEventsBadge />}
+                {/* Pending events badge - hidden on mobile so the hamburger button stays reachable */}
+                {user?.is_staff && (
+                  <div className="hidden lg:block">
+                    <PendingEventsBadge />
+                  </div>
+                )}
 
                 {/* Add event button - only for organizers/admins */}
                 {canCreateEvent && (
@@ -292,13 +304,39 @@ export function Navbar() {
                 </Link>
               )}
               {user?.is_staff && (
-                <Link
-                  href="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-4 py-3 text-base text-orange-600 hover:bg-orange-50 rounded-lg"
-                >
-                  Panel admina
-                </Link>
+                <>
+                  <Link
+                    href="/admin/wnioski-organizatorow"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between gap-3 px-4 py-3 text-base text-orange-600 hover:bg-orange-50 rounded-lg"
+                  >
+                    Nowe wnioski
+                    {adminNotifications.pending_count > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-orange-100 text-xs font-bold">
+                        {adminNotifications.pending_count}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/admin/wydarzenia"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between gap-3 px-4 py-3 text-base text-orange-600 hover:bg-orange-50 rounded-lg"
+                  >
+                    Wydarzenia do zatwierdzenia
+                    {pendingEventNotifications.pending_count > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-orange-100 text-xs font-bold">
+                        {pendingEventNotifications.pending_count}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 text-base text-orange-600 hover:bg-orange-50 rounded-lg"
+                  >
+                    Panel admina
+                  </Link>
+                </>
               )}
               <button
                 onClick={() => {
