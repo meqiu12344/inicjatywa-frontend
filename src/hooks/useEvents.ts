@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { getErrorMessage } from '@/lib/api/client';
-import type { EventFilters, CreateEventData } from '@/types';
+import type { Event, EventFilters, CreateEventData } from '@/types';
 
 // Query keys
 export const eventKeys = {
@@ -53,11 +53,12 @@ export function useInfiniteEvents(filters?: EventFilters) {
   });
 }
 
-export function useEvent(idOrSlug: string | number) {
+export function useEvent(idOrSlug: string | number, initialData?: Event) {
   return useQuery({
     queryKey: eventKeys.detail(idOrSlug),
     queryFn: () => eventsApi.getEvent(idOrSlug),
     enabled: !!idOrSlug,
+    initialData,
   });
 }
 
