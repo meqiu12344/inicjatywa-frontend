@@ -326,7 +326,7 @@ export default function OrganizerCommunityPage() {
             <h4 className="font-semibold text-amber-800 mb-1">Potrzebujesz pomocy?</h4>
             <p className="text-amber-700 text-sm">
               Jeśli masz pytania dotyczące organizowania wydarzeń lub korzystania z platformy, 
-              skontaktuj się z nami: <a href="mailto:kontakt@wydarzeniakatolickie.pl" className="text-blue-600 hover:underline">kontakt@wydarzeniakatolickie.pl</a>
+              skontaktuj się z nami: <a href="mailto:media@inicjatywakatolicka.pl" className="text-blue-600 hover:underline">media@inicjatywakatolicka.pl</a>
             </p>
           </div>
         </div>

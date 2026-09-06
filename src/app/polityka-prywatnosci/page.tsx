@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">1. Administrator danych</h2>
               <p className="text-gray-700">
-                Administratorem danych osobowych jest właściciel serwisu. Kontakt: <a href="mailto:kontakt@wydarzeniakatolickie.pl" className="text-indigo-600 hover:underline">kontakt@wydarzeniakatolickie.pl</a>
+                Administratorem danych osobowych jest właściciel serwisu. Kontakt: <a href="mailto:media@inicjatywakatolicka.pl" className="text-indigo-600 hover:underline">media@inicjatywakatolicka.pl</a>
               </p>
             </section>
 
@@ -93,7 +93,7 @@ export default function PrivacyPolicyPage() {
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">9. Kontakt</h2>
               <p className="text-gray-700">
-                Wszelkie pytania dotyczące naszej Polityki prywatności prosimy kierować na adres: <a href="mailto:kontakt@wydarzeniakatolickie.pl" className="text-indigo-600 hover:underline">kontakt@wydarzeniakatolickie.pl</a>
+                Wszelkie pytania dotyczące naszej Polityki prywatności prosimy kierować na adres: <a href="mailto:media@inicjatywakatolicka.pl" className="text-indigo-600 hover:underline">media@inicjatywakatolicka.pl</a>
               </p>
             </section>
           </div>

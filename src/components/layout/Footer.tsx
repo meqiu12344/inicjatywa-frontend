@@ -99,7 +99,7 @@ export function Footer() {
                 <Youtube className="w-4 h-4" />
               </a>
               <a
-                href="mailto:kontakt@wydarzeniakatolickie.pl"
+                href="mailto:media@inicjatywakatolicka.pl"
                 className="w-9 h-9 bg-slate-800 hover:bg-primary-600 rounded-lg flex items-center justify-center transition-colors"
                 aria-label="Email"
               >
