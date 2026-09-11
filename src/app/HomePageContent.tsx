@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -9,7 +9,9 @@ import { CategoryGrid, EventSlider, GoldBanner } from '@/components/events';
 import AdBanner from '@/components/ads/AdBanner';
 import PopupAd from '@/components/ads/PopupAd';
 import { useAuth } from '@/hooks/useAuth';
-import { useRecommendedEvents } from '@/hooks/useEvents';
+import { useCategorySliders, useGoldEvents, useLatestEvents, usePromotedEvents, useRecommendedEvents, useTop10Events } from '@/hooks/useEvents';
+import { useQuery } from '@tanstack/react-query';
+import { categoriesApi } from '@/lib/api/events';
 import type { Category, EventListItem } from '@/types';
 
 const HeroPolandMap = dynamic(() => import('@/components/layout/HeroPolandMap'), { ssr: false });
@@ -21,6 +23,33 @@ export interface HomePageData {
   top10Events: EventListItem[];
   categorySliders: { category_id: number; category_name: string; events: EventListItem[] }[];
   categories: Category[];
+}
+
+function useHomePageData(data: HomePageData): HomePageData {
+  const goldEvents = useGoldEvents();
+  const promotedEvents = usePromotedEvents();
+  const latestEvents = useLatestEvents(15);
+  const top10Events = useTop10Events();
+  const categorySliders = useCategorySliders();
+  const categories = useQuery({ queryKey: ['categories'], queryFn: categoriesApi.getCategories, initialData: data.categories });
+
+  useEffect(() => {
+    if (data.goldEvents.length === 0) goldEvents.refetch();
+    if (data.promotedEvents.length === 0) promotedEvents.refetch();
+    if (data.latestEvents.length === 0) latestEvents.refetch();
+    if (data.top10Events.length === 0) top10Events.refetch();
+    if (data.categorySliders.length === 0) categorySliders.refetch();
+    if (data.categories.length === 0) categories.refetch();
+  }, []);
+
+  return {
+    goldEvents: data.goldEvents.length ? data.goldEvents : goldEvents.data || [],
+    promotedEvents: data.promotedEvents.length ? data.promotedEvents : promotedEvents.data || [],
+    latestEvents: data.latestEvents.length ? data.latestEvents : latestEvents.data || [],
+    top10Events: data.top10Events.length ? data.top10Events : top10Events.data || [],
+    categorySliders: data.categorySliders.length ? data.categorySliders : categorySliders.data || [],
+    categories: data.categories.length ? data.categories : categories.data || [],
+  };
 }
 
 function HeroSection() {
@@ -83,19 +112,21 @@ function RecommendedEventsSection() {
 }
 
 export default function HomePageContent({ data }: { data: HomePageData }) {
+  const homePageData = useHomePageData(data);
+
   return (
     <>
       <HeroSection />
       <div className="container-page">
-        {data.goldEvents.length > 0 && <div className="mt-10"><GoldBanner events={data.goldEvents} /></div>}
+        {homePageData.goldEvents.length > 0 && <div className="mt-10"><GoldBanner events={homePageData.goldEvents} /></div>}
         <AdBanner id="ad-banner-1" />
         <RecommendedEventsSection />
-        <EventSlider title="Promowane wydarzenia" events={data.promotedEvents} icon={<Star className="w-6 h-6 text-amber-500" />} viewAllLink="/szukaj?promoted=true" showPromoBadges />
-        <EventSlider title="Najnowsze Wydarzenia" events={data.latestEvents} icon={<Clock className="w-6 h-6 text-primary-600" />} viewAllLink="/szukaj?ordering=-created_at" />
-        <EventSlider title="Top 10" events={data.top10Events.slice(0, 10)} icon={<TrendingUp className="w-6 h-6 text-emerald-600" />} viewAllLink="/szukaj?ordering=-views_count" />
+        <EventSlider title="Promowane wydarzenia" events={homePageData.promotedEvents} icon={<Star className="w-6 h-6 text-amber-500" />} viewAllLink="/szukaj?promoted=true" showPromoBadges />
+        <EventSlider title="Najnowsze Wydarzenia" events={homePageData.latestEvents} icon={<Clock className="w-6 h-6 text-primary-600" />} viewAllLink="/szukaj?ordering=-created_at" />
+        <EventSlider title="Top 10" events={homePageData.top10Events.slice(0, 10)} icon={<TrendingUp className="w-6 h-6 text-emerald-600" />} viewAllLink="/szukaj?ordering=-views_count" />
         <AdBanner id="ad-banner-2" />
-        {data.categorySliders.map((slider) => <EventSlider key={slider.category_id} title={slider.category_name} events={slider.events} viewAllLink={`/szukaj?category=${slider.category_id}`} />)}
-        {data.categories.length > 0 && <CategoryGrid categories={data.categories} initialVisibleCount={10} />}
+        {homePageData.categorySliders.map((slider) => <EventSlider key={slider.category_id} title={slider.category_name} events={slider.events} viewAllLink={`/szukaj?category=${slider.category_id}`} />)}
+        {homePageData.categories.length > 0 && <CategoryGrid categories={homePageData.categories} initialVisibleCount={10} />}
         <div className="h-8" />
       </div>
     </>

@@ -27,13 +27,14 @@ const categoryColors = [
 
 export function CategoryGrid({ categories, initialVisibleCount = 9 }: CategoryGridProps) {
   const [showAll, setShowAll] = useState(false);
+  const categoriesWithEvents = categories.filter((category) => (category.event_count ?? 0) > 0);
 
-  if (!categories || categories.length === 0) {
+  if (categoriesWithEvents.length === 0) {
     return null;
   }
 
-  const visibleCategories = showAll ? categories : categories.slice(0, initialVisibleCount);
-  const hasMore = categories.length > initialVisibleCount;
+  const visibleCategories = showAll ? categoriesWithEvents : categoriesWithEvents.slice(0, initialVisibleCount);
+  const hasMore = categoriesWithEvents.length > initialVisibleCount;
 
   return (
     <section className="py-8 mt-4">
