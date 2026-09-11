@@ -9,15 +9,14 @@ export default function PopupAd({ slotId = 'ad-popup-entry' }: { slotId?: string
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    try {
-      const a = adsApi.getAdForSlot(slotId);
-      if (!a) return;
-      setAd(a);
-      // always show on load (every refresh)
-      setVisible(true);
-    } catch (err) {
-      // noop
-    }
+    let cancelled = false;
+    adsApi.getAdForSlot(slotId).then((ad) => {
+      if (!cancelled && ad) {
+        setAd(ad);
+        setVisible(true);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [slotId]);
 
   const close = useCallback(() => {

@@ -62,7 +62,7 @@ const EMPTY_FORM: AdFormData = {
 interface AdModalProps {
   ad?: Ad | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: () => Promise<void>;
 }
 
 function AdModal({ ad, onClose, onSave }: AdModalProps) {
@@ -116,7 +116,7 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
     handleFileChange(e.dataTransfer.files?.[0]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { setError('Nazwa jest wymagana.'); return; }
     if (form.type === 'image' && !form.imageUrl.trim()) { setError('Wybierz obraz lub wklej URL.'); return; }
@@ -134,11 +134,11 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
     };
 
     if (ad) {
-      adsApi.updateAd(ad.id, payload);
+      await adsApi.updateAd(ad.id, payload);
     } else {
-      adsApi.createAd(payload);
+      await adsApi.createAd(payload);
     }
-    onSave();
+    await onSave();
   };
 
   const set = (key: keyof AdFormData, value: unknown) =>
@@ -172,7 +172,7 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Typ reklamy</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['image', 'html', 'google_adsense'] as AdType[]).map((t) => (
+              {(['image'] as AdType[]).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -495,12 +495,13 @@ export default function AdsAdminPage() {
   const [modalAd, setModalAd] = useState<Ad | null | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<'slots' | 'library'>('slots');
 
-  const reload = useCallback(() => {
-    setAds(adsApi.getAds());
-    setSlots(adsApi.getSlots());
+  const reload = useCallback(async () => {
+    const [loadedAds, loadedSlots] = await Promise.all([adsApi.getAds(), adsApi.getSlots()]);
+    setAds(loadedAds);
+    setSlots(loadedSlots);
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { reload().catch(() => {}); }, [reload]);
 
   if (authLoading) {
     return (
@@ -522,22 +523,22 @@ export default function AdsAdminPage() {
     );
   }
 
-  const handleAssign = (slotId: string, adId: string | null) => {
-    adsApi.assignAd(slotId, adId);
-    reload();
+  const handleAssign = async (slotId: string, adId: string | null) => {
+    await adsApi.assignAd(slotId, adId);
+    await reload();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Na pewno usunąć tę reklamę?')) return;
-    adsApi.deleteAd(id);
-    reload();
+    await adsApi.deleteAd(id);
+    await reload();
   };
 
-  const handleToggle = (id: string) => {
+  const handleToggle = async (id: string) => {
     const ad = ads.find((a) => a.id === id);
     if (!ad) return;
-    adsApi.updateAd(id, { active: !ad.active });
-    reload();
+    await adsApi.updateAd(id, { active: !ad.active });
+    await reload();
   };
 
   const activeCount = ads.filter((a) => a.active).length;
@@ -657,7 +658,7 @@ export default function AdsAdminPage() {
         <AdModal
           ad={modalAd}
           onClose={() => setModalAd(undefined)}
-          onSave={() => { setModalAd(undefined); reload(); }}
+          onSave={async () => { setModalAd(undefined); await reload(); }}
         />
       )}
     </div>

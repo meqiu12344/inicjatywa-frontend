@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adsApi, Ad } from '@/lib/api/ads';
+import { apiClient } from '@/lib/api/client';
+
+interface Advertisement {
+  id: number;
+  title: string;
+  image: string | null;
+  alt_text: string | null;
+  click_url: string | null;
+}
 
 interface AdBannerProps {
   id: string;
@@ -9,10 +17,27 @@ interface AdBannerProps {
 }
 
 export default function AdBanner({ id, className = '' }: AdBannerProps) {
-  const [ad, setAd] = useState<Ad | null | undefined>(undefined); // undefined = loading
+  const [ad, setAd] = useState<Advertisement | null | undefined>(undefined);
 
   useEffect(() => {
-    setAd(adsApi.getAdForSlot(id));
+    let cancelled = false;
+
+    apiClient
+      .get<Advertisement[]>(`/advertisements/public/by_placement/?placement=homepage&slot=${encodeURIComponent(id)}`)
+      .then(({ data }) => {
+        if (!cancelled) {
+          const activeAd = data[0] ?? null;
+          setAd(activeAd);
+          if (activeAd) {
+            apiClient.post(`/advertisements/public/${activeAd.id}/record_impression/`).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAd(null);
+      });
+
+    return () => { cancelled = true; };
   }, [id]);
 
   // Still loading from localStorage
@@ -21,7 +46,13 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
   // No active ad assigned – show nothing (clean UX)
   if (ad === null) return null;
 
-  const imageSrc = ad.type === 'image' ? ad.imageUrl?.trim() || null : null;
+  const imageSrc = ad.image?.trim() || null;
+
+  if (!imageSrc) return null;
+
+  const recordClick = () => {
+    apiClient.post(`/advertisements/public/${ad.id}/record_click/`).catch(() => {});
+  };
 
   return (
     <div
@@ -33,18 +64,18 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
         <span className="ad-banner-label">Reklama</span>
 
         {/* ── Image ad ── */}
-        {ad.type === 'image' && imageSrc && (
-          <div className="ad-banner-content ad-banner-content--image">
-            {ad.linkUrl ? (
+        <div className="ad-banner-content ad-banner-content--image">
+            {ad.click_url ? (
               <a
-                href={ad.linkUrl}
+                href={ad.click_url}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="block w-full"
+                onClick={recordClick}
               >
                 <img
                   src={imageSrc}
-                  alt={ad.name}
+                  alt={ad.alt_text || ad.title}
                   className="w-full object-contain"
                   style={{ display: 'block' }}
                 />
@@ -52,28 +83,12 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
             ) : (
               <img
                 src={imageSrc}
-                alt={ad.name}
+                alt={ad.alt_text || ad.title}
                 className="w-full object-contain"
                 style={{ display: 'block' }}
               />
             )}
-          </div>
-        )}
-
-        {/* ── HTML / embed ad ── */}
-        {ad.type === 'html' && (
-          <div
-            className="ad-banner-content"
-            dangerouslySetInnerHTML={{ __html: ad.htmlCode ?? '' }}
-          />
-        )}
-
-        {/* ── Google AdSense ── */}
-        {ad.type === 'google_adsense' && (
-          <div className="ad-banner-content" style={{ minHeight: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="text-xs text-gray-400">Google AdSense: {ad.adsenseSlot}</span>
-          </div>
-        )}
+        </div>
 
       </div>
     </div>

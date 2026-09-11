@@ -1,6 +1,4 @@
-// ─── Ad Management API ───────────────────────────────────────────────────────
-// Currently uses localStorage for persistence (no backend endpoint yet).
-// When a backend endpoint is ready, replace storage calls with apiClient calls.
+import { apiClient } from '@/lib/api/client';
 
 export type AdType = 'image' | 'html' | 'google_adsense';
 
@@ -8,192 +6,106 @@ export interface Ad {
   id: string;
   name: string;
   type: AdType;
-  /** For image ads: image URL */
   imageUrl?: string;
-  /** For image ads: click-through URL */
   linkUrl?: string;
-  /** For html ads: raw HTML/embed code */
   htmlCode?: string;
-  /** For adsense: client ID slot */
   adsenseSlot?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  slotId?: string | null;
 }
 
 export interface AdSlot {
   id: string;
-  /** Human-readable label shown in admin */
   label: string;
-  /** Description of where it appears */
   description: string;
-  /** Currently assigned ad ID (null = empty) */
   adId: string | null;
 }
 
-// ─── Default slots matching page.tsx placements ───────────────────────────────
+interface ApiAdvertisement {
+  id: number;
+  title: string;
+  image: string | null;
+  click_url: string | null;
+  status: string;
+  ad_slot: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const DEFAULT_SLOTS: AdSlot[] = [
-  {
-    id: 'ad-banner-1',
-    label: 'Baner #1 – Strona główna (po wyróżnionych)',
-    description: 'Wyświetlany po sekcji złotych banerów, przed rekomendacjami.',
-    adId: null,
-  },
-  {
-    id: 'ad-banner-2',
-    label: 'Baner #2 – Strona główna (po Top 10)',
-    description: 'Wyświetlany po sekcji Top 10, przed kategoriami.',
-    adId: null,
-  },
-  {
-    id: 'ad-popup-entry',
-    label: 'Popup – Modal przy wejściu',
-    description: 'Wyświetlany jako modal przy wejściu na stronę (np. wydarzenia).',
-    adId: null,
-  },
+  { id: 'ad-banner-1', label: 'Baner #1 - Strona główna', description: 'Po wyróżnionych wydarzeniach.', adId: null },
+  { id: 'ad-banner-2', label: 'Baner #2 - Strona główna', description: 'Po sekcji Top 10.', adId: null },
+  { id: 'ad-popup-entry', label: 'Popup - przy wejściu', description: 'Modal przy wejściu na stronę.', adId: null },
 ];
 
-const STORAGE_KEY_ADS = 'ik_ads';
-const STORAGE_KEY_SLOTS = 'ik_ad_slots';
+function toAd(ad: ApiAdvertisement): Ad {
+  return {
+    id: String(ad.id), name: ad.title, type: 'image', imageUrl: ad.image || undefined,
+    linkUrl: ad.click_url || undefined, active: ad.status === 'active',
+    createdAt: ad.created_at, updatedAt: ad.updated_at, slotId: ad.ad_slot,
+  };
+}
 
-function loadAds(): Ad[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_ADS);
-    return raw ? (JSON.parse(raw) as Ad[]) : [];
-  } catch {
-    return [];
+async function imageToFile(value?: string): Promise<File | null> {
+  if (!value?.startsWith('data:')) return null;
+  const response = await fetch(value);
+  const blob = await response.blob();
+  return new File([blob], 'advertisement-image', { type: blob.type || 'image/png' });
+}
+
+async function buildFormData(data: Partial<Ad>): Promise<FormData> {
+  if (data.type && data.type !== 'image') {
+    throw new Error('Aktualnie obsługiwane są wyłącznie reklamy obrazkowe.');
   }
+  const payload = new FormData();
+  if (data.name !== undefined) payload.set('title', data.name);
+  if (data.linkUrl !== undefined) payload.set('click_url', data.linkUrl);
+  if (data.active !== undefined) payload.set('status', data.active ? 'active' : 'paused');
+  if (data.slotId !== undefined) payload.set('ad_slot', data.slotId || '');
+  payload.set('placement', 'homepage');
+  const image = await imageToFile(data.imageUrl);
+  if (image) payload.set('image', image);
+  return payload;
 }
 
-function saveAds(ads: Ad[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(ads));
-  } catch (err) {
-    // Handle quota exceeded or other localStorage errors by attempting to reduce payload
-    // 1) Remove large inline images (data:) and oversized HTML snippets
-    try {
-      const reduced = ads.map((a) => {
-        const copy: Ad = { ...a } as Ad;
-        if (copy.imageUrl && copy.imageUrl.startsWith('data:') && copy.imageUrl.length > 100 * 1024) {
-          copy.imageUrl = '';
-        }
-        if (copy.htmlCode && copy.htmlCode.length > 5 * 1024) {
-          copy.htmlCode = '';
-        }
-        return copy;
-      });
-      localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(reduced));
-      console.warn('Saved reduced ads payload to localStorage due to storage limits. Some large fields were removed.');
-    } catch (err2) {
-      // 2) As a last resort, save only metadata to avoid blowing the quota
-      try {
-        const meta = ads.map((a) => ({
-          id: a.id,
-          name: a.name,
-          type: a.type,
-          linkUrl: a.linkUrl,
-          adsenseSlot: a.adsenseSlot,
-          active: a.active,
-          createdAt: a.createdAt,
-          updatedAt: a.updatedAt,
-        }));
-        localStorage.setItem(STORAGE_KEY_ADS, JSON.stringify(meta));
-        console.warn('Saved ads metadata only to localStorage as a fallback due to storage limits.');
-      } catch (err3) {
-        // give up — log and continue without throwing to avoid breaking admin UI
-        // eslint-disable-next-line no-console
-        console.error('Failed to persist ads to localStorage after multiple fallbacks:', err3);
-      }
-    }
-  }
+async function getAllAds(): Promise<Ad[]> {
+  const { data } = await apiClient.get<ApiAdvertisement[] | { results: ApiAdvertisement[] }>('/advertisements/admin/');
+  return (Array.isArray(data) ? data : data.results).map(toAd);
 }
-
-function loadSlots(): AdSlot[] {
-  if (typeof window === 'undefined') return DEFAULT_SLOTS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SLOTS);
-    if (!raw) return DEFAULT_SLOTS;
-    const saved = JSON.parse(raw) as AdSlot[];
-    // Merge: keep saved adId assignments but always include all default slots
-    return DEFAULT_SLOTS.map((def) => {
-      const found = saved.find((s) => s.id === def.id);
-      return found ? { ...def, adId: found.adId } : def;
-    });
-  } catch {
-    return DEFAULT_SLOTS;
-  }
-}
-
-function saveSlots(slots: AdSlot[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY_SLOTS, JSON.stringify(slots));
-}
-
-// ─── Public API ───────────────────────────────────────────────────────────────
 
 export const adsApi = {
-  // ── Ads CRUD ──────────────────────────────────────────────────────────────
-  getAds(): Ad[] {
-    return loadAds();
+  getAds: getAllAds,
+
+  async getSlots(): Promise<AdSlot[]> {
+    const ads = await getAllAds();
+    return DEFAULT_SLOTS.map((slot) => ({ ...slot, adId: ads.find((ad) => ad.slotId === slot.id)?.id || null }));
   },
 
-  getAdById(id: string): Ad | undefined {
-    return loadAds().find((a) => a.id === id);
+  async createAd(data: Omit<Ad, 'id' | 'createdAt' | 'updatedAt'>): Promise<Ad> {
+    const { data: created } = await apiClient.post<ApiAdvertisement>('/advertisements/admin/', await buildFormData(data), { headers: { 'Content-Type': 'multipart/form-data' } });
+    return toAd(created);
   },
 
-  createAd(data: Omit<Ad, 'id' | 'createdAt' | 'updatedAt'>): Ad {
-    const ads = loadAds();
-    const now = new Date().toISOString();
-    const ad: Ad = {
-      ...data,
-      id: `ad_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      createdAt: now,
-      updatedAt: now,
-    };
-    saveAds([...ads, ad]);
-    return ad;
+  async updateAd(id: string, data: Partial<Omit<Ad, 'id' | 'createdAt'>>): Promise<Ad> {
+    const { data: updated } = await apiClient.patch<ApiAdvertisement>(`/advertisements/admin/${id}/`, await buildFormData(data), { headers: { 'Content-Type': 'multipart/form-data' } });
+    return toAd(updated);
   },
 
-  updateAd(id: string, data: Partial<Omit<Ad, 'id' | 'createdAt'>>): Ad {
-    const ads = loadAds();
-    const idx = ads.findIndex((a) => a.id === id);
-    if (idx === -1) throw new Error(`Ad ${id} not found`);
-    const updated: Ad = { ...ads[idx], ...data, updatedAt: new Date().toISOString() };
-    ads[idx] = updated;
-    saveAds(ads);
-    return updated;
+  async deleteAd(id: string): Promise<void> {
+    await apiClient.delete(`/advertisements/admin/${id}/`);
   },
 
-  deleteAd(id: string): void {
-    const ads = loadAds().filter((a) => a.id !== id);
-    saveAds(ads);
-    // Also unassign from any slot
-    const slots = loadSlots().map((s) => (s.adId === id ? { ...s, adId: null } : s));
-    saveSlots(slots);
+  async assignAd(slotId: string, adId: string | null): Promise<void> {
+    const ads = await getAllAds();
+    const current = ads.find((ad) => ad.slotId === slotId);
+    if (current && current.id !== adId) await this.updateAd(current.id, { slotId: null });
+    if (adId) await this.updateAd(adId, { slotId });
   },
 
-  // ── Slots ─────────────────────────────────────────────────────────────────
-  getSlots(): AdSlot[] {
-    return loadSlots();
-  },
-
-  assignAd(slotId: string, adId: string | null): AdSlot {
-    const slots = loadSlots();
-    const idx = slots.findIndex((s) => s.id === slotId);
-    if (idx === -1) throw new Error(`Slot ${slotId} not found`);
-    slots[idx] = { ...slots[idx], adId };
-    saveSlots(slots);
-    return slots[idx];
-  },
-
-  /** Returns the active Ad for a given slot ID, or null */
-  getAdForSlot(slotId: string): Ad | null {
-    const slots = loadSlots();
-    const slot = slots.find((s) => s.id === slotId);
-    if (!slot?.adId) return null;
-    const ad = loadAds().find((a) => a.id === slot.adId && a.active);
-    return ad ?? null;
+  async getAdForSlot(slotId: string): Promise<Ad | null> {
+    const { data } = await apiClient.get<ApiAdvertisement[]>(`/advertisements/public/by_placement/?placement=homepage&slot=${encodeURIComponent(slotId)}`);
+    return data[0] ? toAd(data[0]) : null;
   },
 };
