@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, DragEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { adsApi, Ad, AdSlot, AdType } from '@/lib/api/ads';
+import { getErrorMessage } from '@/lib/api/client';
 import {
   Shield,
   ArrowLeft,
@@ -133,12 +134,16 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
       active: form.active,
     };
 
-    if (ad) {
-      await adsApi.updateAd(ad.id, payload);
-    } else {
-      await adsApi.createAd(payload);
+    try {
+      if (ad) {
+        await adsApi.updateAd(ad.id, payload);
+      } else {
+        await adsApi.createAd(payload);
+      }
+      await onSave();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Nie udało się zapisać reklamy.'));
     }
-    await onSave();
   };
 
   const set = (key: keyof AdFormData, value: unknown) =>

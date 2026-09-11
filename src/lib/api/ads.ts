@@ -52,7 +52,9 @@ async function imageToFile(value?: string): Promise<File | null> {
   if (!value?.startsWith('data:')) return null;
   const response = await fetch(value);
   const blob = await response.blob();
-  return new File([blob], 'advertisement-image', { type: blob.type || 'image/png' });
+  const type = blob.type || 'image/png';
+  const extension = type === 'image/jpeg' ? 'jpg' : type.split('/')[1] || 'png';
+  return new File([blob], `advertisement-image.${extension}`, { type });
 }
 
 async function buildFormData(data: Partial<Ad>): Promise<FormData> {
@@ -61,7 +63,10 @@ async function buildFormData(data: Partial<Ad>): Promise<FormData> {
   }
   const payload = new FormData();
   if (data.name !== undefined) payload.set('title', data.name);
-  if (data.linkUrl !== undefined) payload.set('click_url', data.linkUrl);
+  if (data.linkUrl !== undefined) {
+    const url = data.linkUrl.trim();
+    payload.set('click_url', url && !/^https?:\/\//i.test(url) ? `https://${url}` : url);
+  }
   if (data.active !== undefined) payload.set('status', data.active ? 'active' : 'paused');
   if (data.slotId !== undefined) payload.set('ad_slot', data.slotId || '');
   payload.set('placement', 'homepage');
