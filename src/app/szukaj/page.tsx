@@ -29,7 +29,11 @@ function buildEventsQuery(searchParams: SearchParams): string {
     const value = firstValue(searchParams[source]);
     if (value) params.set(target, value);
   });
-  (firstValue(searchParams.categories) || '').split(',').filter(Boolean).forEach((category) => params.append('categories', category));
+  (firstValue(searchParams.categories) || '')
+    .split(',')
+    .map((category) => category.trim())
+    .filter((category) => /^\d+$/.test(category))
+    .forEach((category) => params.append('categories', category));
   return params.toString();
 }
 

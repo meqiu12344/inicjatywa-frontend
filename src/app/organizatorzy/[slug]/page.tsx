@@ -18,9 +18,14 @@ async function getData<T>(path: string): Promise<T | null> {
 
 export default async function OrganizerProfilePage({ params }: PageProps) {
   const { slug } = await params;
+  const eventsParams = new URLSearchParams({
+    organizer: slug,
+    page_size: '6',
+    upcoming: 'true',
+  });
   const [organizer, events, reviews] = await Promise.all([
     getData(`/organizers/${encodeURIComponent(slug)}/`),
-    getData<{ results: EventListItem[] }>(`/events/?organizer=${encodeURIComponent(slug)}&page_size=6&upcoming=true`),
+    getData<{ results: EventListItem[] }>(`/events/?${eventsParams.toString()}`),
     getData(`/organizers/${encodeURIComponent(slug)}/reviews/?page=1`),
   ]);
 
