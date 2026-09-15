@@ -15,6 +15,10 @@ interface CalendarPageProps {
   initialEvents: PaginatedResponse<EventListItem>;
 }
 
+function getEventHref(event: EventListItem): string {
+  return `/wydarzenia/${event.slug}-${event.id}`;
+}
+
 export default function CalendarPage({ initialEvents }: CalendarPageProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -280,7 +284,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                   {selectedDayEvents.map((event) => (
                     <Link
                       key={event.id}
-                      href={`/wydarzenia/${event.slug}`}
+                      href={getEventHref(event)}
                       className="block p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl border border-slate-600/30 hover:border-amber-500/30 transition-all group"
                     >
                       <h4 className="font-semibold text-white line-clamp-2 group-hover:text-amber-400 transition-colors">
@@ -375,7 +379,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
               {datedEvents.map((event) => (
                 <Link
                   key={event.id}
-                  href={`/wydarzenia/${event.slug}`}
+                  href={getEventHref(event)}
                   className="bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-amber-500/30 transition-all shadow-lg hover:shadow-amber-500/5 group"
                 >
                   <div className="flex items-start gap-4">
@@ -447,7 +451,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
               {permanentEvents.map((event) => (
                 <Link
                   key={event.id}
-                  href={`/wydarzenia/${event.slug}`}
+                  href={getEventHref(event)}
                   className="bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-amber-500/30 transition-all shadow-lg hover:shadow-amber-500/5 group"
                 >
                   <div className="flex items-start gap-4">
