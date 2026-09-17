@@ -10,33 +10,19 @@ interface EventPageProps {
 }
 
 async function getEvent(slug: string): Promise<Event | null> {
-  try {
-    const response = await fetch(`${getBackendUrl()}/api/events/${encodeURIComponent(slug)}/`, {
-      next: { revalidate },
-    });
+  const response = await fetch(`${getBackendUrl()}/api/events/${encodeURIComponent(slug)}/`, {
+    next: { revalidate },
+  });
 
-    if (response.ok) {
-      return response.json() as Promise<Event>;
-    }
-
-    // Older API deployments may support only numeric event IDs.
-    const listResponse = await fetch(
-      `${getBackendUrl()}/api/events/?page_size=100&search=${encodeURIComponent(slug)}`,
-      { next: { revalidate } },
-    );
-    if (!listResponse.ok) return null;
-
-    const list = await listResponse.json() as { results?: Array<{ id: number; slug: string }> };
-    const matchingEvent = list.results?.find((event) => event.slug === slug);
-    if (!matchingEvent) return null;
-
-    const eventResponse = await fetch(`${getBackendUrl()}/api/events/${matchingEvent.id}/`, {
-      next: { revalidate },
-    });
-    return eventResponse.ok ? (eventResponse.json() as Promise<Event>) : null;
-  } catch {
+  if (response.status === 404) {
     return null;
   }
+
+  if (!response.ok) {
+    throw new Error(`Event API returned ${response.status}`);
+  }
+
+  return response.json() as Promise<Event>;
 }
 
 export default async function EventPage({ params }: EventPageProps) {

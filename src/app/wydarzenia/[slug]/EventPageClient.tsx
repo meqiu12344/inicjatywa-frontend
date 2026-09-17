@@ -97,7 +97,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   const slug = resolvedParams.slug;
   const router = useRouter();
 
-  const { data: event, isLoading, error } = useEvent(slug, initialEvent);
+  const { data: event, isLoading } = useEvent(slug, initialEvent);
   const { isAuthenticated, user, isOrganizer } = useAuth();
   const registerMutation = useRegisterForEvent();
   const cancelMutation = useCancelRegistration();
@@ -210,7 +210,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
     return <EventPageSkeleton />;
   }
 
-  if (error || !event) {
+  if (!event) {
     notFound();
   }
 
