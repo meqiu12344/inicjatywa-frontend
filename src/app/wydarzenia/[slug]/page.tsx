@@ -15,7 +15,25 @@ async function getEvent(slug: string): Promise<Event | null> {
       next: { revalidate },
     });
 
-    return response.ok ? (response.json() as Promise<Event>) : null;
+    if (response.ok) {
+      return response.json() as Promise<Event>;
+    }
+
+    // Older API deployments may support only numeric event IDs.
+    const listResponse = await fetch(
+      `${getBackendUrl()}/api/events/?page_size=100&search=${encodeURIComponent(slug)}`,
+      { next: { revalidate } },
+    );
+    if (!listResponse.ok) return null;
+
+    const list = await listResponse.json() as { results?: Array<{ id: number; slug: string }> };
+    const matchingEvent = list.results?.find((event) => event.slug === slug);
+    if (!matchingEvent) return null;
+
+    const eventResponse = await fetch(`${getBackendUrl()}/api/events/${matchingEvent.id}/`, {
+      next: { revalidate },
+    });
+    return eventResponse.ok ? (eventResponse.json() as Promise<Event>) : null;
   } catch {
     return null;
   }
