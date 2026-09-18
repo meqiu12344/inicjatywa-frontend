@@ -15,6 +15,7 @@ import {
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
+import { authApi } from '@/lib/api/auth';
 import { paymentsApi } from '@/lib/api/payments';
 import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
@@ -506,9 +507,30 @@ const formStyles = `
 export default function CreateEventPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAuthenticated, user, profile } = useAuthStore();
+  const { isAuthenticated, user, updateProfile, updateUser } = useAuthStore();
   const hydrated = useHydration();
-  const isOrganizer = user?.is_staff || profile?.role === 'organizer';
+  const {
+    data: currentAccount,
+    isFetchedAfterMount: accountChecked,
+    isError: accountError,
+    isFetching: checkingAccount,
+    refetch: refreshAccount,
+  } = useQuery({
+    queryKey: ['auth', 'create-event', user?.id],
+    queryFn: authApi.getCurrentUser,
+    enabled: hydrated && isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    retry: 1,
+  });
+  const isOrganizer = currentAccount?.user.is_staff || currentAccount?.profile.role === 'organizer';
+
+  useEffect(() => {
+    if (accountChecked && !accountError && currentAccount && currentAccount.user.id === user?.id) {
+      updateUser(currentAccount.user);
+      updateProfile(currentAccount.profile);
+    }
+  }, [accountChecked, accountError, currentAccount, user?.id, updateUser, updateProfile]);
   
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -533,10 +555,10 @@ export default function CreateEventPage() {
   useEffect(() => {
     if (hydrated && !isAuthenticated) {
       router.push('/logowanie?redirect=/wydarzenia/dodaj');
-    } else if (hydrated && isAuthenticated && !isOrganizer) {
+    } else if (hydrated && isAuthenticated && accountChecked && !accountError && !isOrganizer) {
       router.push('/zostan-organizatorem');
     }
-  }, [hydrated, isAuthenticated, isOrganizer, router]);
+  }, [hydrated, isAuthenticated, accountChecked, accountError, isOrganizer, router]);
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -1419,6 +1441,21 @@ export default function CreateEventPage() {
 
   if (!hydrated || !isAuthenticated) {
     return null;
+  }
+
+  if (accountError) {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center" role="alert">
+        <p>Nie udało się sprawdzić uprawnień konta.</p>
+        <button type="button" onClick={() => refreshAccount()} disabled={checkingAccount} className="btn-primary mt-4">
+          Spróbuj ponownie
+        </button>
+      </div>
+    );
+  }
+
+  if (!accountChecked || !isOrganizer) {
+    return <div className="container mx-auto px-4 py-12 text-center" role="status">Sprawdzanie uprawnień...</div>;
   }
 
   const steps = [

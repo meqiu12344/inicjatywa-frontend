@@ -132,8 +132,8 @@ export const adminApi = {
     return get<OrganizerRequest>(`${AUTH_ADMIN_BASE}/organizer-requests/${id}/`);
   },
 
-  approveOrganizerRequest: async (id: number, adminNotes?: string): Promise<{ message: string; request: OrganizerRequest }> => {
-    return post<{ message: string; request: OrganizerRequest }>(
+  approveOrganizerRequest: async (id: number, adminNotes?: string): Promise<{ message: string; request: OrganizerRequest; notification_sent?: boolean }> => {
+    return post<{ message: string; request: OrganizerRequest; notification_sent?: boolean }>(
       `${AUTH_ADMIN_BASE}/organizer-requests/${id}/approve/`,
       { admin_notes: adminNotes }
     );

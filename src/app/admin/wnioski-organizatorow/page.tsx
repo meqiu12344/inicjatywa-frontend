@@ -47,8 +47,12 @@ export default function OrganizerRequestsPage() {
 
   const approveMutation = useMutation({
     mutationFn: (id: number) => adminApi.approveOrganizerRequest(id),
-    onSuccess: () => {
-      toast.success('Wniosek został zatwierdzony');
+    onSuccess: (data) => {
+      if (data.notification_sent === false) {
+        toast.error('Wniosek zatwierdzony, ale nie udało się wysłać e-maila. Powiadom użytkownika o decyzji.', { duration: 8000 });
+      } else {
+        toast.success('Wniosek został zatwierdzony');
+      }
       queryClient.invalidateQueries({ queryKey: ['organizer-requests'] });
       queryClient.invalidateQueries({ queryKey: ['organizer-request-stats'] });
       setSelectedRequest(null);
