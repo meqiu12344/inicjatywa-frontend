@@ -59,6 +59,7 @@ export function useEvent(idOrSlug: string | number, initialData?: Event) {
     queryFn: () => eventsApi.getEvent(idOrSlug),
     enabled: !!idOrSlug,
     initialData,
+    staleTime: initialData ? 5 * 60 * 1000 : 0, // 5 min if has initialData, else refetch immediately
   });
 }
 

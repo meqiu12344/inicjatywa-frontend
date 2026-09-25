@@ -60,6 +60,15 @@ export default function AdminDashboard() {
 
   const adminModules = [
     {
+      title: 'IK Media Hub',
+      description: 'Dostęp dla mediów, materiały prasowe i historia pobrań',
+      href: '/admin/prasa',
+      icon: FileText,
+      stats: null,
+      statsLabel: '',
+      color: 'bg-cyan-600',
+    },
+    {
       title: 'Wnioski organizatorów',
       description: 'Zarządzaj wnioskami o rolę organizatora',
       href: '/admin/wnioski-organizatorow',

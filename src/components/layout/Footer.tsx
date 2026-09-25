@@ -15,6 +15,7 @@ const footerLinks = {
     { name: 'Szukaj wydarzeń', href: '/szukaj' },
   ],
   informacje: [
+    { name: 'Dla mediów', href: '/dla-mediow' },
     { name: 'Newsletter', href: '/newsletter' },
     { name: 'FAQ', href: '/regulamin' },
     { name: 'Regulamin', href: '/regulamin' },

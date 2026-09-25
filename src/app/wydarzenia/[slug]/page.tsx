@@ -3,7 +3,7 @@ import EventPageClient from './EventPageClient';
 import { getBackendUrl } from '@/lib/env';
 import type { Event } from '@/types';
 
-export const revalidate = 60;
+export const revalidate = 10;
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
