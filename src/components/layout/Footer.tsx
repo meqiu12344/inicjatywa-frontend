@@ -117,6 +117,7 @@ export function Footer() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="text-sm text-slate-400 hover:text-white transition-colors"
                   >
                     {link.name}
@@ -133,6 +134,7 @@ export function Footer() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="text-sm text-slate-400 hover:text-white transition-colors"
                   >
                     {link.name}
@@ -149,6 +151,7 @@ export function Footer() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="text-sm text-slate-400 hover:text-white transition-colors"
                   >
                     {link.name}

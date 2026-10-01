@@ -12,7 +12,7 @@ import { EventListItem } from '@/types';
 import type { PaginatedResponse } from '@/lib/api/client';
 
 interface CalendarPageProps {
-  initialEvents: PaginatedResponse<EventListItem>;
+  initialEvents?: PaginatedResponse<EventListItem>;
 }
 
 function getEventHref(event: EventListItem): string {
@@ -27,7 +27,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
   const monthEnd = endOfMonth(currentMonth);
   
   // Pobierz wydarzenia dla bieżącego miesiąca
-  const { data: eventsData, isLoading } = useQuery({
+  const { data: eventsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['events', 'calendar', format(currentMonth, 'yyyy-MM')],
     queryFn: () => eventsApi.getEvents({
       date_from: format(monthStart, 'yyyy-MM-dd'),
@@ -36,6 +36,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
     }),
     initialData: initialEvents,
   });
+  const hasLoadError = isError && !eventsData;
 
   // Deduplicate events by ID
   const events = useMemo(() => {
@@ -279,6 +280,8 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                     </div>
                   ))}
                 </div>
+              ) : hasLoadError ? (
+                <p className="text-slate-400 py-8 text-center">Nie udało się pobrać wydarzeń.</p>
               ) : selectedDayEvents.length > 0 ? (
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                   {selectedDayEvents.map((event) => (
@@ -373,6 +376,13 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                   <div className="h-3 bg-slate-700 rounded w-2/3" />
                 </div>
               ))}
+            </div>
+          ) : hasLoadError ? (
+            <div className="text-center py-16 text-slate-300">
+              <p>Nie udało się pobrać wydarzeń.</p>
+              <button type="button" onClick={() => refetch()} className="mt-4 px-5 py-2 bg-amber-500 text-slate-900 font-semibold rounded-lg">
+                Spróbuj ponownie
+              </button>
             </div>
           ) : datedEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

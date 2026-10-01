@@ -49,6 +49,11 @@
 .press-file > span { flex: 1; overflow-wrap: anywhere; }
 .press-file svg { flex-shrink: 0; }
 .press-file small { display: block; color: #596a74; }
+.press-preview { margin: 12px 0; }
+.press-preview-content { margin-top: 12px; }
+.press-preview-content img, .press-preview-content video { display: block; width: 100%; aspect-ratio: 4 / 3; max-height: 440px; object-fit: contain; background: #f2f5f6; border: 1px solid var(--press-border); border-radius: 6px; }
+.press-preview-content video { aspect-ratio: 16 / 9; }
+.press-preview-content audio { display: block; width: 100%; height: 54px; }
 .press-upload { display: grid; gap: 12px; margin-top: 24px; }
 .press-detail > button { margin-top: 20px; }
 .press-tabs { display: flex; gap: 8px; overflow-x: auto; border-bottom: 1px solid var(--press-border); margin-bottom: 24px; }

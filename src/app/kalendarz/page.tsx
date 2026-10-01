@@ -12,19 +12,21 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-async function getCurrentMonthEvents(): Promise<PaginatedResponse<EventListItem>> {
+async function getCurrentMonthEvents(): Promise<PaginatedResponse<EventListItem> | undefined> {
   const now = new Date();
   const dateFrom = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
   const dateTo = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-  const response = await fetch(`${getBackendUrl()}/api/events/?date_from=${dateFrom}&date_to=${dateTo}&page_size=100`, {
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Calendar API returned ${response.status}`);
+  try {
+    const response = await fetch(`${getBackendUrl()}/api/events/?date_from=${dateFrom}&date_to=${dateTo}&page_size=100`, {
+      cache: 'no-store',
+    });
+    if (response.ok) {
+      return await response.json() as PaginatedResponse<EventListItem>;
+    }
+    console.error(`Calendar API returned ${response.status}`);
+  } catch (error) {
+    console.error('Calendar API request failed', error);
   }
-
-  return response.json() as Promise<PaginatedResponse<EventListItem>>;
 }
 
 export default async function CalendarPage() {

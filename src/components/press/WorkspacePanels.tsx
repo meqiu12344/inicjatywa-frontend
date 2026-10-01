@@ -12,6 +12,7 @@ export function QueryFailure({ error, retry }: { error: unknown; retry: () => vo
 
 interface DashboardData {
   materials: number; downloads: number; saved: number; partners?: number; pending_access?: number; pending_materials?: number; interested?: number;
+  storage?: { upload_backend: 'cloudinary' | 'local'; cloud_files: number; local_files: number; max_file_size: number };
   formats: { attachment__material__kind: string; count: number }[];
   recent_downloads: { id: number; attachment__original_name: string; attachment__material__title: string; created_at: string }[];
 }
@@ -23,6 +24,7 @@ export function Dashboard({ userId, admin = false }: { userId: number; admin?: b
   const data = query.data;
   const metrics = admin ? [['Materiały', data.materials], ['Partnerzy', data.partners], ['Do weryfikacji', data.pending_materials], ['Nowe wnioski', data.pending_access], ['Pobrania', data.downloads], ['Zainteresowania', data.interested]] : [['Dostępne materiały', data.materials], ['Moje pobrania', data.downloads], ['Zapisane', data.saved]];
   return <section><h2>{admin ? 'Pulpit redakcyjny' : 'Pulpit partnera'}</h2><div className="press-metrics">{metrics.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value ?? 0}</strong></div>)}</div>
+    {admin && data.storage && <section className="press-section"><h3>Magazyn plików</h3><dl className="press-rights"><div><dt>Nowe załączniki</dt><dd>{data.storage.upload_backend === 'cloudinary' ? 'Cloudinary · dostęp chroniony' : 'Prywatny katalog lokalny'}</dd></div><div><dt>Cloudinary / lokalne</dt><dd>{data.storage.cloud_files} / {data.storage.local_files}</dd></div><div><dt>Limit pojedynczego pliku</dt><dd>{Math.round(data.storage.max_file_size / 1024 / 1024)} MiB</dd></div></dl></section>}
     <div className="press-dashboard-grid"><section><h3>Pobrania według formatu</h3>{data.formats.length === 0 && <p className="press-muted">Brak pobrań.</p>}{data.formats.map(row => <div className="press-bar" key={row.attachment__material__kind}><span>{pressKinds[row.attachment__material__kind]}<b>{row.count}</b></span><meter min={0} max={Math.max(data.downloads, 1)} value={row.count} /></div>)}</section>
       <section><h3>{admin ? 'Ostatnie pobrania' : 'Moja ostatnia aktywność'}</h3>{data.recent_downloads.length === 0 && <p className="press-muted">Brak aktywności.</p>}{data.recent_downloads.map(item => <div className="press-activity" key={item.id}><strong>{item.attachment__material__title}</strong><span>{item.attachment__original_name}</span><time>{new Date(item.created_at).toLocaleString('pl-PL')}</time></div>)}</section></div>
   </section>;

@@ -11,7 +11,7 @@ export interface PressRights {
   rights_owner: string; author: string; source: string; license: string; credit: string;
   allowed_media: string[]; license_expires_at: string | null;
 }
-export interface PressAttachment extends PressRights { id: number; original_name: string; size: number }
+export interface PressAttachment extends PressRights { id: number; original_name: string; size: number; storage_backend?: 'local' | 'cloudinary' }
 export interface PressMaterial extends PressRights {
   id: number; title: string; description: string; kind: string; event: number | null;
   event_title: string | null; author: string; license: string; credit: string;
@@ -48,9 +48,8 @@ export async function downloadPressFile(attachment: PressAttachment) {
   return downloadPressResource(`/press/attachments/${attachment.id}/download/`, attachment.original_name);
 }
 
-export async function downloadPressResource(path: string, filename: string) {
-  let blob: Blob;
-  try { blob = (await apiClient.get<Blob>(path, { responseType: 'blob' })).data; }
+export async function fetchPressBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  try { return (await apiClient.get<Blob>(path, { responseType: 'blob', signal, timeout: 90000 })).data; }
   catch (error) {
     if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
       const text = await error.response.data.text();
@@ -60,6 +59,10 @@ export async function downloadPressResource(path: string, filename: string) {
     }
     throw error;
   }
+}
+
+export async function downloadPressResource(path: string, filename: string) {
+  const blob = await fetchPressBlob(path);
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
