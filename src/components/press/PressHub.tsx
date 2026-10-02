@@ -1,15 +1,16 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useDeferredValue, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, BarChart3, Bell, Bookmark, Check, ChevronLeft, ChevronRight, Download, FileText, KeyRound, LayoutDashboard, Plus, Save, Search, Settings2, ShieldCheck, Upload, Users, X } from 'lucide-react';
+import { Archive, BarChart3, Bell, Bookmark, Check, ChevronLeft, ChevronRight, Download, FileText, KeyRound, LayoutDashboard, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Upload, Users, X } from 'lucide-react';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import { apiClient } from '@/lib/api/client';
 import { downloadPressFile, downloadPressResource, pressError, pressKinds, pressStatuses, pressWorkflow, pressMedia, pressLocalDate, splitPressValues, PressAccess, PressDownload, PressMaterial, PressPage } from '@/lib/api/press';
 import { AttachmentRights, BookmarkPanel, Dashboard, IntegrationsPanel, InterestsPanel, PreferencesPanel, RightsFields, WorkflowPanel } from './WorkspacePanels';
 import MediaPreview from './MediaPreview';
+import { pressExtendedFeaturesEnabled } from '@/lib/api/press';
 import './press.css';
 
 type AccessState = { is_staff: boolean; can_submit: boolean; access: PressAccess | null };
@@ -61,6 +62,53 @@ function Application({ access, onDone }: { access: PressAccess | null; onDone: (
   </section>;
 }
 
+type EventChoice = { id: number; title: string; start_date: string; organizer: string; status: string };
+
+function EventSelector({ material }: { material?: PressMaterial }) {
+  const userId = useAuthStore(state => state.user?.id);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<{ id: number; title: string } | null>(
+    material?.event ? { id: material.event, title: material.event_title || 'Wybrane wydarzenie' } : null,
+  );
+  const events = useQuery({
+    queryKey: ['press', userId, 'event-choices', deferredSearch, page],
+    queryFn: async () => (await apiClient.get<PressPage<EventChoice>>('/press/events/', { params: { search: deferredSearch, page } })).data,
+    enabled: open, retry: false, staleTime: 0, gcTime: 0,
+  });
+  function close() { dialog.current?.close(); setOpen(false); }
+  return <div className="press-event-selector">
+    <span id="press-event-label">Powiązane wydarzenie (opcjonalne)</span>
+    <input type="hidden" name="event" value={selected?.id ?? ''} />
+    {selected && <strong className="press-event-title">{selected.title}</strong>}
+    <div className="press-actions">
+      <button type="button" onClick={() => { dialog.current?.showModal(); setOpen(true); }}><Search size={18} />{selected ? 'Zmień wydarzenie' : 'Wybierz wydarzenie'}</button>
+      {selected && <button type="button" title="Usuń powiązanie" aria-label="Usuń powiązanie" onClick={() => setSelected(null)}><X size={18} /></button>}
+    </div>
+    <dialog ref={dialog} className="press-event-dialog" aria-labelledby="press-event-dialog-title" onClose={() => setOpen(false)} onCancel={() => setOpen(false)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); } }}>
+      <div className="press-row"><h2 id="press-event-dialog-title">Wybierz wydarzenie</h2><button type="button" onClick={close} title="Zamknij wybór wydarzenia" aria-label="Zamknij wybór wydarzenia"><X size={20} /></button></div>
+      <label className="press-event-search">Szukaj wydarzenia<input type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>
+      <div className="press-event-results" aria-busy={events.isFetching}>
+        {events.isPending && <p role="status">Ładowanie wydarzeń...</p>}
+        {events.isError && <><Feedback error={pressError(events.error)} /><button type="button" onClick={() => void events.refetch()}>Spróbuj ponownie</button></>}
+        {!events.isError && events.data?.count === 0 && <p>Brak wydarzeń spełniających kryteria.</p>}
+        {!events.isError && events.data?.results.map(event => <button type="button" className="press-item" key={event.id} onClick={() => { setSelected(event); close(); }}>
+          <strong>{event.title}</strong>
+          <span>{new Date(event.start_date).toLocaleDateString('pl-PL')} · {event.organizer} · {event.status}</span>
+        </button>)}
+      </div>
+      {events.data && (events.data.next || events.data.previous) && <nav className="press-pagination" aria-label="Strony wydarzeń">
+        <button type="button" title="Poprzednia strona" aria-label="Poprzednia strona" disabled={!events.data.previous || events.isFetching} onClick={() => setPage(page - 1)}><ChevronLeft size={18} /></button>
+        <span>Strona {page} · {events.data.count} wyników</span>
+        <button type="button" title="Następna strona" aria-label="Następna strona" disabled={!events.data.next || events.isFetching} onClick={() => setPage(page + 1)}><ChevronRight size={18} /></button>
+      </nav>}
+    </dialog>
+  </div>;
+}
+
 function MaterialEditor({ material, admin, onDone, onClose }: { material?: PressMaterial; admin: boolean; onDone: (id: number) => void; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -70,7 +118,8 @@ function MaterialEditor({ material, admin, onDone, onClose }: { material?: Press
     const values = Object.fromEntries(form.entries());
     const payload = { ...values, event: values.event ? Number(values.event) : null,
       allowed_media: form.getAll('allowed_media'), tags: splitPressValues(form.get('tags')),
-      selected_partners: splitPressValues(form.get('selected_partners')).map(Number), urgent: values.urgent === 'on',
+      selected_partners: splitPressValues(form.get('selected_partners')).map(Number),
+      ...(pressExtendedFeaturesEnabled ? { urgent: values.urgent === 'on' } : {}),
       license_expires_at: values.license_expires_at ? new Date(String(values.license_expires_at)).toISOString() : null,
       embargo_until: values.embargo_until ? new Date(String(values.embargo_until)).toISOString() : null,
       available_from: values.available_from ? new Date(String(values.available_from)).toISOString() : new Date().toISOString() };
@@ -84,29 +133,31 @@ function MaterialEditor({ material, admin, onDone, onClose }: { material?: Press
   return <form className="press-form press-section" onSubmit={submit}>
     <div className="press-row"><h2>{material ? 'Edycja materiału' : 'Nowy materiał'}</h2><button type="button" onClick={onClose} title="Zamknij edycję" aria-label="Zamknij edycję"><X size={20} /></button></div>
     <Feedback error={error} />
-    <label>Tytuł<input name="title" required maxLength={250} defaultValue={material?.title} /></label>
-    <label>Treść / opis<textarea name="description" rows={8} required maxLength={20000} defaultValue={material?.description} /></label>
+    <label>Tytuł (wymagane)<input name="title" required maxLength={250} defaultValue={material?.title} /></label>
+    <label>Treść / opis (wymagane)<textarea name="description" rows={8} required maxLength={20000} defaultValue={material?.description} /></label>
     <div className="press-fields">
-      <label>Format<select name="kind" defaultValue={material?.kind ?? 'release'}>{Object.entries(pressKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <label>ID powiązanego wydarzenia<input name="event" type="number" min={1} defaultValue={material?.event ?? ''} /></label>
-      <label>Autor<input name="author" required maxLength={200} defaultValue={material?.author} /></label>
-      <label>Wymagany podpis<input name="credit" required maxLength={300} defaultValue={material?.credit} /></label>
-      <label>Kontakt prasowy<input name="contact_email" type="email" required defaultValue={material?.contact_email} /></label>
-      <label>Dostępny od<input name="available_from" type="datetime-local" defaultValue={pressLocalDate(material?.available_from)} /></label>
-      <label>Region<input name="region" maxLength={100} defaultValue={material?.region} /></label>
-      <label>Miasto<input name="city" maxLength={100} defaultValue={material?.city} /></label>
-      <label>Temat<input name="topic" maxLength={100} defaultValue={material?.topic} /></label>
-      <label>Tagi (oddzielone przecinkami)<input name="tags" defaultValue={material?.tags?.join(', ')} /></label>
-      <label>Osoba kontaktowa<input name="contact_name" maxLength={200} defaultValue={material?.contact_name} /></label>
-      <label>Telefon dla mediów<input name="contact_phone" type="tel" maxLength={40} defaultValue={material?.contact_phone} /></label>
+      <label>Format (opcjonalne, domyślnie komunikat)<select name="kind" defaultValue={material?.kind ?? 'release'}>{material?.kind === 'program' && !pressExtendedFeaturesEnabled && <option value="program" hidden>Materiał prasowy</option>}{Object.entries(pressKinds).filter(([key]) => pressExtendedFeaturesEnabled || key !== 'program').map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <EventSelector material={material} />
+      <label>Autor (wymagane)<input name="author" required maxLength={200} defaultValue={material?.author} /></label>
+      <label>Podpis przy publikacji (wymagane)<input name="credit" required maxLength={300} placeholder="Np. fot. Jan Kowalski / Fundacja" defaultValue={material?.credit} /></label>
+      <label>E-mail kontaktowy dla mediów (wymagane)<input name="contact_email" type="email" required defaultValue={material?.contact_email} /></label>
+      <label>Dostępny od (opcjonalne, domyślnie teraz)<input name="available_from" type="datetime-local" defaultValue={pressLocalDate(material?.available_from)} /></label>
+      <label>Region (opcjonalne)<input name="region" maxLength={100} defaultValue={material?.region} /></label>
+      <label>Miasto (opcjonalne)<input name="city" maxLength={100} defaultValue={material?.city} /></label>
+      <label>Temat (opcjonalne)<input name="topic" maxLength={100} defaultValue={material?.topic} /></label>
+      <label>Tagi (opcjonalne, oddzielone przecinkami)<input name="tags" defaultValue={material?.tags?.join(', ')} /></label>
+      <label>Osoba kontaktowa (opcjonalne)<input name="contact_name" maxLength={200} defaultValue={material?.contact_name} /></label>
+      <label>Telefon dla mediów (opcjonalne)<input name="contact_phone" type="tel" maxLength={40} defaultValue={material?.contact_phone} /></label>
     </div>
-    <label>Licencja i warunki wykorzystania<textarea name="license" rows={3} required maxLength={3000} defaultValue={material?.license} /></label>
+    <label>Licencja i warunki wykorzystania (wymagane)<textarea name="license" rows={3} required maxLength={3000} placeholder="Np. Do nieodpłatnej publikacji redakcyjnej w związku z wydarzeniem, z podaniem autora i źródła. Bez wykorzystania reklamowego." defaultValue={material?.license} /></label>
     <RightsFields rights={material} />
-    {admin && <div className="press-fields"><label>Dostęp<select name="audience" defaultValue={material?.audience ?? 'partners'}><option value="partners">Partnerzy</option><option value="selected">Wybrani partnerzy</option><option value="internal">Wewnętrzny</option></select></label><label>ID kont wybranych partnerów (przecinki)<input name="selected_partners" inputMode="numeric" pattern="[0-9, ]*" defaultValue={material?.selected_partners?.join(', ')} /></label></div>}
-    <div className="press-fields"><label>Embargo do<input name="embargo_until" type="datetime-local" defaultValue={pressLocalDate(material?.embargo_until)} /></label><label>Tryb embarga<select name="embargo_mode" defaultValue={material?.embargo_mode ?? 'block'}><option value="block">Zablokuj pobieranie</option><option value="notice">Udostępnij z informacją o zakazie publikacji</option></select></label></div>
-    <label className="press-checkbox"><input name="urgent" type="checkbox" defaultChecked={material?.urgent} />Pilny materiał</label>
-    <details className="press-editor-details"><summary>Dla radia</summary><label>Informacja 20–30 sekund<textarea name="radio_short" rows={4} maxLength={3000} defaultValue={material?.radio_short} /></label><label>Informacja 60–90 sekund<textarea name="radio_long" rows={6} maxLength={8000} defaultValue={material?.radio_long} /></label></details>
-    <details className="press-editor-details"><summary>Program / wywiad / transkrypcja</summary><label>Gość<input name="guest" maxLength={200} defaultValue={material?.guest} /></label><label>Adres filmu YouTube<input name="youtube_url" type="url" defaultValue={material?.youtube_url} /></label><label>Transkrypcja<textarea name="transcript" rows={8} maxLength={100000} defaultValue={material?.transcript} /></label></details>
+    {admin && <div className="press-fields"><label>Dostęp (opcjonalne, domyślnie partnerzy)<select name="audience" defaultValue={material?.audience ?? 'partners'}><option value="partners">Partnerzy</option><option value="selected">Wybrani partnerzy</option><option value="internal">Wewnętrzny</option></select></label><label>ID kont wybranych partnerów (opcjonalne, oddzielone przecinkami)<input name="selected_partners" inputMode="numeric" pattern="[0-9, ]*" defaultValue={material?.selected_partners?.join(', ')} /></label></div>}
+    <div className="press-fields"><label>Embargo do (opcjonalne)<input name="embargo_until" type="datetime-local" defaultValue={pressLocalDate(material?.embargo_until)} /></label><label>Tryb embarga (opcjonalne, domyślnie blokada)<select name="embargo_mode" defaultValue={material?.embargo_mode ?? 'block'}><option value="block">Zablokuj pobieranie</option><option value="notice">Udostępnij z informacją o zakazie publikacji</option></select></label></div>
+    {pressExtendedFeaturesEnabled && <>
+    <label className="press-checkbox"><input name="urgent" type="checkbox" defaultChecked={material?.urgent} />Pilny materiał (opcjonalne)</label>
+    <details className="press-editor-details"><summary>Dla radia (opcjonalne)</summary><label>Informacja 20–30 sekund (opcjonalne)<textarea name="radio_short" rows={4} maxLength={3000} defaultValue={material?.radio_short} /></label><label>Informacja 60–90 sekund (opcjonalne)<textarea name="radio_long" rows={6} maxLength={8000} defaultValue={material?.radio_long} /></label></details>
+    <details className="press-editor-details"><summary>Program / wywiad / transkrypcja (opcjonalne)</summary><label>Gość (opcjonalne)<input name="guest" maxLength={200} defaultValue={material?.guest} /></label><label>Adres filmu YouTube (opcjonalne)<input name="youtube_url" type="url" defaultValue={material?.youtube_url} /></label><label>Transkrypcja (opcjonalne)<textarea name="transcript" rows={8} maxLength={100000} defaultValue={material?.transcript} /></label></details>
+    </>}
     <button className="press-primary" disabled={busy}><Save size={18} />{busy ? 'Zapisywanie…' : 'Zapisz materiał'}</button>
   </form>;
 }
@@ -128,17 +179,19 @@ function MaterialDetail({ material, admin, mine, userId, refresh, close, edit }:
   return <article className="press-section press-detail">
     <div className="press-row"><span className="press-tag">{pressKinds[material.kind]}</span><button onClick={close} title="Zamknij materiał" aria-label="Zamknij materiał"><X size={20} /></button></div>
     <h2>{material.title}</h2>
-    {material.urgent && <p className="press-alert"><Bell size={16} />Pilny materiał</p>}
+    {pressExtendedFeaturesEnabled && material.urgent && <p className="press-alert"><Bell size={16} />Pilny materiał</p>}
     {(material.region || material.city || material.topic) && <p className="press-muted">{[material.region, material.city, material.topic].filter(Boolean).join(' · ')}</p>}
     {material.event_title && <p>Wydarzenie: {material.event_title}</p>}
     {embargo && <p className="press-embargo">Embargo do {new Date(material.embargo_until!).toLocaleString('pl-PL')}. {material.embargo_mode === 'block' ? 'Pobieranie zablokowane dla partnerów.' : 'Materiał dostępny przed terminem. Zakaz wcześniejszej publikacji.'}</p>}
     <p className="press-body">{material.description}</p>
     <dl className="press-rights"><div><dt>Autor</dt><dd>{material.author}</dd></div><div><dt>Podpis</dt><dd>{material.credit}</dd></div><div><dt>Warunki wykorzystania</dt><dd>{material.license}</dd></div><div><dt>Kontakt</dt><dd><a href={`mailto:${material.contact_email}`}>{material.contact_email}</a></dd></div></dl>
     <dl className="press-rights"><div><dt>Właściciel praw / źródło</dt><dd>{material.rights_owner || material.author} · {material.source || 'Nie podano'}</dd></div><div><dt>Dozwolone media</dt><dd>{material.allowed_media?.length ? material.allowed_media.map(value => pressMedia[value]).join(', ') : 'Zgodnie z warunkami licencji'}</dd></div>{material.license_expires_at && <div><dt>Licencja ważna do</dt><dd>{new Date(material.license_expires_at).toLocaleString('pl-PL')}</dd></div>}{material.contact_name && <div><dt>Osoba kontaktowa</dt><dd>{material.contact_name} {material.contact_phone}</dd></div>}</dl>
+    {pressExtendedFeaturesEnabled && <>
     {(material.radio_short || material.radio_long) && <section><h3>Dla radia</h3>{material.radio_short && <><h4>20–30 sekund</h4><p className="press-body">{material.radio_short}</p></>}{material.radio_long && <details><summary>60–90 sekund</summary><p className="press-body">{material.radio_long}</p></details>}</section>}
     {material.guest && <p>Gość: {material.guest}</p>}
     {material.youtube_url && <a href={material.youtube_url} target="_blank" rel="noopener noreferrer">Otwórz materiał w YouTube</a>}
     {material.transcript && <details><summary>Transkrypcja</summary><p className="press-body">{material.transcript}</p></details>}
+    </>}
     <Feedback error={error} />
     {!mine && <BookmarkPanel materialId={material.id} userId={userId} />}
     {material.attachments.length > 0 && !mine && <button disabled={busy || blocked} onClick={async () => { setBusy(true); setError(''); try { await downloadPressResource(`/press/materials/${material.id}/package/`, `ik-media-${material.id}.zip`); refresh(); } catch (failure) { setError(pressError(failure)); } finally { setBusy(false); } }}><Archive size={18} />Pobierz pakiet ZIP</button>}
@@ -150,11 +203,27 @@ function MaterialDetail({ material, admin, mine, userId, refresh, close, edit }:
   </article>;
 }
 
+function attachmentSummary(material: PressMaterial): string {
+  const counts = new Map<string, number>();
+  for (const attachment of material.attachments) {
+    const extension = attachment.original_name.split('.').pop()?.toLowerCase() || '';
+    const type = ['jpg', 'jpeg', 'png', 'webp'].includes(extension) ? 'zdjęcia'
+      : ['mp3', 'wav'].includes(extension) ? 'audio'
+      : extension === 'mp4' ? 'wideo'
+      : ['pdf', 'docx', 'txt', 'zip'].includes(extension) ? extension.toUpperCase() : 'pliki';
+    counts.set(type, (counts.get(type) || 0) + 1);
+  }
+  return counts.size ? [...counts].map(([type, count]) => `${count} × ${type}`).join(' · ') : 'Bez załączników';
+}
+
 function Library({ admin, userId, mine = false, saved = false, initialKind = '', urgent = false }: { admin: boolean; userId: number; mine?: boolean; saved?: boolean; initialKind?: string; urgent?: boolean }) {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState(initialKind);
   const [region, setRegion] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [ordering, setOrdering] = useState('-available_from');
   const [workflow, setWorkflow] = useState('');
   const [personalized, setPersonalized] = useState(false);
   const [page, setPage] = useState(1);
@@ -164,19 +233,25 @@ function Library({ admin, userId, mine = false, saved = false, initialKind = '',
   });
   const [editor, setEditor] = useState<PressMaterial | 'new' | null>(null);
   const queryClient = useQueryClient();
-  const params = { search, kind, page, region, workflow, mine: mine ? '1' : '', saved: saved ? '1' : '', personalized: personalized ? '1' : '', urgent: urgent ? '1' : '' };
+  const params = { search, kind, page, region, workflow, date_from: dateFrom, date_to: dateTo, ordering, mine: mine ? '1' : '', saved: saved ? '1' : '', personalized: personalized ? '1' : '', urgent: urgent ? '1' : '' };
   const materials = useQuery({ queryKey: ['press', userId, 'materials', params], queryFn: async () => (await apiClient.get<PressPage<PressMaterial>>('/press/materials/', { params })).data, retry: false, staleTime: 0, gcTime: 0 });
   const detail = useQuery({ queryKey: ['press', userId, 'material', selected], queryFn: async () => (await apiClient.get<PressMaterial>(`/press/materials/${selected}/`)).data, enabled: selected !== null, retry: false, staleTime: 0, gcTime: 0 });
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['press', userId] }); };
   return <>
     <div className="press-row press-toolbar"><h2>{mine ? 'Moje zgłoszenia' : saved ? 'Zapisane materiały' : urgent ? 'Media Alert' : initialKind === 'program' ? 'Oto Nadchodzi' : 'Materiały prasowe'}</h2>{(admin || mine) && <button className="press-primary" onClick={() => setEditor('new')}><Plus size={18} />Nowy materiał</button>}</div>
     {editor && <MaterialEditor key={editor === 'new' ? 'new' : editor.id} admin={admin} material={editor === 'new' ? undefined : editor} onDone={id => { setSelected(id); refresh(); }} onClose={() => setEditor(null)} />}
-    <div className="press-filters"><label><span><Search size={16} />Szukaj materiałów</span><input type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label><label>Format<select value={kind} onChange={event => { setKind(event.target.value); setPage(1); }}><option value="">Wszystkie formaty</option>{Object.entries(pressKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>
-    <div className="press-filters"><label>Region<input value={region} onChange={event => { setRegion(event.target.value); setPage(1); }} /></label>{admin ? <label>Status<select value={workflow} onChange={event => { setWorkflow(event.target.value); setPage(1); }}><option value="">Wszystkie statusy</option>{Object.entries(pressWorkflow).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select></label> : !mine && <label className="press-checkbox"><input type="checkbox" checked={personalized} onChange={event => { setPersonalized(event.target.checked); setPage(1); }} />Moje zainteresowania</label>}</div>
+    <div className="press-filters"><label><span><Search size={16} />Szukaj materiałów</span><input type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label><label>Format<select value={kind} onChange={event => { setKind(event.target.value); setPage(1); }}><option value="">Wszystkie formaty</option>{Object.entries(pressKinds).filter(([key]) => pressExtendedFeaturesEnabled || key !== 'program').map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>
+    <div className="press-filters"><label>Region<select value={region} onChange={event => { setRegion(event.target.value); setPage(1); }}><option value="">Wszystkie regiony</option>{region && !materials.data?.regions?.includes(region) && <option value={region}>{region}</option>}{materials.data?.regions?.map(value => <option key={value} value={value}>{value}</option>)}</select></label>{admin ? <label>Status<select value={workflow} onChange={event => { setWorkflow(event.target.value); setPage(1); }}><option value="">Wszystkie statusy</option>{Object.entries(pressWorkflow).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select></label> : !mine && <label className="press-checkbox"><input type="checkbox" checked={personalized} onChange={event => { setPersonalized(event.target.checked); setPage(1); }} />Moje zainteresowania</label>}</div>
+    <div className="press-date-filters">
+      <label>Dostępny od — początek<input type="date" value={dateFrom} max={dateTo || undefined} onChange={event => { setDateFrom(event.target.value); setPage(1); }} /></label>
+      <label>Dostępny od — koniec<input type="date" value={dateTo} min={dateFrom || undefined} onChange={event => { setDateTo(event.target.value); setPage(1); }} /></label>
+      <label>Sortowanie<select value={ordering} onChange={event => { setOrdering(event.target.value); setPage(1); }}><option value="-available_from">Najnowsze</option><option value="available_from">Najstarsze</option><option value="title">Tytuł A–Z</option><option value="-title">Tytuł Z–A</option></select></label>
+    </div>
+    <div className="press-row press-results-toolbar"><span className="press-muted" role="status">{materials.data ? `Wyniki: ${materials.data.count}` : 'Ładowanie wyników...'}</span>{(search || kind || region || workflow || dateFrom || dateTo || personalized || ordering !== '-available_from') && <button type="button" title="Wyczyść filtry" aria-label="Wyczyść filtry" onClick={() => { setSearch(''); setKind(initialKind); setRegion(''); setWorkflow(''); setDateFrom(''); setDateTo(''); setPersonalized(false); setOrdering('-available_from'); setPage(1); }}><RotateCcw size={18} /></button>}</div>
     {materials.isPending && <p role="status">Ładowanie materiałów…</p>}
     {materials.isError ? <><Feedback error={pressError(materials.error)} /><button onClick={() => void materials.refetch()}>Spróbuj ponownie</button></> : <div className="press-library">
-      <section aria-label="Lista materiałów">{materials.data?.results.map(material => <button className={`press-item ${selected === material.id ? 'selected' : ''}`} key={material.id} onClick={() => setSelected(material.id)}><span className="press-tag">{pressKinds[material.kind]}{(admin || mine) && ` · ${pressWorkflow[material.workflow]}`}{material.urgent && ' · PILNE'}</span><strong>{material.title}</strong><span>{material.author} · Pliki: {material.attachments.length}</span></button>)}{materials.data?.count === 0 && <p className="press-empty">Brak materiałów spełniających kryteria.</p>}<Pages data={materials.data} page={page} setPage={setPage} /></section>
-      <div>{selected !== null && detail.isPending && <p role="status">Ładowanie materiału…</p>}{detail.isError && <><Feedback error={pressError(detail.error)} /><button onClick={() => void detail.refetch()}>Spróbuj ponownie</button></>}{selected !== null && detail.data && !detail.isError && <MaterialDetail key={detail.data.id} material={detail.data} admin={admin} mine={mine} userId={userId} refresh={refresh} close={() => setSelected(null)} edit={() => setEditor(detail.data!)} />}</div>
+      <section aria-label="Lista materiałów">{materials.data?.results.map(material => <button className={`press-item ${selected === material.id ? 'selected' : ''}`} key={material.id} aria-pressed={selected === material.id} onClick={() => setSelected(material.id)}><span className="press-tag">{pressKinds[material.kind]}{(admin || mine) && ` · ${pressWorkflow[material.workflow]}`}{pressExtendedFeaturesEnabled && material.urgent && ' · PILNE'}</span><span className="press-item-heading"><strong>{material.title}</strong><ChevronRight size={18} aria-hidden="true" /></span><span className="press-item-meta">{material.author} · Dostępny od <time dateTime={material.available_from}>{new Date(material.available_from).toLocaleDateString('pl-PL')}</time></span><span className="press-item-summary">{material.description}</span><span className="press-item-files"><FileText size={15} aria-hidden="true" />{attachmentSummary(material)}</span></button>)}{materials.data?.count === 0 && <p className="press-empty">Brak materiałów spełniających kryteria.</p>}<Pages data={materials.data} page={page} setPage={setPage} /></section>
+      <div>{selected === null && !!materials.data?.count && <div className="press-detail-empty"><FileText size={32} aria-hidden="true" /><h3>Wybierz materiał</h3></div>}{selected !== null && detail.isPending && <p role="status">Ładowanie materiału…</p>}{detail.isError && <><Feedback error={pressError(detail.error)} /><button onClick={() => void detail.refetch()}>Spróbuj ponownie</button></>}{selected !== null && detail.data && !detail.isError && <MaterialDetail key={detail.data.id} material={detail.data} admin={admin} mine={mine} userId={userId} refresh={refresh} close={() => setSelected(null)} edit={() => setEditor(detail.data!)} />}</div>
     </div>}
   </>;
 }
@@ -193,7 +268,7 @@ function Review({ access, onDecision }: { access: PressAccess; onDecision: (mess
   }
   async function technical(enabled: boolean) { setBusy(true); setError(''); try { await apiClient.post(`/press/admin/access/${access.id}/technical/`, { enabled }); onDecision(enabled ? 'Przyznano dostęp techniczny.' : 'Cofnięto dostęp techniczny i unieważniono klucz.'); } catch (failure) { setError(pressError(failure)); } finally { setBusy(false); } }
   return <article className="press-review"><div className="press-row"><h3>{access.full_name}</h3><span className="press-tag">{pressStatuses[access.status]}</span></div><p>{access.newsroom} · {access.email} · ID konta: {access.user_id}</p><p className="press-body">{access.motivation}</p><div className="press-actions"><a href={access.portfolio} target="_blank" rel="noopener noreferrer">Publikacje autora</a>{access.website && <a href={access.website} target="_blank" rel="noopener noreferrer">Strona redakcji</a>}</div>{access.decision_note && <p>Ostatnia decyzja: {access.decision_note}</p>}
-    {access.status === 'approved' && <label className="press-checkbox press-technical"><input type="checkbox" checked={access.api_enabled ?? false} disabled={busy} onChange={event => void technical(event.target.checked)} />Dostęp techniczny API / RSS</label>}
+    {pressExtendedFeaturesEnabled && access.status === 'approved' && <label className="press-checkbox press-technical"><input type="checkbox" checked={access.api_enabled ?? false} disabled={busy} onChange={event => void technical(event.target.checked)} />Dostęp techniczny API / RSS</label>}
     <Feedback error={error} />
     {access.status !== 'rejected' && <><label>Uzasadnienie decyzji<textarea rows={2} maxLength={3000} value={note} onChange={event => setNote(event.target.value)} /></label><div className="press-actions">{(access.status === 'pending' || access.status === 'suspended') && <button className="press-primary" disabled={busy} onClick={() => void decide('approved')}><Check size={18} />{access.status === 'suspended' ? 'Przywróć dostęp' : 'Zatwierdź'}</button>}{access.status === 'pending' && <button disabled={busy || !note.trim()} onClick={() => void decide('rejected')}><X size={18} />Odrzuć</button>}{access.status === 'approved' && <button disabled={busy || !note.trim()} onClick={() => void decide('suspended')}><X size={18} />Zawieś dostęp</button>}</div></>}
   </article>;
@@ -218,13 +293,13 @@ function Administration({ userId }: { userId: number }) {
 function PartnerWorkspace({ userId, allowed, canSubmit, application }: { userId: number; allowed: boolean; canSubmit: boolean; application: React.ReactNode }) {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState(allowed ? searchParams.has('material') ? 'materials' : 'dashboard' : canSubmit ? 'mine' : 'access');
-  const items = allowed ? [{key:'dashboard',label:'Pulpit',icon:LayoutDashboard},{key:'materials',label:'Biblioteka',icon:FileText},{key:'program',label:'Oto Nadchodzi',icon:Archive},{key:'alerts',label:'Media Alert',icon:Bell},{key:'saved',label:'Zapisane',icon:Bookmark},{key:'preferences',label:'Zainteresowania i alerty',icon:Settings2},{key:'integrations',label:'API i RSS',icon:KeyRound}] : [{key:'access',label:'Dostęp dla mediów',icon:ShieldCheck}];
+  const items = allowed ? [{key:'dashboard',label:'Pulpit',icon:LayoutDashboard},{key:'materials',label:'Biblioteka',icon:FileText},{key:'program',label:'Oto Nadchodzi',icon:Archive},{key:'alerts',label:'Media Alert',icon:Bell},{key:'saved',label:'Zapisane',icon:Bookmark},{key:'preferences',label:pressExtendedFeaturesEnabled ? 'Zainteresowania i alerty' : 'Zainteresowania',icon:Settings2},{key:'integrations',label:'API i RSS',icon:KeyRound}].filter(item => pressExtendedFeaturesEnabled || !['program', 'alerts', 'integrations'].includes(item.key)) : [{key:'access',label:'Dostęp dla mediów',icon:ShieldCheck}];
   if (canSubmit) items.push({key:'mine',label:'Moje zgłoszenia',icon:Upload});
   return <div className="press-workspace"><nav className="press-sidebar" aria-label="Panel partnera">{items.map(({key,label,icon:Icon}) => <button key={key} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}><Icon size={18} />{label}</button>)}</nav><div className="press-workspace-content">
     {tab === 'dashboard' && allowed && <Dashboard userId={userId} />}
     {tab === 'preferences' && allowed && <PreferencesPanel userId={userId} />}
-    {tab === 'integrations' && allowed && <IntegrationsPanel userId={userId} />}
-    {['materials','saved','program','alerts'].includes(tab) && allowed && <Library key={tab} admin={false} userId={userId} saved={tab === 'saved'} initialKind={tab === 'program' ? 'program' : ''} urgent={tab === 'alerts'} />}
+    {pressExtendedFeaturesEnabled && tab === 'integrations' && allowed && <IntegrationsPanel userId={userId} />}
+    {((pressExtendedFeaturesEnabled ? ['materials','saved','program','alerts'] : ['materials','saved']).includes(tab)) && allowed && <Library key={tab} admin={false} userId={userId} saved={tab === 'saved'} initialKind={tab === 'program' ? 'program' : ''} urgent={tab === 'alerts'} />}
     {tab === 'mine' && canSubmit && <Library admin={false} userId={userId} mine />}
     {tab === 'access' && application}
   </div></div>;

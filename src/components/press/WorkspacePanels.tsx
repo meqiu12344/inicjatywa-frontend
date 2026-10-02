@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bookmark, ChevronLeft, ChevronRight, Copy, KeyRound, Save, Send, Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { pressExtendedFeaturesEnabled } from '@/lib/api/press';
 import { PressAttachment, PressMaterial, PressPage, pressError, pressKinds, pressLocalDate, pressMedia, pressWorkflow, splitPressValues } from '@/lib/api/press';
 
 export function QueryFailure({ error, retry }: { error: unknown; retry: () => void }) {
@@ -39,7 +40,7 @@ export function PreferencesPanel({ userId }: { userId: number }) {
   const [message, setMessage] = useState('');
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget); setBusy(true); setError(''); setMessage('');
-    try { await apiClient.put('/press/preferences/', { regions: splitPressValues(form.get('regions')), topics: splitPressValues(form.get('topics')), formats: form.getAll('formats'), email_frequency: form.get('email_frequency'), urgent_only: form.get('urgent_only') === 'on' }); setMessage('Zainteresowania zapisane.'); }
+    try { await apiClient.put('/press/preferences/', { regions: splitPressValues(form.get('regions')), topics: splitPressValues(form.get('topics')), formats: [...form.getAll('formats'), ...(!pressExtendedFeaturesEnabled && query.data?.formats.includes('program') ? ['program'] : [])], ...(pressExtendedFeaturesEnabled ? { email_frequency: form.get('email_frequency'), urgent_only: form.get('urgent_only') === 'on' } : {}) }); setMessage('Zainteresowania zapisane.'); }
     catch (failure) { setError(pressError(failure)); } finally { setBusy(false); }
   }
   if (query.isPending) return <p role="status">Ładowanie zainteresowań…</p>;
@@ -47,9 +48,11 @@ export function PreferencesPanel({ userId }: { userId: number }) {
   return <form className="press-form" onSubmit={save}><h2>Moje zainteresowania</h2>{error && <p role="alert" className="press-error">{error}</p>}{message && <p role="status" className="press-success">{message}</p>}
     <label>Regiony (oddzielone przecinkami)<input name="regions" defaultValue={query.data.regions.join(', ')} /></label>
     <label>Tematy (oddzielone przecinkami)<input name="topics" defaultValue={query.data.topics.join(', ')} /></label>
-    <fieldset><legend>Formaty</legend><div className="press-checks">{Object.entries(pressKinds).map(([key, label]) => <label className="press-checkbox" key={key}><input type="checkbox" name="formats" value={key} defaultChecked={query.data.formats.includes(key)} />{label}</label>)}</div></fieldset>
+    <fieldset><legend>Formaty</legend><div className="press-checks">{Object.entries(pressKinds).filter(([key]) => pressExtendedFeaturesEnabled || key !== 'program').map(([key, label]) => <label className="press-checkbox" key={key}><input type="checkbox" name="formats" value={key} defaultChecked={query.data.formats.includes(key)} />{label}</label>)}</div></fieldset>
+    {pressExtendedFeaturesEnabled && <>
     <label>Powiadomienia e-mail<select name="email_frequency" defaultValue={query.data.email_frequency ?? 'off'}><option value="off">Wyłączone</option><option value="immediate">Na bieżąco</option><option value="daily">Raz dziennie</option><option value="weekly">Raz w tygodniu</option></select></label>
     <label className="press-checkbox"><input type="checkbox" name="urgent_only" defaultChecked={query.data.urgent_only} />E-maile tylko o pilnych materiałach</label>
+    </>}
     <button className="press-primary" disabled={busy}><Save size={18} />Zapisz zainteresowania</button>
   </form>;
 }
@@ -94,7 +97,7 @@ export function WorkflowPanel({ material, userId, admin, refresh }: { material: 
 }
 
 export function RightsFields({ rights }: { rights?: Partial<PressAttachment> }) {
-  return <><div className="press-fields"><label>Właściciel praw<input name="rights_owner" maxLength={200} defaultValue={rights?.rights_owner} /></label><label>Źródło<input name="source" maxLength={300} defaultValue={rights?.source} /></label><label>Wygaśnięcie licencji<input name="license_expires_at" type="datetime-local" defaultValue={pressLocalDate(rights?.license_expires_at)} /></label></div><fieldset><legend>Dozwolone media</legend><div className="press-checks">{Object.entries(pressMedia).map(([key, label]) => <label className="press-checkbox" key={key}><input type="checkbox" name="allowed_media" value={key} defaultChecked={rights?.allowed_media?.includes(key)} />{label}</label>)}</div></fieldset></>;
+  return <><div className="press-fields"><label>Właściciel praw (opcjonalne)<input name="rights_owner" maxLength={200} defaultValue={rights?.rights_owner} /></label><label>Źródło (opcjonalne)<input name="source" maxLength={300} defaultValue={rights?.source} /></label><label>Wygaśnięcie licencji (opcjonalne)<input name="license_expires_at" type="datetime-local" defaultValue={pressLocalDate(rights?.license_expires_at)} /></label></div><fieldset><legend>Dozwolone media (opcjonalne)</legend><div className="press-checks">{Object.entries(pressMedia).map(([key, label]) => <label className="press-checkbox" key={key}><input type="checkbox" name="allowed_media" value={key} defaultChecked={rights?.allowed_media?.includes(key)} />{label}</label>)}</div></fieldset></>;
 }
 
 export function AttachmentRights({ attachment, refresh }: { attachment: PressAttachment; refresh: () => void }) {

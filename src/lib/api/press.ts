@@ -22,8 +22,9 @@ export interface PressMaterial extends PressRights {
   contact_name: string; contact_phone: string;
 }
 export interface PressDownload { id: number; email: string; material: string; filename: string; created_at: string }
-export interface PressPage<T> { count: number; next: string | null; previous: string | null; results: T[] }
-export const pressKinds: Record<string, string> = { release: 'Komunikat', photo: 'Zdjęcia', audio: 'Audio', video: 'Wideo', package: 'Paczka prasowa', program: 'Oto Nadchodzi', interview: 'Wywiad', broll: 'B-roll' };
+export interface PressPage<T> { count: number; next: string | null; previous: string | null; results: T[]; regions?: string[] }
+export const pressKinds: Record<string, string> = { release: 'Komunikat', photo: 'Zdjęcia', audio: 'Audio', video: 'Wideo', package: 'Paczka prasowa', program: 'Materiał prasowy', interview: 'Wywiad', broll: 'B-roll' };
+export const pressExtendedFeaturesEnabled = false;
 export const pressWorkflow: Record<string, string> = { draft: 'Szkic', review: 'Do weryfikacji', approved: 'Zaakceptowany', published: 'Opublikowany', archived: 'Archiwalny', rejected: 'Odrzucony' };
 export const pressMedia: Record<string, string> = { radio: 'Radio', tv: 'Telewizja', internet: 'Internet', social: 'Social media', print: 'Druk' };
 export const splitPressValues = (value: FormDataEntryValue | null) => String(value ?? '').split(',').map(item => item.trim()).filter(Boolean);
