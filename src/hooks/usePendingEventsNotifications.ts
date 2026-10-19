@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { adminApi, PendingEvent } from '@/lib/api/admin';
 
@@ -8,64 +7,47 @@ export interface PendingEventsNotifications {
   pending_events: PendingEvent[];
 }
 
+// Navbar + badge both use this hook; shared React Query keys (same as the
+// /admin/wydarzenia page) dedupe the requests so polling doesn't burn the
+// per-user API throttle (1000/hour).
+const POLL_INTERVAL_MS = 2 * 60 * 1000;
+
 export function usePendingEventsNotifications() {
   const { user, isAuthenticated } = useAuth();
-  const [notifications, setNotifications] = useState<PendingEventsNotifications>({
-    pending_count: 0,
-    pending_events: [],
+  const enabled = isAuthenticated && !!user?.is_staff;
+
+  const statsQuery = useQuery({
+    queryKey: ['pending-event-stats'],
+    queryFn: () => adminApi.getPendingEventStats(),
+    enabled,
+    refetchInterval: POLL_INTERVAL_MS,
+    staleTime: POLL_INTERVAL_MS,
+    retry: false,
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchPendingEvents = useCallback(async () => {
-    if (!isAuthenticated || !user?.is_staff) {
-      setNotifications({ pending_count: 0, pending_events: [] });
-      return;
-    }
+  const eventsQuery = useQuery({
+    queryKey: ['pending-events', 'pending'],
+    queryFn: () => adminApi.getPendingEvents('pending'),
+    enabled,
+    refetchInterval: POLL_INTERVAL_MS,
+    staleTime: POLL_INTERVAL_MS,
+    retry: false,
+  });
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [stats, events] = await Promise.all([
-        adminApi.getPendingEventStats(),
-        adminApi.getPendingEvents('pending'),
-      ]);
-
-      setNotifications({
-        pending_count: stats.pending,
-        pending_events: events,
-      });
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        // 401 means not authorized — silently reset instead of showing an error
-        setNotifications({ pending_count: 0, pending_events: [] });
-      } else {
-        const message = err instanceof Error ? err.message : 'Wystąpił nieznany błąd';
-        setError(message);
-        console.error('Error fetching pending events:', err);
+  const notifications: PendingEventsNotifications = enabled
+    ? {
+        pending_count: statsQuery.data?.pending ?? 0,
+        pending_events: eventsQuery.data ?? [],
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isAuthenticated, user?.is_staff]);
+    : { pending_count: 0, pending_events: [] };
 
-  // Fetch on mount and when auth state changes
-  useEffect(() => {
-    if (isAuthenticated && user?.is_staff) {
-      fetchPendingEvents();
-
-      // Refresh every 30 seconds
-      const interval = setInterval(fetchPendingEvents, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated, user?.is_staff, fetchPendingEvents]);
+  const error = statsQuery.error || eventsQuery.error;
 
   return {
     notifications,
-    isLoading,
-    error,
-    refetch: fetchPendingEvents,
+    isLoading: statsQuery.isFetching || eventsQuery.isFetching,
+    error: error instanceof Error ? error.message : null,
+    refetch: () => Promise.all([statsQuery.refetch(), eventsQuery.refetch()]),
     hasPending: notifications.pending_count > 0,
   };
 }
