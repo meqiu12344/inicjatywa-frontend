@@ -1,12 +1,13 @@
 'use client';
 
-import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
+import { FormEvent, ReactNode, RefObject, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Download, Eye, EyeOff, FileText, Loader2, ShieldCheck } from 'lucide-react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { useAuth } from '@/hooks/useAuth';
+import type { RegisterData } from '@/types';
 import './press.css';
 
 type FieldErrors = Record<string, string>;
@@ -69,7 +70,7 @@ function PasswordField({ name, label, placeholder, autoComplete, error }: { name
   </label>;
 }
 
-function Captcha({ captcha, onChange }: { captcha: React.RefObject<ReCAPTCHA | null>; onChange: (token: string | null) => void }) {
+function Captcha({ captcha, onChange }: { captcha: RefObject<ReCAPTCHA>; onChange: (token: string | null) => void }) {
   if (!recaptchaSiteKey) return null;
   return <div className="press-auth-captcha"><ReCAPTCHA ref={captcha} sitekey={recaptchaSiteKey} onChange={onChange} onExpired={() => onChange(null)} /></div>;
 }
@@ -132,7 +133,15 @@ export function PressRegister() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const values = Object.fromEntries(['first_name', 'last_name', 'username', 'email', 'password', 'password_confirm'].map(key => [key, String(form.get(key) ?? '').trim()]));
+    const field = (key: string) => String(form.get(key) ?? '').trim();
+    const values: RegisterData = {
+      first_name: field('first_name'),
+      last_name: field('last_name'),
+      username: field('username'),
+      email: field('email'),
+      password: field('password'),
+      password_confirm: field('password_confirm'),
+    };
     const local: FieldErrors = {};
     if (values.password.length < 8) local.password = 'Hasło musi mieć co najmniej 8 znaków.';
     if (values.password !== values.password_confirm) local.password_confirm = 'Hasła nie są identyczne.';
