@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -15,10 +15,12 @@ import {
   Eye,
   Filter,
   Tag,
-  ExternalLink
+  ExternalLink,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi, PendingEvent } from '@/lib/api/admin';
+import { AIDraftsPanel } from '@/components/admin/AIDraftsPanel';
 import { getErrorMessage } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -34,6 +36,17 @@ export default function PendingEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<PendingEvent | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [tab, setTab] = useState<'all' | 'ai'>('all');
+  const [initialAIEventId, setInitialAIEventId] = useState<number | null>(null);
+
+  // Link admin_url zwracany przez API AI: /admin/wydarzenia?tab=ai&event=ID
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'ai') {
+      setTab('ai');
+      setInitialAIEventId(Number(params.get('event')) || null);
+    }
+  }, []);
 
   const { data: events, isLoading } = useQuery({
     queryKey: ['pending-events', statusFilter],
@@ -135,8 +148,36 @@ export default function PendingEventsPage() {
               </div>
             </div>
           </div>
+          <div className="flex gap-2 mt-6">
+            <button
+              onClick={() => setTab('all')}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                tab === 'all' ? 'bg-indigo-600 text-white font-medium' : 'bg-white border text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Wszystkie wydarzenia
+            </button>
+            <button
+              onClick={() => setTab('ai')}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+                tab === 'ai' ? 'bg-violet-600 text-white font-medium' : 'bg-white border text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Bot className="h-4 w-4" />
+              Znalezione przez AI
+              {!!stats?.ai_draft && (
+                <span className={`text-xs px-1.5 rounded-full ${tab === 'ai' ? 'bg-white/20' : 'bg-violet-100 text-violet-700'}`}>
+                  {stats.ai_draft}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
+        {tab === 'ai' ? (
+          <AIDraftsPanel stats={stats} initialEventId={initialAIEventId} />
+        ) : (
+        <>
         {/* Filters - używamy STATUS_CHOICES z eventUtils */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
           <div className="flex items-center gap-4">
@@ -355,6 +396,8 @@ export default function PendingEventsPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Reject Modal */}

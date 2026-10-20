@@ -14,7 +14,8 @@ import {
   XCircle,
   BarChart3,
   Settings,
-  Megaphone
+  Megaphone,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi } from '@/lib/api/admin';
@@ -85,6 +86,15 @@ export default function AdminDashboard() {
       stats: eventStats?.pending || 0,
       statsLabel: 'oczekujących',
       color: 'bg-green-500',
+    },
+    {
+      title: 'Wydarzenia znalezione przez AI',
+      description: 'Szkice od asystenta AI — sprawdź źródło i opublikuj',
+      href: '/admin/wydarzenia?tab=ai',
+      icon: Bot,
+      stats: eventStats?.ai_draft || 0,
+      statsLabel: 'oczekujących',
+      color: 'bg-violet-600',
     },
     {
       title: 'Statystyki',

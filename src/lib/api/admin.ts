@@ -49,6 +49,41 @@ export interface OrganizerRequestStats {
   rejected: number;
 }
 
+export interface AIDuplicateMatch {
+  event_id: number;
+  title: string;
+  start_date: string;
+  city: string | null;
+  organizer_name: string | null;
+  status: string;
+  url: string | null;
+  similarity: number;
+}
+
+// Pochodzenie szkicu dodanego przez API asystenta AI (null dla zwykłych wydarzeń)
+export interface AIImportInfo {
+  source_url: string;
+  source_name: string;
+  source_checked_at: string;
+  ai_notes: string;
+  conflicts: string[];
+  venue_name: string;
+  currency: string;
+  poster_source_url: string;
+  missing_fields: string[];
+  requires_review: boolean;
+  possible_duplicate: boolean;
+  duplicate_matches: AIDuplicateMatch[];
+  data_status: 'complete' | 'incomplete' | 'conflict';
+  data_status_display: string;
+  review_status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string;
+  token_name: string | null;
+  created_at: string;
+}
+
 export interface PendingEvent {
   id: number;
   title: string;
@@ -82,9 +117,13 @@ export interface PendingEvent {
   online_event?: boolean;
   online_link?: string | null;
   organizer?: string | null;
+  organizer_website?: string | null;
+  ticket_url?: string | null;
+  needs_poster?: boolean;
   image_url: string | null;
   created_at: string;
   registrations_count?: number;
+  ai_import?: AIImportInfo | null;
 }
 
 export interface PendingEventStats {
@@ -93,6 +132,15 @@ export interface PendingEventStats {
   public: number;
   draft: number;
   hidden: number;
+  ai_draft: number;
+  ai_requires_review: number;
+  ai_possible_duplicates: number;
+}
+
+export interface BulkApproveResult {
+  message: string;
+  approved: number[];
+  failed: Array<{ id: number; error: string }>;
 }
 
 export interface EventRegistration {
@@ -155,6 +203,18 @@ export const adminApi = {
     const params = status ? `?status=${status}` : '';
     const response = await get<PaginatedResponse<PendingEvent>>(`${ADMIN_BASE}/pending-events/${params}`);
     return response.results;
+  },
+
+  // Szkice znalezione przez AI — jedna strona do 100 pozycji, żeby dało się zaznaczać hurtem
+  getAIDrafts: async (): Promise<PendingEvent[]> => {
+    const response = await get<PaginatedResponse<PendingEvent>>(
+      `${ADMIN_BASE}/pending-events/?status=ai_draft&page_size=100`
+    );
+    return response.results;
+  },
+
+  bulkApproveEvents: async (ids: number[]): Promise<BulkApproveResult> => {
+    return post<BulkApproveResult>(`${ADMIN_BASE}/pending-events/bulk-approve/`, { ids });
   },
 
   getPendingEvent: async (id: number): Promise<PendingEvent> => {

@@ -15,8 +15,9 @@ import { locationsApi, normalizeAddressQuery } from '@/lib/api/locations';
 import { parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore } from '@/stores/authStore';
 import dynamic from 'next/dynamic';
-import { 
-  STATUS_CHOICES, 
+import {
+  STATUS_CHOICES,
+  AI_DRAFT_STATUS,
   EVENT_TYPE_CHOICES,
   isEventEditable,
   shouldAutoClose,
@@ -701,11 +702,25 @@ export default function EditEventPage({ params }: Props) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                      <select {...register('status')} className="input w-full">
-                        {STATUS_CHOICES.map(({ value, label }) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
+                      {event?.status === 'ai_draft' ? (
+                        // Szkic AI publikuje się tylko przyciskiem w panelu — tu edytujemy samą treść.
+                        <>
+                          <input type="hidden" {...register('status')} />
+                          <p className="input w-full bg-gray-50 text-gray-700">{AI_DRAFT_STATUS.label}</p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Po zapisaniu zmian zatwierdź szkic w{' '}
+                            <Link href={`/admin/wydarzenia?tab=ai&event=${event.id}`} className="text-indigo-600 hover:underline">
+                              panelu wydarzeń znalezionych przez AI
+                            </Link>.
+                          </p>
+                        </>
+                      ) : (
+                        <select {...register('status')} className="input w-full">
+                          {STATUS_CHOICES.map(({ value, label }) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      )}
                       {/* Ostrzeżenie o automatycznej zmianie statusu */}
                       {event && shouldAutoClose(event) && watch('status') !== 'closed' && (
                         <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 rounded-lg border border-amber-200">

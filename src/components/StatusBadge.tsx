@@ -10,7 +10,8 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
-  XCircle
+  XCircle,
+  Bot
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { EventStatus } from '@/types';
@@ -53,6 +54,8 @@ const StatusIcon = ({ status, className }: { status: EventStatus; className?: st
       return <EyeOff {...iconProps} />;
     case 'closed':
       return <Lock {...iconProps} />;
+    case 'ai_draft':
+      return <Bot {...iconProps} />;
     default:
       return <HelpCircle {...iconProps} />;
   }
@@ -96,6 +99,7 @@ export function StatusBadge({
     draft: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     hidden: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     closed: 'bg-red-500/20 text-red-400 border-red-500/30',
+    ai_draft: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
   };
 
   return (
@@ -140,6 +144,7 @@ export function StatusBadgeLight({
     draft: 'bg-gray-100 text-gray-800 border-gray-200',
     hidden: 'bg-purple-100 text-purple-800 border-purple-200',
     closed: 'bg-red-100 text-red-800 border-red-200',
+    ai_draft: 'bg-violet-100 text-violet-800 border-violet-200',
   };
 
   return (

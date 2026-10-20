@@ -19,6 +19,9 @@ export const STATUS_CHOICES: { value: EventStatus; label: string }[] = [
   { value: 'closed', label: 'Wydarzenie zamknięte' },
 ];
 
+// Szkic AI nie jest do wyboru w formularzach — wchodzi wyłącznie przez API i wychodzi przez panel akceptacji.
+export const AI_DRAFT_STATUS: { value: EventStatus; label: string } = { value: 'ai_draft', label: 'Szkic AI' };
+
 export const EVENT_TYPE_CHOICES: { value: EventType; label: string }[] = [
   { value: 'free', label: 'Wydarzenie darmowe' },
   { value: 'voluntary', label: 'Dobrowolna opłata' },
@@ -31,7 +34,7 @@ export const EVENT_TYPE_CHOICES: { value: EventType; label: string }[] = [
 // ========================
 
 export function getStatusLabel(status: EventStatus): string {
-  return STATUS_CHOICES.find(s => s.value === status)?.label || status;
+  return [...STATUS_CHOICES, AI_DRAFT_STATUS].find(s => s.value === status)?.label || status;
 }
 
 export function getEventTypeLabel(eventType: EventType): string {
@@ -49,6 +52,7 @@ export function getStatusDisplayClass(status: EventStatus): string {
     draft: 'bg-orange-100 text-orange-800 border-orange-200',
     hidden: 'bg-gray-100 text-gray-800 border-gray-200',
     closed: 'bg-red-100 text-red-800 border-red-200',
+    ai_draft: 'bg-violet-100 text-violet-800 border-violet-200',
   };
   return statusClasses[status] || 'bg-blue-100 text-blue-800 border-blue-200';
 }
@@ -64,6 +68,7 @@ export function getStatusIcon(status: EventStatus): string {
     draft: 'Pencil',
     hidden: 'EyeOff',
     closed: 'Lock',
+    ai_draft: 'Bot',
   };
   return statusIcons[status] || 'HelpCircle';
 }
@@ -351,6 +356,7 @@ export function getAllowedStatusTransitions(currentStatus: EventStatus): EventSt
     draft: ['public', 'hidden', 'pending'],
     hidden: ['public', 'draft', 'pending'],
     closed: ['public', 'draft'], // Może być ponownie otwarte
+    ai_draft: [], // tylko przez panel akceptacji szkiców AI
   };
   
   return transitions[currentStatus] || [];

@@ -76,7 +76,8 @@ export interface Tag {
 // ========================
 
 export type EventType = 'free' | 'voluntary' | 'platform' | 'paid';
-export type EventStatus = 'pending' | 'public' | 'draft' | 'hidden' | 'closed';
+// ai_draft — szkic z API asystenta AI, widoczny tylko w panelu admina
+export type EventStatus = 'pending' | 'public' | 'draft' | 'hidden' | 'closed' | 'ai_draft';
 
 export interface Event {
   id: number;
