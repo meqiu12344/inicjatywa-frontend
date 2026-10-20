@@ -1,13 +1,14 @@
 'use client';
 
 import { FormEvent, useDeferredValue, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, BarChart3, Bell, Bookmark, Check, ChevronLeft, ChevronRight, Download, FileText, KeyRound, LayoutDashboard, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Upload, Users, X } from 'lucide-react';
+import { Archive, BarChart3, Bell, Bookmark, Check, ChevronLeft, ChevronRight, Download, FileText, KeyRound, LayoutDashboard, Plus, RotateCcw, Save, Search, Settings2, ShieldCheck, Trash2, Upload, Users, X } from 'lucide-react';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import { apiClient } from '@/lib/api/client';
-import { downloadPressFile, downloadPressResource, pressError, pressKinds, pressStatuses, pressWorkflow, pressMedia, pressLocalDate, splitPressValues, PressAccess, PressDownload, PressMaterial, PressPage } from '@/lib/api/press';
+import { downloadPressFile, downloadPressResource, pressError, pressKinds, pressStatuses, pressWorkflow, pressMedia, pressLocalDate, splitPressValues, PressAccess, PressAttachment, PressDownload, PressMaterial, PressPage } from '@/lib/api/press';
 import { AttachmentRights, BookmarkPanel, Dashboard, IntegrationsPanel, InterestsPanel, PreferencesPanel, RightsFields, WorkflowPanel } from './WorkspacePanels';
 import MediaPreview from './MediaPreview';
 import { pressExtendedFeaturesEnabled } from '@/lib/api/press';
@@ -176,6 +177,21 @@ function MaterialDetail({ material, admin, mine, userId, refresh, close, edit }:
     catch (failure) { setError(pressError(failure)); }
     finally { setBusy(false); }
   }
+  async function removeAttachment(attachment: PressAttachment) {
+    if (!window.confirm(`Usunąć plik „${attachment.original_name}”? Plik zostanie trwale usunięty z magazynu. Tej operacji nie można cofnąć.`)) return;
+    setBusy(true); setError('');
+    try { await apiClient.delete(`/press/attachments/${attachment.id}/`); refresh(); }
+    catch (failure) { setError(pressError(failure)); }
+    finally { setBusy(false); }
+  }
+  async function removeMaterial() {
+    if (!window.confirm(`Usunąć materiał „${material.title}” razem z plikami (${material.attachments.length})? Tej operacji nie można cofnąć.`)) return;
+    setBusy(true); setError('');
+    // Unmount the detail before refreshing so its queries don't refetch the deleted material.
+    try { await apiClient.delete(`/press/materials/${material.id}/`); flushSync(close); refresh(); }
+    catch (failure) { setError(pressError(failure)); }
+    finally { setBusy(false); }
+  }
   return <article className="press-section press-detail">
     <div className="press-row"><span className="press-tag">{pressKinds[material.kind]}</span><button onClick={close} title="Zamknij materiał" aria-label="Zamknij materiał"><X size={20} /></button></div>
     <h2>{material.title}</h2>
@@ -197,8 +213,8 @@ function MaterialDetail({ material, admin, mine, userId, refresh, close, edit }:
     {material.attachments.length > 0 && !mine && <button disabled={busy || blocked} onClick={async () => { setBusy(true); setError(''); try { await downloadPressResource(`/press/materials/${material.id}/package/`, `ik-media-${material.id}.zip`); refresh(); } catch (failure) { setError(pressError(failure)); } finally { setBusy(false); } }}><Archive size={18} />Pobierz pakiet ZIP</button>}
     <h3>Pliki ({material.attachments.length})</h3>
     {!material.attachments.length && <p className="press-muted">Brak załączników.</p>}
-    {material.attachments.map(attachment => <section key={attachment.id}><div className="press-file"><FileText size={20} /><span>{attachment.original_name}<small>{Math.max(1, Math.round(attachment.size / 1024))} KB · {attachment.storage_backend === 'cloudinary' ? 'Cloudinary' : 'Plik lokalny'}</small></span>{!mine && <button disabled={busy || blocked || (!admin && !!attachment.license_expires_at && new Date(attachment.license_expires_at) <= new Date())} title={`Pobierz ${attachment.original_name}`} aria-label={`Pobierz ${attachment.original_name}`} onClick={async () => { setBusy(true); setError(''); try { await downloadPressFile(attachment); refresh(); } catch (failure) { setError(pressError(failure)); } finally { setBusy(false); } }}><Download size={20} /></button>}</div>{!mine && <MediaPreview attachment={attachment} blocked={blocked || (!admin && !!attachment.license_expires_at && new Date(attachment.license_expires_at) <= new Date())} />}<div className="press-attachment-license"><p>{attachment.license || material.license}</p><p>Autor: {attachment.author || material.author} · Podpis: {attachment.credit || material.credit}</p><p>Właściciel: {attachment.rights_owner || material.rights_owner || material.author} · Źródło: {attachment.source || material.source || 'Nie podano'}</p><p>Media: {(attachment.allowed_media?.length ? attachment.allowed_media : material.allowed_media ?? []).map(value => pressMedia[value]).join(', ') || 'Zgodnie z licencją'}</p>{attachment.license_expires_at && <p>Ważna do: {new Date(attachment.license_expires_at).toLocaleString('pl-PL')}</p>}</div>{editable && <AttachmentRights attachment={attachment} refresh={refresh} />}</section>)}
-    {editable && <><button onClick={edit}><FileText size={18} />Edytuj materiał</button><form onSubmit={upload} className="press-upload"><label>Załącznik (do 25 MB)<input name="file" type="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.mp3,.wav,.mp4,.zip,.docx,.txt" /></label><button disabled={busy}><Upload size={18} />Dodaj plik</button></form></>}
+    {material.attachments.map(attachment => <section key={attachment.id}><div className="press-file"><FileText size={20} /><span>{attachment.original_name}<small>{Math.max(1, Math.round(attachment.size / 1024))} KB · {attachment.storage_backend === 'cloudinary' ? 'Cloudinary' : 'Plik lokalny'}</small></span>{!mine && <button disabled={busy || blocked || (!admin && !!attachment.license_expires_at && new Date(attachment.license_expires_at) <= new Date())} title={`Pobierz ${attachment.original_name}`} aria-label={`Pobierz ${attachment.original_name}`} onClick={async () => { setBusy(true); setError(''); try { await downloadPressFile(attachment); refresh(); } catch (failure) { setError(pressError(failure)); } finally { setBusy(false); } }}><Download size={20} /></button>}{admin && <button disabled={busy} title={`Usuń ${attachment.original_name}`} aria-label={`Usuń ${attachment.original_name}`} onClick={() => void removeAttachment(attachment)}><Trash2 size={20} /></button>}</div>{!mine && <MediaPreview attachment={attachment} blocked={blocked || (!admin && !!attachment.license_expires_at && new Date(attachment.license_expires_at) <= new Date())} />}<div className="press-attachment-license"><p>{attachment.license || material.license}</p><p>Autor: {attachment.author || material.author} · Podpis: {attachment.credit || material.credit}</p><p>Właściciel: {attachment.rights_owner || material.rights_owner || material.author} · Źródło: {attachment.source || material.source || 'Nie podano'}</p><p>Media: {(attachment.allowed_media?.length ? attachment.allowed_media : material.allowed_media ?? []).map(value => pressMedia[value]).join(', ') || 'Zgodnie z licencją'}</p>{attachment.license_expires_at && <p>Ważna do: {new Date(attachment.license_expires_at).toLocaleString('pl-PL')}</p>}</div>{editable && <AttachmentRights attachment={attachment} refresh={refresh} />}</section>)}
+    {editable && <><button onClick={edit}><FileText size={18} />Edytuj materiał</button>{admin && <button disabled={busy} onClick={() => void removeMaterial()}><Trash2 size={18} />Usuń materiał</button>}<form onSubmit={upload} className="press-upload"><label>Załącznik (do 25 MB)<input name="file" type="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.mp3,.wav,.mp4,.zip,.docx,.txt" /></label><button disabled={busy}><Upload size={18} />Dodaj plik</button></form></>}
     {(admin || mine) && <WorkflowPanel material={material} userId={userId} admin={admin} refresh={refresh} />}
   </article>;
 }
