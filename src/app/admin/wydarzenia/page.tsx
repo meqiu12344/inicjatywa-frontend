@@ -16,11 +16,13 @@ import {
   Filter,
   Tag,
   ExternalLink,
-  Bot
+  Bot,
+  Users
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi, PendingEvent } from '@/lib/api/admin';
 import { AIDraftsPanel } from '@/components/admin/AIDraftsPanel';
+import { OrganizerContactsPanel } from '@/components/admin/OrganizerContactsPanel';
 import { getErrorMessage } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -36,7 +38,7 @@ export default function PendingEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<PendingEvent | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [tab, setTab] = useState<'all' | 'ai'>('all');
+  const [tab, setTab] = useState<'all' | 'ai' | 'organizers'>('all');
   const [initialAIEventId, setInitialAIEventId] = useState<number | null>(null);
 
   // Link admin_url zwracany przez API AI: /admin/wydarzenia?tab=ai&event=ID
@@ -45,6 +47,8 @@ export default function PendingEventsPage() {
     if (params.get('tab') === 'ai') {
       setTab('ai');
       setInitialAIEventId(Number(params.get('event')) || null);
+    } else if (params.get('tab') === 'organizatorzy') {
+      setTab('organizers');
     }
   }, []);
 
@@ -171,10 +175,21 @@ export default function PendingEventsPage() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setTab('organizers')}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+                tab === 'organizers' ? 'bg-indigo-600 text-white font-medium' : 'bg-white border text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Organizatorzy
+            </button>
           </div>
         </div>
 
-        {tab === 'ai' ? (
+        {tab === 'organizers' ? (
+          <OrganizerContactsPanel />
+        ) : tab === 'ai' ? (
           <AIDraftsPanel stats={stats} initialEventId={initialAIEventId} />
         ) : (
         <>

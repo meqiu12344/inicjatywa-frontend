@@ -25,6 +25,15 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { adminApi, PendingEvent, PendingEventStats, AIImportInfo } from '@/lib/api/admin';
 import { getErrorMessage } from '@/lib/api/client';
+import { OrganizerContactDetails, OrganizerStatusSelect } from './organizerContact';
+
+const ORGANIZER_MATCH_LABELS: Record<Exclude<AIImportInfo['organizer_match'], ''>, string> = {
+  created: 'Nowy organizator w bazie',
+  email: 'Powiązano z istniejącym organizatorem (ten sam e-mail)',
+  website: 'Powiązano z istniejącym organizatorem (ta sama strona)',
+  name: 'Powiązano z istniejącym organizatorem (ta sama nazwa)',
+  account: 'Organizator ma już konto na portalu',
+};
 
 const MISSING_LABELS: Record<string, string> = {
   start_time: 'godzina rozpoczęcia',
@@ -118,9 +127,10 @@ export function AIDraftsPanel({ stats, initialEventId }: { stats?: PendingEventS
   const approveMutation = useMutation({
     mutationFn: (id: number) => adminApi.approveEvent(id),
     onSuccess: () => {
-      toast.success('Wydarzenie zostało opublikowane');
+      toast.success('Opublikowano. Link dla organizatora znajdziesz w zakładce „Organizatorzy”.');
       setSelectedId(null);
       refresh();
+      queryClient.invalidateQueries({ queryKey: ['organizer-contacts'] });
     },
     onError: (error) => toast.error(getErrorMessage(error, 'Nie udało się opublikować wydarzenia')),
   });
@@ -331,6 +341,23 @@ export function AIDraftsPanel({ stats, initialEventId }: { stats?: PendingEventS
                   <ExternalLink className="h-4 w-4" />
                   Otwórz źródło
                 </a>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 p-3">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Kontakt do organizatora</p>
+                    {info.organizer && info.organizer_match && (
+                      <p className="text-xs text-gray-500">{ORGANIZER_MATCH_LABELS[info.organizer_match]}</p>
+                    )}
+                  </div>
+                  {info.organizer && <OrganizerStatusSelect contact={info.organizer} />}
+                </div>
+                {info.organizer ? (
+                  <OrganizerContactDetails contact={info.organizer} />
+                ) : (
+                  <p className="text-sm text-gray-500">Organizator nieznany — AI nie podało nazwy.</p>
+                )}
               </div>
 
               {info.ai_notes && (

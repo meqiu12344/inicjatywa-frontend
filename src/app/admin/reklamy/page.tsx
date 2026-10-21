@@ -42,6 +42,8 @@ const AD_TYPE_ICONS: Record<AdType, React.ReactNode> = {
 
 interface AdFormData {
   name: string;
+  campaignId: string;
+  advertiserId: string;
   type: AdType;
   imageUrl: string;
   linkUrl: string;
@@ -52,6 +54,8 @@ interface AdFormData {
 
 const EMPTY_FORM: AdFormData = {
   name: '',
+  campaignId: '',
+  advertiserId: '',
   type: 'image',
   imageUrl: '',
   linkUrl: '',
@@ -71,6 +75,8 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
     ad
       ? {
           name: ad.name,
+          campaignId: ad.campaignId ?? '',
+          advertiserId: ad.advertiserId ?? '',
           type: ad.type,
           imageUrl: ad.imageUrl ?? '',
           linkUrl: ad.linkUrl ?? '',
@@ -126,6 +132,8 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
 
     const payload = {
       name: form.name.trim(),
+      campaignId: form.campaignId.trim(),
+      advertiserId: form.advertiserId.trim(),
       type: form.type,
       imageUrl: form.imageUrl.trim() || undefined,
       linkUrl: form.linkUrl.trim() || undefined,
@@ -171,6 +179,31 @@ function AdModal({ ad, onClose, onSave }: AdModalProps) {
               onChange={(e) => set('name', e.target.value)}
               placeholder="np. Kampania lato 2025"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="ad-campaign-id" className="block text-sm font-medium text-gray-700 mb-1">ID kampanii</label>
+              <input
+                id="ad-campaign-id"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={form.campaignId}
+                onChange={(e) => set('campaignId', e.target.value)}
+                maxLength={100}
+                placeholder="np. kampania-2026-01"
+              />
+            </div>
+            <div>
+              <label htmlFor="ad-advertiser-id" className="block text-sm font-medium text-gray-700 mb-1">ID reklamodawcy</label>
+              <input
+                id="ad-advertiser-id"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={form.advertiserId}
+                onChange={(e) => set('advertiserId', e.target.value)}
+                maxLength={100}
+                placeholder="np. partner-001"
+              />
+            </div>
           </div>
 
           {/* Type */}

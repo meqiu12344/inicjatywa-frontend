@@ -85,6 +85,64 @@ npm run start
 
 ## 🔧 Konfiguracja
 
+### Google Analytics 4 i pomiar reklam
+
+Wspólny `MarketingTags` w głównym layoucie ładuje jeden `gtag.js` dla GA4
+`G-Y2T7MLDZX1` i dotychczasowego Google Ads. ID GA4 można nadpisać przez
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` przed zbudowaniem frontendu. Kolejka zdarzeń
+powstaje przed załadowaniem biblioteki; ponowne montowanie komponentów nie
+inicjalizuje ponownie pomiaru. Stare strony Django również korzystają z jednego
+loadera, z zachowaniem dotychczasowych identyfikatorów.
+
+Odsłony obsługuje automatyczny pomiar GA4. W panelu **Administracja → Strumienie
+danych → inicjatywakatolicka.pl → Pomiar zaawansowany → Wyświetlenia strony →
+Ustawienia zaawansowane** opcja **Zmiany strony na podstawie zdarzeń historii
+przeglądarki** musi być włączona. Obejmuje to nawigację Next.js oraz Wstecz/Dalej.
+Nie należy dodawać drugiego taga ani ręcznych `page_view`, które dublowałyby
+odsłony. [Dokumentacja Google](https://developers.google.com/analytics/devguides/collection/ga4/views).
+
+Banery i popup wysyłają `advertisement_impression` oraz `advertisement_click`
+wyłącznie do wskazanego GA4, równolegle z dotychczasowymi licznikami API.
+Wyświetlenie jest naliczane raz dla danej emisji, gdy poprawnie załadowany obraz
+jest widoczny w co najmniej 50% przez nieprzerwaną sekundę w aktywnej karcie.
+Przewinięcie poza ten próg lub ukrycie karty zeruje czas. Zamknięcie popupu
+anuluje oczekujące naliczenie. Kliknięcia obejmują lewy i środkowy przycisk oraz
+aktywację linku klawiaturą; pomiar nie wstrzymuje otwarcia reklamy.
+
+W **Definicjach niestandardowych** GA4 należy utworzyć wymiary o zakresie
+**Zdarzenie**, aby grupować reklamy w raportach i eksploracjach:
+
+| Parametr zdarzenia | Znaczenie |
+| --- | --- |
+| `ad_id` | ID konkretnej reklamy w bazie |
+| `ad_slot` | Faktyczne miejsce emisji, np. `ad-banner-1`, `ad-banner-2`, `ad-popup-entry` |
+| `ad_campaign_id` | ID kampanii z edytora reklamy (opcjonalne) |
+| `ad_advertiser_id` | ID reklamodawcy z edytora reklamy (opcjonalne) |
+
+Oba zdarzenia mają te same parametry. Pola ID można edytować w panelu reklam
+Next.js i w Django Admin. Używaj kodów kampanii i partnerów, bez e-maili ani
+danych kontaktowych; nazwy i dane kontaktowe reklamodawców nie trafiają do tych
+zdarzeń. Prefiks `ad_` odróżnia te identyfikatory od kampanii pozyskania ruchu
+(UTM). Zdarzenia mają własne nazwy, ponieważ `ad_impression` jest zastrzeżone
+dla strumieni aplikacji ([reguły Google](https://support.google.com/analytics/answer/13316687)).
+Raport CTR: liczba `advertisement_click` / liczba `advertisement_impression` × 100%.
+
+Wdrożenie wymaga migracji backendu przed uruchomieniem nowego frontendu:
+
+```bash
+python manage.py migrate AdvertisementService
+cd frontend
+npm run test:analytics
+npm run build
+```
+
+Po wdrożeniu sprawdź w Tag Assistant / GA4 DebugView oraz Realtime: pierwszą
+odsłonę, przejścia między stronami bez przeładowania, Wstecz/Dalej i kliknięcia
+reklam. W DevTools filtr `g/collect` powinien pokazać `tid=G-Y2T7MLDZX1`.
+Weryfikację wykonuj bez blokera reklam; nie należy obchodzić odmowy zgody
+użytkownika. Testy automatyczne używają lokalnej kolejki i zegara, bez wysyłania
+testowych zdarzeń do Google.
+
 ### Zmienne środowiskowe
 
 Utwórz plik `.env.local` z następującymi zmiennymi:

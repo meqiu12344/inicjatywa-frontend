@@ -1,4 +1,4 @@
-import { get, post, del, PaginatedResponse } from '@/lib/api/client';
+import { get, post, patch, del, PaginatedResponse } from '@/lib/api/client';
 
 // Types
 export interface OrganizerRequest {
@@ -60,6 +60,42 @@ export interface AIDuplicateMatch {
   similarity: number;
 }
 
+export type OrganizerContactStatus = 'to_contact' | 'message_sent' | 'replied' | 'account_created' | 'do_not_contact';
+
+// Organizator w prostym CRM (kontakty zebrane przez AI + status relacji)
+export interface OrganizerContact {
+  id: number;
+  name: string;
+  website: string;
+  email: string;
+  phone: string;
+  contact_person: string;
+  contact_source_url: string;
+  status: OrganizerContactStatus;
+  status_display: string;
+  status_changed_at: string | null;
+  notes: string;
+  has_account: boolean;
+  account_slug: string | null;
+  created_at: string;
+  updated_at: string;
+  events?: Array<{
+    id: number;
+    title: string;
+    start_date: string;
+    status: string;
+    public_url: string | null;
+    owned_by_organizer: boolean;
+    transferable: boolean;
+  }>;
+  // Opublikowane wydarzenia AI, które można przepisać na konto organizatora
+  transferable_count?: number;
+}
+
+export type OrganizerContactUpdate = Partial<
+  Pick<OrganizerContact, 'name' | 'website' | 'email' | 'phone' | 'contact_person' | 'status' | 'notes'>
+>;
+
 // Pochodzenie szkicu dodanego przez API asystenta AI (null dla zwykłych wydarzeń)
 export interface AIImportInfo {
   source_url: string;
@@ -82,6 +118,13 @@ export interface AIImportInfo {
   rejection_reason: string;
   token_name: string | null;
   created_at: string;
+  event_url: string;
+  organizer: OrganizerContact | null;
+  organizer_match: '' | 'created' | 'email' | 'website' | 'name' | 'account';
+  organizer_email: string;
+  organizer_phone: string;
+  organizer_contact_person: string;
+  organizer_contact_source_url: string;
 }
 
 export interface PendingEvent {
@@ -215,6 +258,28 @@ export const adminApi = {
 
   bulkApproveEvents: async (ids: number[]): Promise<BulkApproveResult> => {
     return post<BulkApproveResult>(`${ADMIN_BASE}/pending-events/bulk-approve/`, { ids });
+  },
+
+  // Organizatorzy (CRM)
+  getOrganizerContacts: async (status?: OrganizerContactStatus): Promise<OrganizerContact[]> => {
+    const params = new URLSearchParams({ page_size: '100' });
+    if (status) params.set('status', status);
+    const response = await get<PaginatedResponse<OrganizerContact>>(`${ADMIN_BASE}/organizer-contacts/?${params}`);
+    return response.results;
+  },
+
+  getOrganizerContactStats: async (): Promise<Record<OrganizerContactStatus, number>> => {
+    return get<Record<OrganizerContactStatus, number>>(`${ADMIN_BASE}/organizer-contacts/stats/`);
+  },
+
+  updateOrganizerContact: async (id: number, data: OrganizerContactUpdate): Promise<OrganizerContact> => {
+    return patch<OrganizerContact>(`${ADMIN_BASE}/organizer-contacts/${id}/`, data);
+  },
+
+  transferOrganizerEvents: async (id: number): Promise<{ message: string; transferred: number[]; contact: OrganizerContact }> => {
+    return post<{ message: string; transferred: number[]; contact: OrganizerContact }>(
+      `${ADMIN_BASE}/organizer-contacts/${id}/transfer-events/`
+    );
   },
 
   getPendingEvent: async (id: number): Promise<PendingEvent> => {

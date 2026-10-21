@@ -36,6 +36,12 @@ export default function AdminDashboard() {
     enabled: isAuthenticated && user?.is_staff && !authLoading,
   });
 
+  const { data: organizerStats } = useQuery({
+    queryKey: ['organizer-contact-stats'],
+    queryFn: () => adminApi.getOrganizerContactStats(),
+    enabled: isAuthenticated && user?.is_staff && !authLoading,
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -95,6 +101,15 @@ export default function AdminDashboard() {
       stats: eventStats?.ai_draft || 0,
       statsLabel: 'oczekujących',
       color: 'bg-violet-600',
+    },
+    {
+      title: 'Organizatorzy do kontaktu',
+      description: 'Wyślij organizatorom link do ich wydarzenia i zaproś do założenia konta',
+      href: '/admin/wydarzenia?tab=organizatorzy',
+      icon: Users,
+      stats: organizerStats?.to_contact || 0,
+      statsLabel: 'do kontaktu',
+      color: 'bg-indigo-600',
     },
     {
       title: 'Statystyki',

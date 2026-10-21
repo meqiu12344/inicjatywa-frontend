@@ -14,6 +14,9 @@ export interface Ad {
   createdAt: string;
   updatedAt: string;
   slotId?: string | null;
+  altText?: string;
+  campaignId?: string;
+  advertiserId?: string;
 }
 
 export interface AdSlot {
@@ -30,6 +33,9 @@ interface ApiAdvertisement {
   click_url: string | null;
   status: string;
   ad_slot: string | null;
+  alt_text?: string | null;
+  campaign_id?: string;
+  advertiser_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +51,8 @@ function toAd(ad: ApiAdvertisement): Ad {
     id: String(ad.id), name: ad.title, type: 'image', imageUrl: ad.image || undefined,
     linkUrl: ad.click_url || undefined, active: ad.status === 'active',
     createdAt: ad.created_at, updatedAt: ad.updated_at, slotId: ad.ad_slot,
+    altText: ad.alt_text || undefined,
+    campaignId: ad.campaign_id || '', advertiserId: ad.advertiser_id || '',
   };
 }
 
@@ -63,6 +71,8 @@ async function buildFormData(data: Partial<Ad>): Promise<FormData> {
   }
   const payload = new FormData();
   if (data.name !== undefined) payload.set('title', data.name);
+  if (data.campaignId !== undefined) payload.set('campaign_id', data.campaignId.trim());
+  if (data.advertiserId !== undefined) payload.set('advertiser_id', data.advertiserId.trim());
   if (data.linkUrl !== undefined) {
     const url = data.linkUrl.trim();
     payload.set('click_url', url && !/^https?:\/\//i.test(url) ? `https://${url}` : url);

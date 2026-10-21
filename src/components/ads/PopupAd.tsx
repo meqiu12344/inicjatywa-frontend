@@ -3,10 +3,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { adsApi, Ad } from '@/lib/api/ads';
+import { useAdTracking } from '@/hooks/useAdTracking';
 
 export default function PopupAd({ slotId = 'ad-popup-entry' }: { slotId?: string }) {
   const [ad, setAd] = useState<Ad | null>(null);
   const [visible, setVisible] = useState(false);
+  const { imageRef, recordClick } = useAdTracking(ad, slotId, visible);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,10 +40,16 @@ export default function PopupAd({ slotId = 'ad-popup-entry' }: { slotId?: string
   const content = (() => {
     if (ad.type === 'image' && imageSrc) {
       const img = (
-        <img src={imageSrc} alt={ad.name} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
+        <img ref={imageRef} src={imageSrc} alt={ad.altText || ad.name} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
       );
       return ad.linkUrl ? (
-        <a href={ad.linkUrl} target="_blank" rel="noopener noreferrer">{img}</a>
+        <a
+          href={ad.linkUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          onClick={recordClick}
+          onAuxClick={(event) => { if (event.button === 1) recordClick(); }}
+        >{img}</a>
       ) : img;
     }
 

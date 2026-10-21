@@ -1,15 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api/client';
-
-interface Advertisement {
-  id: number;
-  title: string;
-  image: string | null;
-  alt_text: string | null;
-  click_url: string | null;
-}
+import { adsApi, type Ad } from '@/lib/api/ads';
+import { useAdTracking } from '@/hooks/useAdTracking';
 
 interface AdBannerProps {
   id: string;
@@ -17,22 +10,14 @@ interface AdBannerProps {
 }
 
 export default function AdBanner({ id, className = '' }: AdBannerProps) {
-  const [ad, setAd] = useState<Advertisement | null | undefined>(undefined);
+  const [ad, setAd] = useState<Ad | null | undefined>(undefined);
+  const { imageRef, recordClick } = useAdTracking(ad, id);
 
   useEffect(() => {
     let cancelled = false;
 
-    apiClient
-      .get<Advertisement[]>(`/advertisements/public/by_placement/?placement=homepage&slot=${encodeURIComponent(id)}`)
-      .then(({ data }) => {
-        if (!cancelled) {
-          const activeAd = data[0] ?? null;
-          setAd(activeAd);
-          if (activeAd) {
-            apiClient.post(`/advertisements/public/${activeAd.id}/record_impression/`).catch(() => {});
-          }
-        }
-      })
+    adsApi.getAdForSlot(id)
+      .then((activeAd) => { if (!cancelled) setAd(activeAd); })
       .catch(() => {
         if (!cancelled) setAd(null);
       });
@@ -40,19 +25,15 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Still loading from localStorage
+  // Loading the assigned advertisement.
   if (ad === undefined) return null;
 
   // No active ad assigned – show nothing (clean UX)
   if (ad === null) return null;
 
-  const imageSrc = ad.image?.trim() || null;
+  const imageSrc = ad.imageUrl?.trim() || null;
 
   if (!imageSrc) return null;
-
-  const recordClick = () => {
-    apiClient.post(`/advertisements/public/${ad.id}/record_click/`).catch(() => {});
-  };
 
   return (
     <div
@@ -65,25 +46,28 @@ export default function AdBanner({ id, className = '' }: AdBannerProps) {
 
         {/* ── Image ad ── */}
         <div className="ad-banner-content ad-banner-content--image">
-            {ad.click_url ? (
+            {ad.linkUrl ? (
               <a
-                href={ad.click_url}
+                href={ad.linkUrl}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="block w-full"
                 onClick={recordClick}
+                onAuxClick={(event) => { if (event.button === 1) recordClick(); }}
               >
                 <img
+                  ref={imageRef}
                   src={imageSrc}
-                  alt={ad.alt_text || ad.title}
+                  alt={ad.altText || ad.name}
                   className="w-full object-contain"
                   style={{ display: 'block' }}
                 />
               </a>
             ) : (
               <img
+                ref={imageRef}
                 src={imageSrc}
-                alt={ad.alt_text || ad.title}
+                alt={ad.altText || ad.name}
                 className="w-full object-contain"
                 style={{ display: 'block' }}
               />
