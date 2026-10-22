@@ -10,7 +10,7 @@ import {
   Upload, X, Plus, Trash2, Info, ChevronLeft, ChevronRight,
   FileText, Tag, Users, Euro, AlertCircle, Check, 
   Heart, CreditCard, Gift, ExternalLink, Ticket, Sparkles, Globe, Lightbulb,
-  Play, Square
+  Play, Square, MapPinned, MessageCircle, HelpCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -22,7 +22,8 @@ import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { TicketType, Category } from '@/types';
+import { LOCATION_TYPE_CHOICES, buildEventEnd } from '@/lib/eventUtils';
+import { TicketType, Category, EventType, LocationType } from '@/types';
 
 // Dynamic import for CKEditor (uses window)
 const CKEditorComponent = dynamic(
@@ -44,7 +45,7 @@ interface EventFormData {
   title: string;
   description: string;
   category_ids: number[];
-  event_type: 'free' | 'voluntary' | 'platform' | 'paid';
+  event_type: EventType;
   is_permanent: boolean;
   start_date: string;
   start_time: string;
@@ -67,7 +68,7 @@ interface EventFormData {
   ticket_url: string;
   organizer: string;
   organizer_website: string;
-  online_event: boolean;
+  location_type: LocationType;
   online_link: string;
   needs_poster: boolean;
   tags: string[];
@@ -78,6 +79,22 @@ interface EventFormData {
 }
 
 const DONATION_AMOUNTS = [10, 20, 50, 100];
+const LOCATION_TYPE_ICONS = { onsite: MapPin, online: Globe, nationwide: MapPinned };
+const PRICE_SUMMARY: Record<EventType, string> = {
+  free: 'Bezpłatne',
+  voluntary: 'Dobrowolna opłata',
+  platform: 'Bilety przez platformę',
+  paid: 'Bilety zewnętrzne',
+  ask_organizer: 'Cena: zapytaj Organizatora',
+  unknown: 'Brak informacji o cenie',
+};
+
+// Wydarzenie stałe nie ma końca, nawet jeśli pola zakończenia zostały wcześniej wypełnione.
+function formEventEnd(data: Pick<EventFormData, 'is_permanent' | 'start_date' | 'end_date' | 'end_time'>) {
+  return data.is_permanent
+    ? { end_date: null, end_time_unknown: false }
+    : buildEventEnd(data.start_date, data.end_date, data.end_time);
+}
 const AI_POSTER_AMOUNTS = [10, 15, 20, 30];
 const TOTAL_STEPS = 7;
 
@@ -585,7 +602,7 @@ export default function CreateEventPage() {
       start_date: '',
       start_time: '10:00',
       end_date: '',
-      end_time: '12:00',
+      end_time: '',
       available_from_date: '',
       available_from_time: '09:00',
       available_to_date: '',
@@ -603,7 +620,7 @@ export default function CreateEventPage() {
       ticket_url: '',
       organizer: '',
       organizer_website: '',
-      online_event: false,
+      location_type: 'onsite',
       online_link: '',
       needs_poster: false,
       tags: [],
@@ -616,7 +633,8 @@ export default function CreateEventPage() {
 
   const watchAll = watch();
   const watchEventType = watch('event_type');
-  const watchOnlineEvent = watch('online_event');
+  const watchLocationType = watch('location_type');
+  const watchOnlineEvent = watchLocationType === 'online';
   const watchIsLimited = watch('is_limited');
   const watchIsPermanent = watch('is_permanent');
   const watchNeedsPoster = watch('needs_poster');
@@ -720,9 +738,6 @@ export default function CreateEventPage() {
       }
       
       const startDateTime = `${data.start_date}T${data.start_time}`;
-      const endDateTime = data.end_date && data.end_time && !data.is_permanent
-        ? `${data.end_date}T${data.end_time}`
-        : undefined;
       const availableFrom = data.available_from_date && data.available_from_time
         ? `${data.available_from_date}T${data.available_from_time}`
         : undefined;
@@ -738,9 +753,9 @@ export default function CreateEventPage() {
           title: data.title,
           description: data.description,
           start_date: startDateTime,
-          end_date: endDateTime,
+          ...formEventEnd(data),
           is_permanent: data.is_permanent,
-          location: !data.online_event ? {
+          location: data.location_type === 'onsite' ? {
             address: data.location_address,
             city: data.location_city,
             postal_code: data.location_postal_code,
@@ -751,13 +766,14 @@ export default function CreateEventPage() {
           event_type: data.event_type,
           participant_limit: data.is_limited ? null : data.participant_limit,
           is_limited: data.is_limited,
-          ticket_price: data.ticket_price,
+          ticket_price: data.event_type === 'paid' ? data.ticket_price : null,
           ticket_url: data.ticket_url || undefined,
           organizer: data.organizer || undefined,
           organizer_website: data.organizer_website || undefined,
           available_from: availableFrom,
           available_to: availableTo,
-          online_event: data.online_event,
+          location_type: data.location_type,
+          online_event: data.location_type === 'online',
           online_link: data.online_link || undefined,
         },
         payment_type: paymentType,
@@ -807,9 +823,6 @@ export default function CreateEventPage() {
       }
       
       const startDateTime = `${data.start_date}T${data.start_time}`;
-      const endDateTime = data.end_date && data.end_time && !data.is_permanent
-        ? `${data.end_date}T${data.end_time}`
-        : undefined;
       const availableFrom = data.available_from_date && data.available_from_time
         ? `${data.available_from_date}T${data.available_from_time}`
         : undefined;
@@ -822,9 +835,9 @@ export default function CreateEventPage() {
           title: data.title,
           description: data.description,
           start_date: startDateTime,
-          end_date: endDateTime,
+          ...formEventEnd(data),
           is_permanent: data.is_permanent,
-          location: !data.online_event ? {
+          location: data.location_type === 'onsite' ? {
             address: data.location_address,
             city: data.location_city,
             postal_code: data.location_postal_code,
@@ -835,13 +848,14 @@ export default function CreateEventPage() {
           event_type: data.event_type,
           participant_limit: data.is_limited ? null : data.participant_limit,
           is_limited: data.is_limited,
-          ticket_price: data.ticket_price,
+          ticket_price: data.event_type === 'paid' ? data.ticket_price : null,
           ticket_url: data.ticket_url || undefined,
           organizer: data.organizer || undefined,
           organizer_website: data.organizer_website || undefined,
           available_from: availableFrom,
           available_to: availableTo,
-          online_event: data.online_event,
+          location_type: data.location_type,
+          online_event: data.location_type === 'online',
           online_link: data.online_link || undefined,
         },
         categories: data.category_ids,
@@ -1191,29 +1205,10 @@ export default function CreateEventPage() {
           return false;
         }
         
-        // Validate end date if not permanent
-        if (!watchIsPermanent) {
-          if (!watchAll.end_date || !watchAll.end_time) {
-            setError('end_date', { type: 'required', message: 'Data zakończenia jest wymagana' });
-            setError('end_time', { type: 'required', message: 'Godzina zakończenia jest wymagana' });
-            toast.error('Data i godzina zakończenia są wymagane');
-            return false;
-          }
-          clearErrors(['end_date', 'end_time']);
-          const endValid = await trigger(['end_date', 'end_time']);
-          if (!endValid) {
-            const firstError = errors.end_date || errors.end_time;
-            if (firstError?.message) {
-              toast.error(String(firstError.message));
-            }
-            return false;
-          }
-          
-          const endDate = new Date(`${watchAll.end_date}T${watchAll.end_time}`);
-          if (endDate < new Date()) {
-            toast.error('Data i godzina zakończenia nie może być w przeszłości.');
-            return false;
-          }
+        // Zakończenie jest opcjonalne — sprawdzamy je tylko, gdy podano datę lub godzinę
+        const eventEnd = formEventEnd(watchAll);
+        if (eventEnd.end_date) {
+          const endDate = new Date(eventEnd.end_date);
           if (endDate <= startDate) {
             toast.error('Data i godzina zakończenia musi być późniejsza niż data rozpoczęcia.');
             return false;
@@ -1241,6 +1236,9 @@ export default function CreateEventPage() {
             }
             return false;
           }
+          return true;
+        }
+        if (watchLocationType === 'nationwide') {
           return true;
         }
 
@@ -1753,16 +1751,18 @@ export default function CreateEventPage() {
                   <div className="date-time-section">
                     <div className="section-title">
                       <Square className="w-5 h-5 text-gray-600" />
-                      <span>Data i godzina zakończenia</span>
+                      <span>Data i godzina zakończenia (opcjonalnie)</span>
                     </div>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Jeśli organizator nie podał zakończenia, zostaw pola puste — portal pokaże tylko początek,
+                      np. „24 października 2026, godz. 19:00”. Sama data bez godziny też jest w porządku.
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="form-label-small">Data zakończenia</label>
                         <input
                           type="date"
-                          {...register('end_date', {
-                            required: !watchIsPermanent ? 'Data zakończenia jest wymagana' : false
-                          })}
+                          {...register('end_date')}
                           onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')}
                           onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')}
                           className="form-input"
@@ -1778,9 +1778,7 @@ export default function CreateEventPage() {
                         <label className="form-label-small">Godzina zakończenia</label>
                         <input
                           type="time"
-                          {...register('end_time', {
-                            required: !watchIsPermanent ? 'Godzina zakończenia jest wymagana' : false
-                          })}
+                          {...register('end_time')}
                           onPaste={(e) => handleTimePaste(e, 'end_time')}
                           onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')}
                           className="form-input"
@@ -1939,18 +1937,39 @@ export default function CreateEventPage() {
                   <span>Określ miejsce, w którym odbędzie się Twoje wydarzenie.</span>
                 </div>
 
-                {/* Online Event Toggle */}
-                <label className="custom-checkbox">
-                  <input
-                    type="checkbox"
-                    {...register('online_event')}
-                  />
-                  <Globe className="w-6 h-6 text-blue-500" />
-                  <div>
-                    <span className="font-semibold text-gray-900">Wydarzenie online</span>
-                    <p className="text-sm text-gray-500">Zaznacz tę opcję, jeśli wydarzenie odbywa się online.</p>
+                {/* Typ lokalizacji */}
+                <div>
+                  <label className="form-label">Gdzie odbywa się wydarzenie?</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {LOCATION_TYPE_CHOICES.map(({ value, label, description }) => {
+                      const Icon = LOCATION_TYPE_ICONS[value];
+                      return (
+                        <label
+                          key={value}
+                          className={`
+                            flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all text-center
+                            ${watchLocationType === value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}
+                          `}
+                        >
+                          <input type="radio" value={value} {...register('location_type')} className="hidden" />
+                          <Icon className="w-6 h-6 text-blue-500" />
+                          <span className="font-medium text-sm">{label}</span>
+                          <span className="text-xs text-gray-500">{description}</span>
+                        </label>
+                      );
+                    })}
                   </div>
-                </label>
+                </div>
+
+                {watchLocationType === 'nationwide' && (
+                  <div className="info-section">
+                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <span>
+                      Wydarzenie nie ma jednego adresu — portal pokaże je jako ogólnopolskie.
+                      Gdzie dokładnie można wziąć udział (np. w parafiach), opisz w treści wydarzenia.
+                    </span>
+                  </div>
+                )}
 
                 {/* Online Link */}
                 {watchOnlineEvent && (
@@ -1974,7 +1993,7 @@ export default function CreateEventPage() {
                 )}
 
                 {/* Physical Location */}
-                {!watchOnlineEvent && (
+                {watchLocationType === 'onsite' && (
                   <>
                     {/* Location Type */}
                     <div className="flex gap-4 justify-center mb-6">
@@ -2091,7 +2110,7 @@ export default function CreateEventPage() {
                         <label className="form-label-small">Miasto *</label>
                         <input
                           {...register('location_city', {
-                            required: !watchOnlineEvent ? 'Miasto jest wymagane' : false
+                            required: watchLocationType === 'onsite' ? 'Miasto jest wymagane' : false
                           })}
                           className="form-input"
                           placeholder="np. Kraków"
@@ -2371,6 +2390,52 @@ export default function CreateEventPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Ask organizer */}
+                    <div
+                      onClick={() => setValue('event_type', 'ask_organizer')}
+                      className={`event-type-option ${watchEventType === 'ask_organizer' ? 'selected' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          checked={watchEventType === 'ask_organizer'}
+                          onChange={() => {}}
+                          className="mt-1 w-5 h-5"
+                        />
+                        <div>
+                          <span className="font-medium text-gray-900 flex items-center gap-2">
+                            <MessageCircle className="w-5 h-5 text-amber-500" />
+                            Cena: zapytaj Organizatora
+                          </span>
+                          <p className="text-sm text-gray-500 mt-1">Cena nie jest podana publicznie — uczestnicy dowiedzą się jej u organizatora</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Unknown price — tylko dla redakcji dodającej cudze wydarzenia */}
+                    {user?.is_staff && (
+                      <div
+                        onClick={() => setValue('event_type', 'unknown')}
+                        className={`event-type-option ${watchEventType === 'unknown' ? 'selected' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            checked={watchEventType === 'unknown'}
+                            onChange={() => {}}
+                            className="mt-1 w-5 h-5"
+                          />
+                          <div>
+                            <span className="font-medium text-gray-900 flex items-center gap-2">
+                              <HelpCircle className="w-5 h-5 text-gray-500" />
+                              Brak informacji o cenie
+                            </span>
+                            <p className="text-sm text-gray-500 mt-1">Źródło nie podaje, czy wydarzenie jest płatne</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {watchEventType === 'platform' && (
                     <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -2725,16 +2790,17 @@ export default function CreateEventPage() {
                     <div>
                       <span className="text-gray-500">Miejsce:</span>
                       <p className="font-medium text-gray-900">
-                        {watchAll.online_event ? 'Online' : (watchAll.location_city || '-')}
+                        {watchLocationType === 'online'
+                          ? 'Online'
+                          : watchLocationType === 'nationwide'
+                            ? 'Ogólnopolskie / wiele lokalizacji'
+                            : (watchAll.location_city || '-')}
                       </p>
                     </div>
                     <div>
                       <span className="text-gray-500">Typ:</span>
                       <p className="font-medium text-gray-900">
-                        {watchEventType === 'free' && 'Bezpłatne'}
-                        {watchEventType === 'voluntary' && 'Dobrowolna opłata'}
-                        {watchEventType === 'platform' && 'Bilety przez platformę'}
-                        {watchEventType === 'paid' && 'Bilety zewnętrzne'}
+                        {PRICE_SUMMARY[watchEventType]}
                       </p>
                     </div>
                   </div>

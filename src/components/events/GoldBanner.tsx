@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { eventsApi } from '@/lib/api/events';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
+import { getPlaceLabel } from '@/lib/eventUtils';
 import type { EventListItem } from '@/types';
 
 interface GoldBannerProps {
@@ -103,12 +104,12 @@ function GoldBannerCard({ event }: { event: EventListItem }) {
                   <Calendar className="w-4 h-4" />
                   {formattedDate}
                 </span>
-                {event.location && (
+                {getPlaceLabel(event) && (
                   <>
                     <span className="text-slate-400">•</span>
                     <span className="flex items-center gap-1.5">
                       <MapPin className="w-4 h-4" />
-                      {event.location.city}
+                      {getPlaceLabel(event)}
                     </span>
                   </>
                 )}

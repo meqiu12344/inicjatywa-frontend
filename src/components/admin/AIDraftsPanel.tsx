@@ -69,13 +69,14 @@ function formatDate(event: PendingEvent) {
     : format(start, 'd MMM yyyy, HH:mm', { locale: pl });
   if (!event.end_date) return startText;
   const end = new Date(event.end_date);
-  const endText = missing.includes('end_time')
+  const endText = event.end_time_unknown
     ? format(end, 'd MMM yyyy', { locale: pl })
     : format(end, 'd MMM yyyy, HH:mm', { locale: pl });
   return `${startText} – ${endText}`;
 }
 
 function formatPlace(event: PendingEvent) {
+  if (event.location_type === 'nationwide') return 'Ogólnopolskie — wiele lokalizacji';
   if (event.online_event) return 'Online';
   if (!event.location) return null;
   return [event.location.address, event.location.city, event.location.region].filter(Boolean).join(', ');
@@ -86,6 +87,8 @@ function formatPrice(event: PendingEvent) {
   const amount = event.ticket_price != null ? `${event.ticket_price} ${info?.currency || 'PLN'}` : null;
   if (info?.missing_fields.includes('price') && !amount) return 'nie podano';
   if (event.event_type === 'free') return 'Bezpłatne';
+  if (event.event_type === 'ask_organizer') return 'Cena: zapytaj Organizatora';
+  if (event.event_type === 'unknown') return 'Brak informacji o cenie';
   if (event.event_type === 'voluntary') return amount ? `Dobrowolna ofiara (sugerowana ${amount})` : 'Dobrowolna ofiara';
   return amount ?? 'Płatne — kwota nieznana';
 }

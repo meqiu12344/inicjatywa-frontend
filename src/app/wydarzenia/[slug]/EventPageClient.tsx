@@ -29,7 +29,8 @@ import {
   Crown,
   Award,
   Medal,
-  Globe
+  Globe,
+  MapPinned
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -47,11 +48,12 @@ import {
   canRegister as canRegisterCheck,
   canPromote as canPromoteCheck,
   areTicketsAvailable,
-  getEffectiveStatus
+  getEffectiveStatus,
+  getLocationType
 } from '@/lib/eventUtils';
 import { StatusBadgeLight, EventStateBadge } from '@/components/StatusBadge';
 import { linkifyHtml } from '@/lib/utils/linkify';
-import type { Event } from '@/types';
+import type { Event, EventType } from '@/types';
 
 const LeafletMap = dynamic(() => import('@/components/maps/LeafletMap'), { ssr: false });
 
@@ -225,6 +227,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   const isPast = isEventExpired(event);
   const isUpcoming = isEventUpcoming(event);
   const isOwner = user && (user.is_staff || user.id === event.user.id);
+  const locationType = getLocationType(event);
 
   // Sprawdzenie możliwości promocji używając eventUtils
   const promoteCheck = canPromoteCheck(event);
@@ -255,14 +258,15 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
     const dateStr = format(startDate, 'd MMMM yyyy', { locale: pl });
     const timeStr = format(startDate, 'HH:mm');
 
-    if (endDate) {
-      if (startDate.toDateString() === endDate.toDateString()) {
-        return `${dateStr}, ${timeStr} - ${format(endDate, 'HH:mm')}`;
-      }
+    if (endDate && startDate.toDateString() !== endDate.toDateString()) {
       return `${dateStr} - ${format(endDate, 'd MMMM yyyy', { locale: pl })}`;
     }
+    // Bez podanej godziny zakończenia pokazujemy sam początek, a nie „19:00–??”.
+    if (endDate && !event.end_time_unknown) {
+      return `${dateStr}, godz. ${timeStr} - ${format(endDate, 'HH:mm')}`;
+    }
 
-    return `${dateStr}, ${timeStr}`;
+    return `${dateStr}, godz. ${timeStr}`;
   };
 
   // Share handlers
@@ -281,11 +285,13 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   const isPlatformEvent = Boolean(organizerProfile?.is_platform);
   const organizerSiteHref = event.organizer_website || organizerHref;
 
-  const eventTypeLabels = {
-    free: 'Wydarzenie darmowe',
+  const priceLabels: Record<EventType, string> = {
+    free: 'Bezpłatne',
     voluntary: 'Dobrowolna opłata',
     platform: 'Bilety przez platformę',
-    paid: 'Wydarzenie płatne',
+    paid: 'Płatne',
+    ask_organizer: 'Zapytaj Organizatora',
+    unknown: 'Brak informacji',
   };
 
   return (
@@ -334,10 +340,16 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                 {cat.name}
               </Link>
             ))}
-            {event.online_event && (
+            {locationType === 'online' && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
                 <Globe className="w-3.5 h-3.5" />
                 Wydarzenie online
+              </span>
+            )}
+            {locationType === 'nationwide' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-100 text-primary-700 text-sm font-medium">
+                <MapPinned className="w-3.5 h-3.5" />
+                Wydarzenie ogólnopolskie
               </span>
             )}
           </div>
@@ -666,11 +678,21 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
             )}
 
             {/* Location Section */}
-            {(event.location || event.online_event) && (
+            {(event.location || locationType !== 'onsite') && (
               <div className="card p-6">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Lokalizacja</h3>
 
-                {event.online_event ? (
+                {locationType === 'nationwide' ? (
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-primary-50 border border-primary-200">
+                    <MapPinned className="w-5 h-5 text-primary-600 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-primary-800">Wydarzenie ogólnopolskie</div>
+                      <p className="text-sm text-primary-700 mt-1">
+                        Odbywa się w wielu miejscach w Polsce — szczegóły u organizatora
+                      </p>
+                    </div>
+                  </div>
+                ) : locationType === 'online' ? (
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
                       <Wifi className="w-5 h-5 text-emerald-600 mt-0.5" />
@@ -785,14 +807,14 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                       <div className="text-sm text-slate-500">Godzina</div>
                       <div className="font-medium text-slate-900">
                         {format(startDate, 'HH:mm')}
-                        {endDate && ` - ${format(endDate, 'HH:mm')}`}
+                        {endDate && !event.end_time_unknown && ` - ${format(endDate, 'HH:mm')}`}
                       </div>
                     </div>
                   </div>
                 )}
 
                 {/* Location */}
-                {event.location && !event.online_event && (
+                {event.location && locationType === 'onsite' && (
                   <div className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-primary-600 mt-0.5" />
                     <div>
@@ -807,7 +829,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                   </div>
                 )}
 
-                {event.online_event && (
+                {locationType === 'online' && (
                   <div className="flex items-start gap-3">
                     <Wifi className="w-5 h-5 text-emerald-600 mt-0.5" />
                     <div>
@@ -817,18 +839,39 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                   </div>
                 )}
 
+                {locationType === 'nationwide' && (
+                  <div className="flex items-start gap-3">
+                    <MapPinned className="w-5 h-5 text-primary-600 mt-0.5" />
+                    <div>
+                      <div className="text-sm text-slate-500">Lokalizacja</div>
+                      <div className="font-medium text-slate-900">Ogólnopolskie</div>
+                      <div className="text-sm text-slate-500">Wiele lokalizacji</div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Event Type */}
                 <div className="flex items-start gap-3">
                   <Ticket className="w-5 h-5 text-primary-600 mt-0.5" />
                   <div>
-                    <div className="text-sm text-slate-500">Typ biletu</div>
+                    <div className="text-sm text-slate-500">Cena</div>
                     <div className="font-medium text-slate-900">
-                      {eventTypeLabels[event.event_type]}
+                      {priceLabels[event.event_type] ?? event.event_type}
                     </div>
                     {event.ticket_price && event.event_type === 'paid' && (
                       <div className="text-lg font-bold text-primary-600 mt-1">
                         {event.ticket_price} zł
                       </div>
+                    )}
+                    {event.event_type === 'ask_organizer' && organizerSiteHref && (
+                      <a
+                        href={organizerSiteHref}
+                        target={event.organizer_website ? '_blank' : undefined}
+                        rel={event.organizer_website ? 'noopener noreferrer' : undefined}
+                        className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                      >
+                        Kontakt z organizatorem
+                      </a>
                     )}
                   </div>
                 </div>

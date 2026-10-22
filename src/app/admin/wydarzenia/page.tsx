@@ -126,6 +126,8 @@ export default function PendingEventsPage() {
       voluntary: { bg: 'bg-blue-50', text: 'text-blue-700' },
       platform: { bg: 'bg-purple-50', text: 'text-purple-700' },
       paid: { bg: 'bg-orange-50', text: 'text-orange-700' },
+      ask_organizer: { bg: 'bg-amber-50', text: 'text-amber-700' },
+      unknown: { bg: 'bg-gray-100', text: 'text-gray-600' },
     };
     const style = types[type] || types.free;
     return <span className={`${style.bg} ${style.text} text-xs font-medium px-2 py-0.5 rounded`}>{label}</span>;

@@ -9,6 +9,7 @@ import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
 import { eventsApi } from '@/lib/api/events';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
+import { getPlaceLabel } from '@/lib/eventUtils';
 import type { EventListItem } from '@/types';
 
 interface EventSliderProps {
@@ -42,6 +43,12 @@ function getPriceDisplay(event: EventListItem) {
   if (event.event_type === 'voluntary') {
     return { text: 'Dobrowolna opłata', className: 'text-emerald-600', icon: Heart };
   }
+  if (event.event_type === 'ask_organizer') {
+    return { text: 'Cena: zapytaj Organizatora', className: 'text-amber-600' };
+  }
+  if (event.event_type === 'unknown') {
+    return null;
+  }
   return { text: 'Bezpłatne', className: 'text-primary-600' };
 }
 
@@ -59,6 +66,7 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
         return formattedEndDate ? `${formattedDate} - ${formattedEndDate}` : formattedDate;
       })();
   const price = getPriceDisplay(event);
+  const placeLabel = getPlaceLabel(event, true);
 
   return (
     <Link
@@ -110,11 +118,10 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
                 <Calendar className="w-4 h-4" />
                 {dateDisplay}
               </p>
-              {event.location && (
+              {placeLabel && (
                 <p className="flex items-center gap-2 text-sm">
                   <MapPin className="w-4 h-4" />
-                  {event.location.city}
-                  {event.location.region && `, ${event.location.region}`}
+                  {placeLabel}
                 </p>
               )}
               <span className="mt-2 bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2">
@@ -130,10 +137,12 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
           <h3 className="font-semibold text-slate-900 line-clamp-2 group-hover:text-primary-600 transition-colors mb-2">
             {event.title}
           </h3>
-          <p className={clsx('text-sm font-medium flex items-center gap-1', price.className)}>
-            {price.icon && <price.icon className="w-4 h-4" />}
-            {price.text}
-          </p>
+          {price && (
+            <p className={clsx('text-sm font-medium flex items-center gap-1', price.className)}>
+              {price.icon && <price.icon className="w-4 h-4" />}
+              {price.text}
+            </p>
+          )}
         </div>
       </article>
     </Link>

@@ -8,7 +8,7 @@ import {
   Calendar, MapPin, Clock, 
   Upload, X, Plus, Trash2, Info, ChevronLeft, ChevronRight,
   FileText, Tag, Users, Euro, AlertCircle, Check, 
-  ExternalLink, Ticket, Globe, Lightbulb, Gift, Heart, Loader2
+  ExternalLink, Ticket, Globe, Lightbulb, Gift, Heart, Loader2, MapPinned, MessageCircle, HelpCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -18,13 +18,14 @@ import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { TicketType, Category, Event } from '@/types';
+import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationType } from '@/lib/eventUtils';
+import { TicketType, Category, Event, EventType, LocationType } from '@/types';
 
 interface EventFormData {
   title: string;
   description: string;
   category_ids: number[];
-  event_type: 'free' | 'voluntary' | 'platform' | 'paid';
+  event_type: EventType;
   is_permanent: boolean;
   start_date: string;
   start_time: string;
@@ -43,7 +44,7 @@ interface EventFormData {
   is_fully_booked: boolean;
   ticket_price: number | null;
   ticket_url: string;
-  online_event: boolean;
+  location_type: LocationType;
   online_link: string;
   tags: string[];
   ticket_types: Partial<TicketType>[];
@@ -102,7 +103,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       start_date: '',
       start_time: '10:00',
       end_date: '',
-      end_time: '12:00',
+      end_time: '',
       available_from_date: '',
       available_from_time: '09:00',
       available_to_date: '',
@@ -116,7 +117,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       is_fully_booked: false,
       ticket_price: null,
       ticket_url: '',
-      online_event: false,
+      location_type: 'onsite',
       online_link: '',
       tags: [],
       ticket_types: [],
@@ -125,7 +126,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
 
   const watchAll = watch();
   const watchEventType = watch('event_type');
-  const watchOnlineEvent = watch('online_event');
+  const watchLocationType = watch('location_type');
+  const watchOnlineEvent = watchLocationType === 'online';
   const watchIsLimited = watch('is_limited');
   const watchIsPermanent = watch('is_permanent');
   const watchTicketTypes = watch('ticket_types');
@@ -187,7 +189,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         start_date: startDate ? format(startDate, 'yyyy-MM-dd') : '',
         start_time: startDate ? format(startDate, 'HH:mm') : '10:00',
         end_date: endDate ? format(endDate, 'yyyy-MM-dd') : '',
-        end_time: endDate ? format(endDate, 'HH:mm') : '12:00',
+        end_time: endDate && !event.end_time_unknown ? format(endDate, 'HH:mm') : '',
         available_from_date: availableFrom ? format(availableFrom, 'yyyy-MM-dd') : '',
         available_from_time: availableFrom ? format(availableFrom, 'HH:mm') : '09:00',
         available_to_date: availableTo ? format(availableTo, 'yyyy-MM-dd') : '',
@@ -201,7 +203,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         is_fully_booked: event.is_fully_booked || false,
         ticket_price: event.ticket_price || null,
         ticket_url: event.ticket_url || '',
-        online_event: event.online_event || false,
+        location_type: getLocationType(event),
         online_link: event.online_link || '',
         tags: event.tags?.map((t: { name: string }) => t.name) || [],
         ticket_types: [], // Will be populated separately if needed
@@ -264,9 +266,6 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       }
       
       const startDateTime = `${data.start_date}T${data.start_time}`;
-      const endDateTime = data.end_date && data.end_time && !data.is_permanent
-        ? `${data.end_date}T${data.end_time}`
-        : undefined;
       const availableFrom = data.available_from_date && data.available_from_time
         ? `${data.available_from_date}T${data.available_from_time}`
         : undefined;
@@ -281,8 +280,9 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         event_type: data.event_type,
         is_permanent: data.is_permanent,
         start_date: startDateTime,
-        end_date: endDateTime,
-        location: !data.online_event ? {
+        // Przy wydarzeniu stałym nie ruszamy zapisanego zakończenia.
+        ...(data.is_permanent ? {} : buildEventEnd(data.start_date, data.end_date, data.end_time)),
+        location: data.location_type === 'onsite' ? {
           address: data.location_address,
           city: data.location_city,
           postal_code: data.location_postal_code,
@@ -291,11 +291,12 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         participant_limit: data.is_limited ? undefined : data.participant_limit,
         is_limited: data.is_limited,
         is_fully_booked: data.is_fully_booked,
-        ticket_price: data.ticket_price || undefined,
+        ticket_price: data.event_type === 'paid' ? (data.ticket_price || undefined) : null,
         ticket_url: data.ticket_url || undefined,
         available_from: availableFrom,
         available_to: availableTo,
-        online_event: data.online_event,
+        location_type: data.location_type,
+        online_event: data.location_type === 'online',
         online_link: data.online_link || undefined,
         tags: data.tags,
         ticket_types: data.event_type === 'platform' ? data.ticket_types.map(tt => ({
@@ -495,6 +496,9 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       case 4:
         if (watchOnlineEvent) {
           return await trigger(['online_link']);
+        }
+        if (watchLocationType === 'nationwide') {
+          return true;
         }
         return await trigger(['location_city']);
       case 5:
@@ -779,8 +783,11 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                       <span className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                         <Clock className="w-4 h-4 text-gray-600" />
                       </span>
-                      Data i godzina zakończenia
+                      Data i godzina zakończenia (opcjonalnie)
                     </h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Puste pola = koniec nie podany. Sama data = znany dzień zakończenia bez godziny.
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-600 mb-2">
@@ -968,22 +975,33 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                   </div>
                 </div>
 
-                {/* Online Event Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-                  <label htmlFor="online_event" className="cursor-pointer flex items-center gap-3">
-                    <Globe className="w-6 h-6 text-primary-500" />
-                    <div>
-                      <span className="font-medium text-gray-900">Wydarzenie online</span>
-                      <p className="text-sm text-gray-500">Zaznacz, jeśli wydarzenie odbywa się online</p>
-                    </div>
-                  </label>
-                  <input
-                    type="checkbox"
-                    id="online_event"
-                    {...register('online_event')}
-                    className="w-6 h-6 text-primary-500 rounded focus:ring-primary-500"
-                  />
+                {/* Typ lokalizacji */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {LOCATION_TYPE_CHOICES.map(({ value, label, description }) => {
+                    const Icon = { onsite: MapPin, online: Globe, nationwide: MapPinned }[value];
+                    return (
+                      <label
+                        key={value}
+                        className={`
+                          flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all text-center
+                          ${watchLocationType === value ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-primary-300'}
+                        `}
+                      >
+                        <input type="radio" value={value} {...register('location_type')} className="hidden" />
+                        <Icon className="w-6 h-6 text-primary-500" />
+                        <span className="font-medium text-sm text-gray-900">{label}</span>
+                        <span className="text-xs text-gray-500">{description}</span>
+                      </label>
+                    );
+                  })}
                 </div>
+
+                {watchLocationType === 'nationwide' && (
+                  <p className="text-sm text-primary-800 p-4 bg-primary-50 border border-primary-200 rounded-xl">
+                    Wydarzenie bez jednego adresu — portal pokaże je jako ogólnopolskie. Gdzie dokładnie można
+                    wziąć udział (np. w parafiach), opisz w treści wydarzenia.
+                  </p>
+                )}
 
                 {/* Online Link */}
                 {watchOnlineEvent && (
@@ -1005,7 +1023,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                 )}
 
                 {/* Physical Location */}
-                {!watchOnlineEvent && (
+                {watchLocationType === 'onsite' && (
                   <>
                     {/* Location Type */}
                     <div className="flex gap-4 justify-center">
@@ -1090,7 +1108,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                         </label>
                         <input
                           {...register('location_city', { 
-                            required: !watchOnlineEvent ? 'Miasto jest wymagane' : false 
+                            required: watchLocationType === 'onsite' ? 'Miasto jest wymagane' : false 
                           })}
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary-500 focus:ring-0"
                           placeholder="np. Kraków"
@@ -1249,6 +1267,46 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                         <p className="text-sm text-gray-500 mt-1">Podaj link do zewnętrznego serwisu sprzedaży biletów</p>
                       </div>
                     </label>
+
+                    <label className={`
+                      flex items-start gap-3 p-4 bg-white border-2 rounded-xl cursor-pointer transition-all
+                      ${watchEventType === 'ask_organizer' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300'}
+                    `}>
+                      <input
+                        type="radio"
+                        value="ask_organizer"
+                        {...register('event_type')}
+                        className="mt-1 w-5 h-5 text-amber-500"
+                      />
+                      <div>
+                        <span className="font-medium text-gray-900 flex items-center gap-2">
+                          <MessageCircle className="w-5 h-5 text-amber-500" />
+                          Cena: zapytaj Organizatora
+                        </span>
+                        <p className="text-sm text-gray-500 mt-1">Cena nie jest podana publicznie — uczestnicy dowiedzą się jej u organizatora</p>
+                      </div>
+                    </label>
+
+                    {(user?.is_staff || event?.event_type === 'unknown') && (
+                      <label className={`
+                        flex items-start gap-3 p-4 bg-white border-2 rounded-xl cursor-pointer transition-all
+                        ${watchEventType === 'unknown' ? 'border-gray-500 bg-gray-100' : 'border-gray-200 hover:border-gray-400'}
+                      `}>
+                        <input
+                          type="radio"
+                          value="unknown"
+                          {...register('event_type')}
+                          className="mt-1 w-5 h-5 text-gray-500"
+                        />
+                        <div>
+                          <span className="font-medium text-gray-900 flex items-center gap-2">
+                            <HelpCircle className="w-5 h-5 text-gray-500" />
+                            Brak informacji o cenie
+                          </span>
+                          <p className="text-sm text-gray-500 mt-1">Źródło nie podaje, czy wydarzenie jest płatne</p>
+                        </div>
+                      </label>
+                    )}
                   </div>
                 </div>
 
@@ -1488,7 +1546,11 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                     <div>
                       <span className="text-gray-500">Miejsce:</span>
                       <p className="font-medium text-gray-900">
-                        {watchAll.online_event ? 'Online' : (watchAll.location_city || '-')}
+                        {watchLocationType === 'online'
+                          ? 'Online'
+                          : watchLocationType === 'nationwide'
+                            ? 'Ogólnopolskie / wiele lokalizacji'
+                            : (watchAll.location_city || '-')}
                       </p>
                     </div>
                     <div>
@@ -1498,6 +1560,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                         {watchEventType === 'voluntary' && 'Dobrowolna opłata'}
                         {watchEventType === 'platform' && 'Bilety przez platformę'}
                         {watchEventType === 'paid' && 'Bilety zewnętrzne'}
+                        {watchEventType === 'ask_organizer' && 'Cena: zapytaj Organizatora'}
+                        {watchEventType === 'unknown' && 'Brak informacji o cenie'}
                       </p>
                     </div>
                   </div>

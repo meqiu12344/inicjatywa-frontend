@@ -24,7 +24,7 @@ function firstValue(value: string | string[] | undefined): string | undefined {
 
 function buildEventsQuery(searchParams: SearchParams): string {
   const params = new URLSearchParams({ page: firstValue(searchParams.page) || '1', page_size: '12', ordering: firstValue(searchParams.ordering) || 'start_date' });
-  const mappings = [['q', 'search'], ['city', 'city'], ['region', 'region'], ['date_from', 'date_from'], ['date_to', 'date_to'], ['event_type', 'event_type'], ['online', 'online'], ['radius_km', 'radius_km'], ['radius_city', 'radius_city']] as const;
+  const mappings = [['q', 'search'], ['city', 'city'], ['region', 'region'], ['date_from', 'date_from'], ['date_to', 'date_to'], ['event_type', 'event_type'], ['online', 'online'], ['radius_km', 'radius_km'], ['radius_city', 'radius_city'], ['nationwide', 'include_nationwide']] as const;
   mappings.forEach(([source, target]) => {
     const value = firstValue(searchParams[source]);
     if (value) params.set(target, value);

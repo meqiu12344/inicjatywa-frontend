@@ -5,7 +5,7 @@
  * Odzwierciedla logikę z EventService/models.py
  */
 
-import type { Event, EventStatus, EventType } from '@/types';
+import type { Event, EventStatus, EventType, LocationType } from '@/types';
 
 // ========================
 // Status Choices & Labels
@@ -27,7 +27,53 @@ export const EVENT_TYPE_CHOICES: { value: EventType; label: string }[] = [
   { value: 'voluntary', label: 'Dobrowolna opłata' },
   { value: 'platform', label: 'Bilety przez platformę' },
   { value: 'paid', label: 'Bilety zewnętrzne' },
+  { value: 'ask_organizer', label: 'Cena: zapytaj Organizatora' },
+  { value: 'unknown', label: 'Brak informacji o cenie' },
 ];
+
+export const LOCATION_TYPE_CHOICES: { value: LocationType; label: string; description: string }[] = [
+  { value: 'onsite', label: 'Stacjonarne', description: 'W jednym, konkretnym miejscu' },
+  { value: 'online', label: 'Online', description: 'Uczestnicy dołączają przez link' },
+  {
+    value: 'nationwide',
+    label: 'Ogólnopolskie / wiele lokalizacji',
+    description: 'Bez jednego adresu, np. zbiórka we wszystkich parafiach',
+  },
+];
+
+/**
+ * Typ lokalizacji wydarzenia. Starsze odpowiedzi API (i dane w cache) mają tylko online_event.
+ */
+export function getLocationType(event: { location_type?: LocationType; online_event?: boolean }): LocationType {
+  return event.location_type ?? (event.online_event ? 'online' : 'onsite');
+}
+
+/**
+ * Zakończenie z pól formularza (RRRR-MM-DD, GG:MM). Koniec jest opcjonalny: bez daty i godziny — brak końca;
+ * sama godzina — dzień rozpoczęcia; sama data — znany dzień bez godziny (backend zapisze 23:59, a portal
+ * pokaże samą datę).
+ */
+export function buildEventEnd(
+  startDate: string,
+  endDate: string,
+  endTime: string,
+): { end_date: string | null; end_time_unknown: boolean } {
+  if (!endDate && !endTime) return { end_date: null, end_time_unknown: false };
+  return { end_date: `${endDate || startDate}T${endTime || '23:59'}`, end_time_unknown: !endTime };
+}
+
+/**
+ * Krótka etykieta miejsca na kartach i listach: miasto (opcjonalnie z regionem) albo „Ogólnopolskie”.
+ * null — nie ma czego pokazać (np. wydarzenie online).
+ */
+export function getPlaceLabel(
+  event: { location?: { city: string; region?: string } | null; location_type?: LocationType },
+  withRegion = false,
+): string | null {
+  if (event.location_type === 'nationwide') return 'Ogólnopolskie';
+  if (!event.location) return null;
+  return withRegion && event.location.region ? `${event.location.city}, ${event.location.region}` : event.location.city;
+}
 
 // ========================
 // Status Display Helpers
@@ -272,7 +318,7 @@ export function canBePublished(event: Partial<Event>): { canPublish: boolean; mi
   if (!event.title) missingFields.push('Tytuł');
   if (!event.description) missingFields.push('Opis');
   if (!event.start_date) missingFields.push('Data rozpoczęcia');
-  if (!event.online_event && !event.location) missingFields.push('Lokalizacja lub wydarzenie online');
+  if (getLocationType(event) === 'onsite' && !event.location) missingFields.push('Lokalizacja lub wydarzenie online');
   
   return {
     canPublish: missingFields.length === 0,

@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, Plu
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/events';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
+import { getPlaceLabel } from '@/lib/eventUtils';
 import { EventListItem } from '@/types';
 import type { PaginatedResponse } from '@/lib/api/client';
 
@@ -302,10 +303,10 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                           </span>
                         </div>
                         
-                        {event.location && (
+                        {getPlaceLabel(event) && (
                           <div className="flex items-center gap-2 text-sm text-slate-400">
                             <MapPin className="w-4 h-4 text-amber-500/70" />
-                            <span className="line-clamp-1">{event.location.city}</span>
+                            <span className="line-clamp-1">{getPlaceLabel(event)}</span>
                           </div>
                         )}
                       </div>
@@ -410,10 +411,10 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                           <Clock className="w-3.5 h-3.5 text-amber-500/70" />
                           {format(parseISO(event.start_date), 'HH:mm', { locale: pl })}
                         </p>
-                        {event.location && (
+                        {getPlaceLabel(event) && (
                           <p className="text-sm text-slate-400 flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-amber-500/70" />
-                            <span className="line-clamp-1">{event.location.city}</span>
+                            <span className="line-clamp-1">{getPlaceLabel(event)}</span>
                           </p>
                         )}
                       </div>
@@ -474,10 +475,10 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                       </h3>
                       <div className="mt-2 space-y-1">
                         <p className="text-sm text-slate-400">Wydarzenie trwa cały czas</p>
-                        {event.location && (
+                        {getPlaceLabel(event) && (
                           <p className="text-sm text-slate-400 flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-amber-500/70" />
-                            <span className="line-clamp-1">{event.location.city}</span>
+                            <span className="line-clamp-1">{getPlaceLabel(event)}</span>
                           </p>
                         )}
                       </div>

@@ -349,6 +349,12 @@ export default function MyEventsPage() {
                                   <span>{event.location.address ? `${event.location.address}, ` : ''}{event.location.city}</span>
                                 </div>
                               )}
+                              {event.location_type === 'nationwide' && (
+                                <div className="flex items-center gap-2 text-sm text-gray-400">
+                                  <MapPin className="w-4 h-4 text-amber-500/70" />
+                                  <span>Ogólnopolskie · wiele lokalizacji</span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Stats */}

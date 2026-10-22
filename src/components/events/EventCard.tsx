@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
 import { eventsApi } from '@/lib/api/events';
+import { getPlaceLabel } from '@/lib/eventUtils';
 import type { EventListItem } from '@/types';
 
 interface EventCardProps {
@@ -27,6 +28,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
   }
 
   const eventUrl = `/wydarzenia/${event.slug}`;
+  const placeLabel = getPlaceLabel(event, true);
   const dateDisplay = event.is_permanent
     ? 'Wydarzenie trwa cały czas'
     : (() => {
@@ -120,13 +122,10 @@ export function EventCard({ event, featured = false }: EventCardProps) {
           </h3>
 
           {/* Location */}
-          {event.location && (
+          {placeLabel && (
             <div className="flex items-center gap-2 text-sm text-slate-500 mt-auto pt-2">
               <MapPin className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">
-                {event.location.city}
-                {event.location.region && `, ${event.location.region}`}
-              </span>
+              <span className="truncate">{placeLabel}</span>
             </div>
           )}
         </div>

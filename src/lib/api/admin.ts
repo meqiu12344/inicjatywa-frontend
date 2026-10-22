@@ -1,4 +1,5 @@
 import { get, post, patch, del, PaginatedResponse } from '@/lib/api/client';
+import type { LocationType } from '@/types';
 
 // Types
 export interface OrganizerRequest {
@@ -150,6 +151,7 @@ export interface PendingEvent {
   }>;
   start_date: string;
   end_date: string | null;
+  end_time_unknown?: boolean;
   status: string;
   status_display: string;
   event_type: string;
@@ -157,6 +159,7 @@ export interface PendingEvent {
   description?: string;
   ticket_price?: number | null;
   participant_limit?: number | null;
+  location_type?: LocationType;
   online_event?: boolean;
   online_link?: string | null;
   organizer?: string | null;

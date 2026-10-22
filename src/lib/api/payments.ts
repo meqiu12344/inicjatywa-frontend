@@ -1,11 +1,13 @@
 import { post } from '@/lib/api/client';
+import type { EventType, LocationType } from '@/types';
 
 export interface CreateEventPaymentData {
   event_data: {
     title: string;
     description: string;
     start_date: string;
-    end_date?: string;
+    end_date?: string | null;
+    end_time_unknown?: boolean;
     is_permanent: boolean;
     location?: {
       address: string;
@@ -15,7 +17,7 @@ export interface CreateEventPaymentData {
       latitude?: number | null;
       longitude?: number | null;
     };
-    event_type: 'free' | 'voluntary' | 'platform' | 'paid';
+    event_type: EventType;
     participant_limit?: number | null;
     is_limited: boolean;
     ticket_price?: number | null;
@@ -24,6 +26,7 @@ export interface CreateEventPaymentData {
     organizer_website?: string;
     available_from?: string;
     available_to?: string;
+    location_type?: LocationType;
     online_event: boolean;
     online_link?: string;
   };

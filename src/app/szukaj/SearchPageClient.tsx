@@ -8,7 +8,7 @@ import { pl } from 'date-fns/locale';
 import { 
   Search, MapPin, Calendar, X, 
   SlidersHorizontal, Grid, List, ArrowUpDown,
-  Wifi, Tag, Loader2, RefreshCw
+  Wifi, Tag, Loader2, RefreshCw, MapPinned
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,6 +16,7 @@ import { eventsApi, categoriesApi } from '@/lib/api/events';
 import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
+import { getPlaceLabel } from '@/lib/eventUtils';
 import type { EventListItem, EventFilters, EventType } from '@/types';
 
 // Date presets
@@ -113,6 +114,9 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
   const [useRadius, setUseRadius] = useState(searchParams.get('radius_km') ? true : false);
   const [radiusKm, setRadiusKm] = useState(parseFloat(searchParams.get('radius_km') || '25'));
   const [radiusCity, setRadiusCity] = useState(searchParams.get('radius_city') || selectedCity);
+  // Wydarzenia ogólnopolskie (bez adresu) odbywają się wszędzie, więc domyślnie dołączamy je do filtrów miejsca.
+  const [includeNationwide, setIncludeNationwide] = useState(searchParams.get('nationwide') !== 'false');
+  const hasPlaceFilter = Boolean((!useRadius && selectedCity) || selectedRegion || useRadius);
 
   const datePresets = useMemo(() => getDatePresets(), []);
 
@@ -149,6 +153,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
     region: selectedRegion || undefined,
     radius_km: useRadius ? radiusKm : undefined,
     radius_city: useRadius ? radiusCity : undefined,
+    include_nationwide: includeNationwide ? undefined : false,
     categories: selectedCategories.length > 0 
       ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
       : undefined,
@@ -159,7 +164,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [debouncedQuery, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
+  }), [debouncedQuery, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, includeNationwide, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
@@ -195,6 +200,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
       params.set('radius_city', radiusCity);
     }
     if (selectedRegion) params.set('region', selectedRegion);
+    if (!includeNationwide) params.set('nationwide', 'false');
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
@@ -206,7 +212,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
+  }, [query, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, includeNationwide, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
 
   // Apply date preset
   const applyDatePreset = useCallback((preset: typeof datePresets[0]) => {
@@ -242,6 +248,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
     setUseRadius(false);
     setRadiusKm(25);
     setRadiusCity('');
+    setIncludeNationwide(true);
     setSelectedCategories([]);
     setDateFrom('');
     setDateTo('');
@@ -436,6 +443,23 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
               <Wifi className="w-4 h-4" />
               Online
             </button>
+
+            {/* Wydarzenia ogólnopolskie — przełącznik ma sens tylko przy filtrze miejsca */}
+            {hasPlaceFilter && (
+              <button
+                onClick={() => { setIncludeNationwide(!includeNationwide); setPage(1); }}
+                aria-pressed={includeNationwide}
+                title="Wydarzenia bez jednego adresu, np. zbiórki we wszystkich parafiach"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  includeNationwide
+                    ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <MapPinned className="w-4 h-4" />
+                Także ogólnopolskie
+              </button>
+            )}
 
             {/* Clear Filters */}
             {hasActiveFilters && (
@@ -960,11 +984,10 @@ function EventListItemCard({ event }: { event: EventListItem }) {
               <Calendar className="w-4 h-4" />
               {formattedDate}
             </span>
-            {event.location && (
+            {getPlaceLabel(event, true) && (
               <span className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4" />
-                {event.location.city}
-                {event.location.region && `, ${event.location.region}`}
+                {getPlaceLabel(event, true)}
               </span>
             )}
             {event.event_type === 'free' && (
@@ -975,6 +998,11 @@ function EventListItemCard({ event }: { event: EventListItem }) {
             {event.event_type === 'voluntary' && (
               <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                 Dobrowolna wpłata
+              </span>
+            )}
+            {event.event_type === 'ask_organizer' && (
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                Cena: zapytaj Organizatora
               </span>
             )}
           </div>

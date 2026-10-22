@@ -7,7 +7,8 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, Globe, ExternalLink, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, MapPinned, Globe, ExternalLink, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { eventsApi } from '@/lib/api/events';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
@@ -19,6 +20,9 @@ import {
   STATUS_CHOICES,
   AI_DRAFT_STATUS,
   EVENT_TYPE_CHOICES,
+  LOCATION_TYPE_CHOICES,
+  buildEventEnd,
+  getLocationType,
   isEventEditable,
   shouldAutoClose,
   shouldAutoReopen,
@@ -26,7 +30,7 @@ import {
   getAllowedStatusTransitions
 } from '@/lib/eventUtils';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { EventStatus, EventType } from '@/types';
+import type { EventStatus, EventType, LocationType } from '@/types';
 
 const CKEditorWrapper = dynamic(() => import('@/components/CKEditorWrapper'), { ssr: false });
 
@@ -44,7 +48,7 @@ interface EditEventFormData {
   available_to_date: string;
   available_to_time: string;
   is_permanent: boolean;
-  online_event: boolean;
+  location_type: LocationType;
   online_link: string;
   location_address: string;
   location_city: string;
@@ -68,7 +72,7 @@ export default function EditEventPage({ params }: Props) {
   const resolvedParams = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'basic' | 'tickets' | 'stats'>('basic');
   const [description, setDescription] = useState('');
   const [locationType, setLocationType] = useState<'poland' | 'foreign'>('poland');
@@ -122,13 +126,13 @@ export default function EditEventPage({ params }: Props) {
       start_date: '',
       start_time: '10:00',
       end_date: '',
-      end_time: '12:00',
+      end_time: '',
       available_from_date: '',
       available_from_time: '',
       available_to_date: '',
       available_to_time: '',
       is_permanent: false,
-      online_event: false,
+      location_type: 'onsite',
       online_link: '',
       location_address: '',
       location_city: '',
@@ -146,7 +150,8 @@ export default function EditEventPage({ params }: Props) {
   });
 
   const watchEventType = watch('event_type');
-  const watchOnlineEvent = watch('online_event');
+  const watchLocationType = watch('location_type');
+  const watchOnlineEvent = watchLocationType === 'online';
   const watchFullyBooked = watch('is_fully_booked');
   const watchAll = watch();
   const isTicketsDisabled = watchEventType !== 'platform';
@@ -259,16 +264,17 @@ export default function EditEventPage({ params }: Props) {
       description: event.description,
       event_type: event.event_type,
       status: event.status || 'draft',
-      start_date: start.toISOString().slice(0, 10),
-      start_time: start.toISOString().slice(11, 16),
-      end_date: end ? end.toISOString().slice(0, 10) : '',
-      end_time: end ? end.toISOString().slice(11, 16) : '12:00',
+      // API zwraca czas lokalny (bez strefy) — toISOString() przesunąłby godziny do UTC.
+      start_date: format(start, 'yyyy-MM-dd'),
+      start_time: format(start, 'HH:mm'),
+      end_date: end ? format(end, 'yyyy-MM-dd') : '',
+      end_time: end && !event.end_time_unknown ? format(end, 'HH:mm') : '',
       available_from_date: availableFromDate,
       available_from_time: availableFromTime,
       available_to_date: availableToDate,
       available_to_time: availableToTime,
       is_permanent: event.is_permanent,
-      online_event: event.online_event,
+      location_type: getLocationType(event),
       online_link: event.online_link || '',
       location_address: event.location?.address || '',
       location_city: event.location?.city || '',
@@ -500,16 +506,17 @@ export default function EditEventPage({ params }: Props) {
         status: data.status,
         is_permanent: data.is_permanent,
         start_date: `${data.start_date}T${data.start_time}`,
-        end_date: data.end_date ? `${data.end_date}T${data.end_time}` : null,
+        ...buildEventEnd(data.start_date, data.end_date, data.end_time),
         available_from: (data.available_from_date && data.available_from_time)
           ? `${data.available_from_date}T${data.available_from_time}`
           : null,
         available_to: (data.available_to_date && data.available_to_time)
           ? `${data.available_to_date}T${data.available_to_time}`
           : null,
-        online_event: data.online_event,
-        online_link: data.online_event ? (data.online_link || undefined) : undefined,
-        location: !data.online_event ? {
+        location_type: data.location_type,
+        online_event: data.location_type === 'online',
+        online_link: data.location_type === 'online' ? (data.online_link || undefined) : undefined,
+        location: data.location_type === 'onsite' ? {
           address: data.location_address || undefined,
           city: data.location_city,
           postal_code: data.location_postal_code || undefined,
@@ -517,7 +524,7 @@ export default function EditEventPage({ params }: Props) {
           latitude: data.location_lat ?? undefined,
           longitude: data.location_lng ?? undefined,
         } : undefined,
-        ticket_price: data.ticket_price || undefined,
+        ticket_price: data.event_type === 'paid' ? (data.ticket_price || undefined) : null,
         ticket_url: data.ticket_url || undefined,
         participant_limit: data.is_fully_booked ? null : data.participant_limit,
         is_limited: !data.is_fully_booked && !!data.participant_limit,
@@ -690,9 +697,11 @@ export default function EditEventPage({ params }: Props) {
                         className="input w-full"
                         disabled={event?.event_type === 'platform' && hasSoldTickets}
                       >
-                        {EVENT_TYPE_CHOICES.map(({ value, label }) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
+                        {EVENT_TYPE_CHOICES
+                          .filter(({ value }) => value !== 'unknown' || user?.is_staff || event?.event_type === 'unknown')
+                          .map(({ value, label }) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
                       </select>
                       {event?.event_type === 'platform' && hasSoldTickets && (
                         <p className="text-xs text-amber-700 mt-2">
@@ -754,34 +763,58 @@ export default function EditEventPage({ params }: Props) {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Data zakończenia</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Data zakończenia (opcjonalnie)</label>
                       <div className="grid grid-cols-2 gap-2">
                         <input type="date" {...register('end_date')} onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')} onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')} className="input w-full" />
                         <input type="time" {...register('end_time')} onPaste={(e) => handleTimePaste(e, 'end_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')} className="input w-full" />
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Puste pola = koniec nie podany. Sama data = znany dzień zakończenia bez godziny.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <h3 className="font-medium text-gray-900">Wydarzenie online</h3>
-                        <p className="text-sm text-gray-500">Uczestnicy dołączają przez link</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" {...register('online_event')} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500" />
-                      </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lokalizacja</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {LOCATION_TYPE_CHOICES.map(({ value, label, description }) => {
+                        const Icon = { onsite: MapPin, online: Globe, nationwide: MapPinned }[value];
+                        return (
+                          <label
+                            key={value}
+                            className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                              watchLocationType === value
+                                ? 'border-primary-500 bg-primary-50'
+                                : 'border-gray-200 bg-gray-50 hover:border-primary-300'
+                            }`}
+                          >
+                            <input type="radio" value={value} {...register('location_type')} className="sr-only" />
+                            <Icon className="w-5 h-5 text-primary-600 mt-0.5 shrink-0" />
+                            <span>
+                              <span className="block font-medium text-gray-900">{label}</span>
+                              <span className="block text-sm text-gray-500">{description}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
-                    {watchOnlineEvent && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Link online</label>
-                        <input {...register('online_link')} className="input w-full" />
-                      </div>
-                    )}
                   </div>
 
-                  {!watchOnlineEvent && (
+                  {watchOnlineEvent && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Link online</label>
+                      <input {...register('online_link')} className="input w-full" />
+                    </div>
+                  )}
+
+                  {watchLocationType === 'nationwide' && (
+                    <p className="text-sm text-gray-600 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+                      Wydarzenie bez jednego adresu — portal pokaże je jako ogólnopolskie. Gdzie dokładnie można
+                      wziąć udział (np. w parafiach), opisz w treści wydarzenia.
+                    </p>
+                  )}
+
+                  {watchLocationType === 'onsite' && (
                     <div className="space-y-4">
                       <div className="flex gap-3">
                         <button
@@ -883,7 +916,7 @@ export default function EditEventPage({ params }: Props) {
                           <label className="block text-sm font-medium text-gray-700 mb-2">Miasto</label>
                           <input
                             {...register('location_city', {
-                              required: !watchOnlineEvent ? 'Miasto jest wymagane' : false,
+                              required: watchLocationType === 'onsite' ? 'Miasto jest wymagane' : false,
                             })}
                             className="input w-full"
                             placeholder="np. Kraków"

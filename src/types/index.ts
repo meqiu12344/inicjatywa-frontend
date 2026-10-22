@@ -75,7 +75,10 @@ export interface Tag {
 // Event Types
 // ========================
 
-export type EventType = 'free' | 'voluntary' | 'platform' | 'paid';
+// Rodzaj wydarzenia to zarazem stan ceny: ask_organizer = „Cena: zapytaj Organizatora”, unknown = brak informacji.
+export type EventType = 'free' | 'voluntary' | 'platform' | 'paid' | 'ask_organizer' | 'unknown';
+// nationwide — ogólnopolskie / wiele lokalizacji, bez jednego adresu
+export type LocationType = 'onsite' | 'online' | 'nationwide';
 // ai_draft — szkic z API asystenta AI, widoczny tylko w panelu admina
 export type EventStatus = 'pending' | 'public' | 'draft' | 'hidden' | 'closed' | 'ai_draft';
 
@@ -87,6 +90,8 @@ export interface Event {
   short_description?: string;
   start_date: string;
   end_date?: string;
+  // Znany dzień zakończenia bez godziny — pokazujemy samą datę.
+  end_time_unknown?: boolean;
   is_permanent: boolean;
   categories: Category[];
   category?: Category;
@@ -99,12 +104,13 @@ export interface Event {
   event_type: EventType;
   status: EventStatus;
   is_top10: boolean;
-  ticket_price?: number;
+  ticket_price?: number | null;
   participant_limit?: number;
   is_limited: boolean;
   available_from?: string;
   available_to?: string;
   ticket_url?: string;
+  location_type?: LocationType;
   online_event: boolean;
   online_link?: string;
   created_at: string;
@@ -137,6 +143,7 @@ export interface EventListItem {
   slug: string;
   start_date: string;
   end_date?: string;
+  end_time_unknown?: boolean;
   is_permanent?: boolean;
   location?: {
     city: string;
@@ -153,6 +160,7 @@ export interface EventListItem {
   promotion_level?: 'bronze' | 'silver' | 'gold';
   promotion_id?: number;
   is_fully_booked: boolean;
+  location_type?: LocationType;
   online_event: boolean;
   description?: string;
   registrations_count?: number;
@@ -171,6 +179,9 @@ export interface EventFilters {
   date_to?: string;
   event_type?: EventType;
   online?: boolean;
+  location_type?: LocationType;
+  // false — przy filtrze miejsca pomiń wydarzenia ogólnopolskie (domyślnie są dołączane)
+  include_nationwide?: boolean;
   has_tickets?: boolean;
   ordering?: string;
   page?: number;
@@ -182,6 +193,7 @@ export interface CreateEventData {
   description: string;
   start_date: string;
   end_date?: string | null;
+  end_time_unknown?: boolean;
   is_permanent?: boolean;
   categories?: number[];
   location_id?: number;
@@ -195,7 +207,7 @@ export interface CreateEventData {
   organizer?: string;
   organizer_website?: string;
   event_type?: EventType;
-  ticket_price?: number;
+  ticket_price?: number | null;
   participant_limit?: number | null;
   is_limited?: boolean;
   available_from?: string | null;
@@ -203,6 +215,7 @@ export interface CreateEventData {
   is_fully_booked?: boolean;
   needs_poster?: boolean;
   ticket_url?: string;
+  location_type?: LocationType;
   online_event?: boolean;
   online_link?: string;
   meta_description?: string;

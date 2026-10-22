@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { bustCache } from '@/lib/utils/media';
+import { getPlaceLabel } from '@/lib/eventUtils';
 import { EventListItem } from '@/types';
 
 // Types
@@ -870,10 +871,10 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                             <Clock className="w-4 h-4" />
                             {format(parseISO(event.start_date), 'HH:mm')}
                           </span>
-                          {event.location ? (
+                          {getPlaceLabel(event) ? (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-4 h-4" />
-                              {event.location.city}
+                              {getPlaceLabel(event)}
                             </span>
                           ) : event.online_event && (
                             <span className="flex items-center gap-1 text-green-600">
@@ -889,6 +890,8 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                             <span className="text-amber-600 font-medium text-sm">Dobrowolna opłata</span>
                           ) : event.event_type === 'paid' ? (
                             <span className="text-blue-600 font-medium text-sm">Płatne</span>
+                          ) : event.event_type === 'ask_organizer' ? (
+                            <span className="text-amber-600 font-medium text-sm">Cena: zapytaj Organizatora</span>
                           ) : null}
                         </div>
                       </div>
