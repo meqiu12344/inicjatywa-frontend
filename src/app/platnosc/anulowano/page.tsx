@@ -11,12 +11,13 @@ import { useAuthStore } from '@/stores/authStore';
 function PaymentCancelContent() {
   const searchParams = useSearchParams();
   const eventId = searchParams.get('event_id');
+  const isPromotion = searchParams.get('type') === 'promotion';
   const { isAuthenticated } = useAuthStore();
   const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const cancelDraft = async () => {
-      if (!eventId || !isAuthenticated) return;
+      if (isPromotion || !eventId || !isAuthenticated) return;
 
       setIsCancelling(true);
       try {
@@ -30,7 +31,7 @@ function PaymentCancelContent() {
     };
 
     cancelDraft();
-  }, [eventId, isAuthenticated]);
+  }, [eventId, isAuthenticated, isPromotion]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-50 to-white flex items-center justify-center px-4">
@@ -44,8 +45,9 @@ function PaymentCancelContent() {
         </h1>
         
         <p className="text-gray-600 mb-6">
-          Płatność została anulowana. Szkic wydarzenia został usunięty.
-          Możesz wrócić do formularza i spróbować ponownie.
+          {isPromotion
+            ? 'Zakup promocji nie został ukończony. Twoje wydarzenie pozostaje zapisane. Możesz wrócić do panelu wydarzenia.'
+            : 'Płatność została anulowana. Szkic wydarzenia został usunięty. Możesz wrócić do formularza i spróbować ponownie.'}
         </p>
 
         {isCancelling && (
@@ -56,18 +58,19 @@ function PaymentCancelContent() {
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
           <p className="text-sm text-yellow-800">
-            <strong>Uwaga:</strong> Jeśli chcesz dokończyć dodawanie wydarzenia, 
-            możesz wrócić do formularza i ponowić proces płatności.
+            {isPromotion
+              ? 'Jeśli płatność została pobrana, sprawdź status promocji w panelu przed ponownym zakupem.'
+              : 'Jeśli chcesz dokończyć dodawanie wydarzenia, możesz wrócić do formularza i ponowić proces płatności.'}
           </p>
         </div>
         
         <div className="space-y-3">
           <Link 
-            href="/wydarzenia/dodaj"
+            href={isPromotion ? eventId ? `/moje-wydarzenia/${eventId}/promuj` : '/moje-wydarzenia' : '/wydarzenia/dodaj'}
             className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
             <Plus className="w-5 h-5" />
-            Dodaj wydarzenie ponownie
+            {isPromotion ? 'Wróć do promocji wydarzenia' : 'Dodaj wydarzenie ponownie'}
           </Link>
           
           <Link 

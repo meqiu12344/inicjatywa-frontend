@@ -7,16 +7,27 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { paymentsApi } from '@/lib/api/payments';
 import { useAuthStore } from '@/stores/authStore';
+import PromotionConfirmation from './PromotionConfirmation';
 
 function PaymentSuccessContent() {
+  const searchParams = useSearchParams();
+  if (searchParams.get('type') === 'promotion') {
+    return <PromotionConfirmation
+      key={`${searchParams.get('promotion_id')}:${searchParams.get('session_id')}`}
+      promotionId={searchParams.get('promotion_id')}
+      sessionId={searchParams.get('session_id')}
+    />;
+  }
+  return <EventPaymentSuccessContent />;
+}
+
+function EventPaymentSuccessContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   
   const eventId = searchParams.get('event_id');
   const paymentType = searchParams.get('type');
   const sessionId = searchParams.get('session_id');
-  const promotionLevel = searchParams.get('level');
-  const isUpgrade = searchParams.get('is_upgrade') === '1';
   
   const [isConfirming, setIsConfirming] = useState(false);
   const [eventSlug, setEventSlug] = useState<string | null>(null);
@@ -24,7 +35,6 @@ function PaymentSuccessContent() {
   useEffect(() => {
     // Confirm payment with backend
     const confirmPayment = async () => {
-      if (paymentType === 'promotion') return;
       if (!eventId || !isAuthenticated) return;
       // Require session_id to prevent URL spoofing
       if (!sessionId) {
@@ -51,7 +61,6 @@ function PaymentSuccessContent() {
   }, [eventId, sessionId, isAuthenticated, paymentType]);
 
   const isAiPoster = paymentType === 'ai_poster';
-  const isPromotion = paymentType === 'promotion';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4">
@@ -68,29 +77,11 @@ function PaymentSuccessContent() {
             </div>
             
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {isPromotion
-                ? isUpgrade
-                  ? 'Promocja ulepszona!'
-                  : 'Promocja aktywowana!'
-                : 'Płatność przyjęta!'}
+              Płatność przyjęta!
             </h1>
             
             <p className="text-gray-600 mb-6">
-              {isPromotion ? (
-                isUpgrade ? (
-                  <>
-                    Twoja promocja została pomyślnie ulepszona do pakietu{' '}
-                    <strong>{promotionLevel?.toUpperCase() || 'WYŻSZEGO'}</strong>.{' '}
-                    Poprzednia promocja została dezaktywowana — nowy pakiet działa od teraz.
-                  </>
-                ) : (
-                  <>
-                    Dziękujemy za zakup promocji wydarzenia. Pakiet{' '}
-                    <strong>{promotionLevel?.toUpperCase() || 'PROMOCJI'}</strong>{' '}
-                    został aktywowany i Twoje wydarzenie zyskuje większą widoczność.
-                  </>
-                )
-              ) : isAiPoster ? (
+              {isAiPoster ? (
                 <>
                   Dziękujemy za zamówienie plakatu! Twoje wydarzenie zostało zapisane 
                   ze statusem <strong>&quot;Oczekujące&quot;</strong>. Plakat zostanie 
@@ -104,19 +95,7 @@ function PaymentSuccessContent() {
               )}
             </p>
 
-            {isPromotion && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6 text-left">
-                <p className="text-sm text-emerald-800">
-                  <strong>Co dalej?</strong>
-                  <br />
-                  {isUpgrade
-                    ? 'Twoje wydarzenie ma teraz lepszą widoczność. Sprawdź statystyki w panelu organizatora.'
-                    : 'Sprawdź status promocji w panelu organizatora. Jeśli zmienisz plan, promocja zostanie automatycznie zaktualizowana.'}
-                </p>
-              </div>
-            )}
-
-            {!isPromotion && isAiPoster && (
+            {isAiPoster && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
                 <p className="text-sm text-amber-800">
                   <strong>Co dalej?</strong>

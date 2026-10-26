@@ -74,7 +74,28 @@ export interface PaymentCancelResponse {
   message: string;
 }
 
+export interface PromotionConfirmation {
+  promotion_id: number;
+  event_id: number;
+  event_title: string;
+  event_slug: string;
+  level: 'bronze' | 'silver' | 'gold';
+  level_display: string;
+  start_date: string;
+  end_date: string;
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  status: 'pending' | 'active' | 'failed' | 'refunded' | 'expired' | 'scheduled' | 'inactive';
+  status_display: string;
+}
+
 export const paymentsApi = {
+  confirmPromotion: (promotionId: string, sessionId: string | null): Promise<PromotionConfirmation> => {
+    return post<PromotionConfirmation>('/payments/confirm-promotion/', {
+      promotion_id: promotionId,
+      ...(sessionId ? { session_id: sessionId } : {}),
+    }, { timeout: 15000 });
+  },
+
   /**
    * Create event with payment (donation or AI poster)
    * Returns Stripe checkout URL
