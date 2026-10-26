@@ -123,44 +123,35 @@ export function getStatusIcon(status: EventStatus): string {
 // Event State Checks
 // ========================
 
-/**
- * Sprawdza czy wydarzenie się już zakończyło (end_date minął)
- */
-export function isEventExpired(event: Event | { end_date?: string; start_date: string }): boolean {
-  const now = new Date();
-  
-  // Jeśli jest end_date, sprawdź czy minął
-  if (event.end_date) {
-    return new Date(event.end_date) < now;
-  }
-  
-  // Jeśli brak end_date, sprawdź start_date (wydarzenie jednodniowe)
-  return new Date(event.start_date) < now;
+type EventDateFields = {
+  start_date: string;
+  end_date?: string | null;
+  end_time_unknown?: boolean;
+  is_permanent?: boolean;
+};
+
+const warsawDayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+function warsawDay(value: Date): string {
+  const parts = warsawDayFormatter.formatToParts(value);
+  return ['year', 'month', 'day'].map((type) => parts.find((part) => part.type === type)?.value).join('-');
 }
 
-/**
- * Sprawdza czy wydarzenie jest w trakcie (już się zaczęło, ale jeszcze się nie skończyło)
- * UWAGA: Ta funkcja sprawdza FAKTYCZNY stan czasowy, niezależnie od statusu w bazie
- */
-export function isEventOngoing(event: Event | { start_date: string; end_date?: string; status?: EventStatus }): boolean {
+/** Explicit end times are exclusive; missing end times cover the whole Warsaw day. */
+export function isEventExpired(event: EventDateFields): boolean {
+  if (event.is_permanent) return false;
   const now = new Date();
-  const startDate = new Date(event.start_date);
-  const endDate = event.end_date ? new Date(event.end_date) : null;
-  
-  // Musi się już zacząć
-  if (startDate > now) {
-    return false;
+  if (event.end_date && !event.end_time_unknown) {
+    return new Date(event.end_date) <= now;
   }
-  
-  // Jeśli jest end_date, sprawdź czy jeszcze nie minął
-  if (endDate) {
-    return endDate >= now;
-  }
-  
-  // Wydarzenie jednodniowe - trwa do końca dnia start_date
-  const endOfStartDay = new Date(startDate);
-  endOfStartDay.setHours(23, 59, 59, 999);
-  return now <= endOfStartDay;
+  return warsawDay(new Date(event.end_date || event.start_date)) < warsawDay(now);
+}
+
+/** An ongoing event cannot simultaneously be expired. */
+export function isEventOngoing(event: EventDateFields): boolean {
+  return new Date(event.start_date) <= new Date() && !isEventExpired(event);
 }
 
 /**
@@ -190,45 +181,18 @@ export function isEventEditable(event: Event | { status: EventStatus }): boolean
 // Auto-Close Logic
 // ========================
 
-/**
- * Sprawdza czy wydarzenie powinno być automatycznie zamknięte.
- * Odzwierciedla Event.auto_close() z backendu.
- * 
- * Reguły:
- * - Jeśli end_date minął i status jest 'public' lub 'pending' -> powinno być 'closed'
- * - Nie zamyka wydarzeń ze statusem 'draft', 'hidden', 'closed' (ręcznie ustawione)
- */
-export function shouldAutoClose(event: Event | { end_date?: string; status: EventStatus }): boolean {
-  // Jeśli brak end_date, nie zamykamy automatycznie
-  if (!event.end_date) {
-    return false;
-  }
-  
-  const endDate = new Date(event.end_date);
-  const now = new Date();
-  
-  // Sprawdź czy end_date minął
-  if (endDate >= now) {
-    return false;
-  }
-  
-  // Tylko zamykaj jeśli status to 'public' lub 'pending'
-  return event.status === 'public' || event.status === 'pending';
+/** Keep manual draft/hidden/closed statuses while closing expired public events. */
+export function shouldAutoClose(event: EventDateFields & { status: EventStatus }): boolean {
+  return (event.status === 'public' || event.status === 'pending') && isEventExpired(event);
 }
 
-/**
- * Sprawdza czy zamknięte wydarzenie powinno być automatycznie ponownie otwarte.
- * Odzwierciedla logikę z Event.save() backendu.
- * 
- * Reguły:
- * - Jeśli status to 'closed' i start_date jest w przyszłości -> powinno być 'public'
- */
-export function shouldAutoReopen(event: Event | { start_date: string; status: EventStatus }): boolean {
-  if (event.status !== 'closed') {
-    return false;
-  }
-  
-  return new Date(event.start_date) > new Date();
+/** Reopening requires an actual date correction, never just viewing a closed event. */
+export function shouldAutoReopen(
+  event: { start_date: string; status: EventStatus },
+  previousStartDate?: string,
+): boolean {
+  return !!previousStartDate && event.status === 'closed'
+    && new Date(previousStartDate) <= new Date() && new Date(event.start_date) > new Date();
 }
 
 /**

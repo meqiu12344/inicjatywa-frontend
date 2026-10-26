@@ -33,7 +33,8 @@ export function EventCard({ event, featured = false }: EventCardProps) {
     ? 'Wydarzenie trwa cały czas'
     : (() => {
         const startDate = new Date(event.start_date);
-        return `${format(startDate, 'd MMMM yyyy', { locale: pl })} • ${format(startDate, 'HH:mm')}`;
+        const date = format(startDate, 'd MMMM yyyy', { locale: pl });
+        return event.start_time_unknown ? date : `${date} • ${format(startDate, 'HH:mm')}`;
       })();
 
   return (

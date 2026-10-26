@@ -89,6 +89,7 @@ export interface Event {
   description: string;
   short_description?: string;
   start_date: string;
+  start_time_unknown?: boolean;
   end_date?: string;
   // Znany dzień zakończenia bez godziny — pokazujemy samą datę.
   end_time_unknown?: boolean;
@@ -156,6 +157,7 @@ export interface EventListItem {
   title: string;
   slug: string;
   start_date: string;
+  start_time_unknown?: boolean;
   end_date?: string;
   end_time_unknown?: boolean;
   is_permanent?: boolean;

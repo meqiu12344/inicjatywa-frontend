@@ -258,6 +258,11 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
     const dateStr = format(startDate, 'd MMMM yyyy', { locale: pl });
     const timeStr = format(startDate, 'HH:mm');
 
+    if (event.start_time_unknown) {
+      return endDate && startDate.toDateString() !== endDate.toDateString()
+        ? `${dateStr} - ${format(endDate, 'd MMMM yyyy', { locale: pl })}` : dateStr;
+    }
+
     if (endDate && startDate.toDateString() !== endDate.toDateString()) {
       return `${dateStr} - ${format(endDate, 'd MMMM yyyy', { locale: pl })}`;
     }
@@ -800,7 +805,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                   </div>
                 </div>
 
-                {!event.is_permanent && (
+                {!event.is_permanent && !event.start_time_unknown && (
                   <div className="flex items-start gap-3">
                     <Clock className="w-5 h-5 text-primary-600 mt-0.5" />
                     <div>
