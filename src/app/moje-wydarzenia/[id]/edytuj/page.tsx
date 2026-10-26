@@ -30,6 +30,7 @@ import {
   getAllowedStatusTransitions
 } from '@/lib/eventUtils';
 import { StatusBadge } from '@/components/StatusBadge';
+import { PromotionStatus } from '@/components/events/PromotionStatus';
 import type { EventStatus, EventType, LocationType } from '@/types';
 
 const CKEditorWrapper = dynamic(() => import('@/components/CKEditorWrapper'), { ssr: false });
@@ -99,6 +100,8 @@ export default function EditEventPage({ params }: Props) {
     queryKey: ['event', eventId],
     queryFn: () => eventsApi.getEvent(eventId),
     enabled: !!eventId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: ticketTypes } = useQuery({
@@ -580,6 +583,7 @@ export default function EditEventPage({ params }: Props) {
           <div className="card p-6">Ładowanie...</div>
         ) : (
           <div className="space-y-6">
+            <PromotionStatus promotion={event.promotion} eventStatus={event.status} />
             <div className="bg-white rounded-xl shadow-sm">
               <nav className="flex border-b">
                 {[

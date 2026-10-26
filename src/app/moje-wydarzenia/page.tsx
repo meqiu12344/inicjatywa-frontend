@@ -26,6 +26,7 @@ import {
   STATUS_CHOICES
 } from '@/lib/eventUtils';
 import { StatusBadge, EventStateBadge } from '@/components/StatusBadge';
+import { PromotionStatus } from '@/components/events/PromotionStatus';
 import type { EventStatus, EventListItem } from '@/types';
 
 type TabType = 'upcoming' | 'past' | 'pending' | 'all';
@@ -70,6 +71,10 @@ export default function MyEventsPage() {
     queryKey: ['my-events'],
     queryFn: () => eventsApi.getMyEvents(),
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000,
   });
 
   // Mutacja usuwania
@@ -165,24 +170,6 @@ export default function MyEventsPage() {
   // Funkcja getStatusBadge używa komponentu StatusBadge z eventUtils
   const getStatusBadge = (status: EventStatus) => {
     return <StatusBadge status={status} size="md" showIcon={true} />;
-  };
-
-  const getPromotionBadge = (event: EventListItem) => {
-    if (!event.is_promoted) return null;
-    
-    const level = event.promotion_level || 'standard';
-    const colors = {
-      gold: 'bg-gradient-to-r from-yellow-500 to-amber-500 text-black',
-      silver: 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-800',
-      standard: 'bg-gradient-to-r from-amber-600 to-amber-700 text-black',
-    };
-    
-    return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${colors[level as keyof typeof colors] || colors.standard}`}>
-        <Star className="w-3 h-3" />
-        Promowane
-      </span>
-    );
   };
 
   if (!hydrated || !isAuthenticated) {
@@ -327,13 +314,15 @@ export default function MyEventsPage() {
                             {/* Status Badges */}
                             <div className="flex flex-wrap items-center gap-2 mb-2">
                               {getStatusBadge(event.status || 'public')}
-                              {getPromotionBadge(event)}
                             </div>
                             
                             {/* Title */}
                             <h3 className="text-lg font-semibold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
                               {event.title}
                             </h3>
+                            <div className="mt-3">
+                              <PromotionStatus promotion={event.promotion} eventStatus={event.status} dark />
+                            </div>
                             
                             {/* Date & Location */}
                             <div className="mt-2 space-y-1">

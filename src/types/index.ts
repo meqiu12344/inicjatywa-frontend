@@ -120,6 +120,7 @@ export interface Event {
   meta_description?: string;
   is_promoted: boolean;
   promotion_level?: 'bronze' | 'silver' | 'gold';
+  promotion?: PromotionStatus | null;
   views_count?: number;
   registrations_count?: number;
   is_registered?: boolean;
@@ -135,6 +136,19 @@ export interface Event {
     description?: string | null;
     is_platform?: boolean;
   } | null;
+}
+
+export interface PromotionStatus {
+  promotion_id: number;
+  level: 'bronze' | 'silver' | 'gold';
+  level_display: string;
+  start_date: string;
+  end_date: string;
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  status: 'pending' | 'active' | 'failed' | 'refunded' | 'expired' | 'scheduled' | 'inactive';
+  status_display: string;
+  is_active: boolean;
+  days_remaining: number;
 }
 
 export interface EventListItem {
@@ -159,6 +173,7 @@ export interface EventListItem {
   is_promoted: boolean;
   promotion_level?: 'bronze' | 'silver' | 'gold';
   promotion_id?: number;
+  promotion?: PromotionStatus | null;
   is_fully_booked: boolean;
   location_type?: LocationType;
   online_event: boolean;

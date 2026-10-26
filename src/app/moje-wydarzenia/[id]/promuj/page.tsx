@@ -11,6 +11,8 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import { PromotionStatus } from '@/components/events/PromotionStatus';
+import type { EventStatus, PromotionStatus as PromotionStatusData } from '@/types';
 
 interface PromotionPlan {
   level: string;
@@ -23,12 +25,10 @@ interface PromotionPlan {
 interface PromotionData {
   event_id: number;
   event_title: string;
+  event_status: EventStatus;
   is_promoted: boolean;
-  active_promotion: {
-    level: string;
-    end_date: string;
-    days_remaining: number;
-  } | null;
+  active_promotion: PromotionStatusData | null;
+  promotion: PromotionStatusData | null;
   plans: PromotionPlan[];
   upgrade_options: {
     level: string;
@@ -73,13 +73,17 @@ export default function PromoteEventPage() {
   const { isAuthenticated } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  const { data: promoData, isLoading } = useQuery<PromotionData>({
+  const { data: promoData, isLoading, error, refetch } = useQuery<PromotionData>({
     queryKey: ['event-promotion', eventId],
     queryFn: async () => {
       const response = await apiClient.get(`/events/${eventId}/promote/`);
       return response.data;
     },
     enabled: isAuthenticated && !!eventId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000,
   });
 
   const { data: stats } = useQuery<PromotionStats>({
@@ -151,7 +155,14 @@ export default function PromoteEventPage() {
     );
   }
 
-  if (!promoData) return null;
+  if (error || !promoData) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="text-center space-y-4">
+        <h1 className="text-xl font-bold text-gray-900">Nie udało się pobrać statusu promocji</h1>
+        <button type="button" onClick={() => void refetch()} className="text-indigo-600 hover:underline">Spróbuj ponownie</button>
+      </div>
+    </div>
+  );
 
   const hasActivePromotion = promoData.is_promoted && promoData.active_promotion;
   const hasUpgradeOptions = hasActivePromotion && promoData.upgrade_options && promoData.upgrade_options.length > 0;
@@ -175,24 +186,15 @@ export default function PromoteEventPage() {
           <p className="text-gray-600 mt-1">{promoData.event_title}</p>
         </div>
 
+        <div className="mb-8">
+          <PromotionStatus promotion={promoData.promotion} eventStatus={promoData.event_status} />
+        </div>
+
         {/* Active Promotion Info */}
         {hasActivePromotion && (
           <div className={`mb-8 p-6 rounded-xl bg-gradient-to-r ${levelColors[promoData.active_promotion!.level as keyof typeof levelColors]} text-black`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {(() => {
-                  const Icon = levelIcons[promoData.active_promotion!.level as keyof typeof levelIcons];
-                  return <Icon className="w-12 h-12" />;
-                })()}
-                <div>
-                  <h2 className="text-xl font-bold">
-                    Promocja {promoData.active_promotion!.level.charAt(0).toUpperCase() + promoData.active_promotion!.level.slice(1)} aktywna
-                  </h2>
-                  <p className="text-black/80">
-                    Pozostało {promoData.active_promotion!.days_remaining} dni
-                  </p>
-                </div>
-              </div>
+              <h2 className="text-xl font-bold">Statystyki promocji</h2>
               <Link
                 href={`/moje-wydarzenia/${eventId}/statystyki`}
                 className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium"
