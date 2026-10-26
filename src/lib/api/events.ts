@@ -1,5 +1,5 @@
 import { get, post, patch, del, PaginatedResponse } from '@/lib/api/client';
-import type { Event, EventListItem, EventFilters, CreateEventData, Category } from '@/types';
+import type { Event, EventListItem, EventFilters, CreateEventData, Category, IkCardVariant } from '@/types';
 
 const EVENTS_BASE = '/events';
 
@@ -21,6 +21,23 @@ function buildQueryString(filters?: EventFilters): string {
   
   const queryString = params.toString();
   return queryString ? `?${queryString}` : '';
+}
+
+export interface IkCardPreviewData {
+  ik_card_variant: string;
+  title?: string;
+  start_date?: string;
+  end_date?: string | null;
+  end_time_unknown?: boolean;
+  is_permanent?: boolean;
+  recurrence?: string;
+  recurrence_weekdays?: number[];
+  location_type?: string;
+  location?: { address?: string; city?: string };
+  categories?: number[];
+  organizer?: string;
+  // Edytowane wydarzenie — karta pokaże jego Organizatora.
+  event?: number;
 }
 
 // Events API
@@ -120,7 +137,15 @@ export const eventsApi = {
   },
   
   // Update event (partial)
-  updateEvent: async (id: number, data: Partial<CreateEventData>): Promise<Event> => {
+  updateEvent: async (id: number, data: Partial<CreateEventData>, image?: File): Promise<Event> => {
+    if (image) {
+      const formData = new FormData();
+      formData.append('event_data', JSON.stringify(data));
+      formData.append('image', image);
+      return patch<Event>(`${EVENTS_BASE}/${id}/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
     return patch<Event>(`${EVENTS_BASE}/${id}/`, data);
   },
   
@@ -129,6 +154,16 @@ export const eventsApi = {
     return del<void>(`${EVENTS_BASE}/${id}/`);
   },
   
+  // Biblioteka gotowych Kart IK (wybór po ID)
+  getIkCards: async (): Promise<{ default: string; variants: IkCardVariant[] }> => {
+    return get<{ default: string; variants: IkCardVariant[] }>(`${EVENTS_BASE}/ik-cards/`);
+  },
+
+  // Podgląd Karty IK z danych formularza (PNG z tego samego renderera, który zapisze kartę)
+  previewIkCard: async (data: IkCardPreviewData): Promise<Blob> => {
+    return post<Blob>(`${EVENTS_BASE}/ik-card-preview/`, data, { responseType: 'blob' });
+  },
+
   // Upload event image
   uploadImage: async (id: number, file: File): Promise<{ image: string }> => {
     const formData = new FormData();

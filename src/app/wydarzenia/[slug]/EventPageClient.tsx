@@ -571,17 +571,26 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
 
               {/* Event Image */}
               {event.image && (
-                <div className="relative w-full mb-6 rounded-xl overflow-hidden bg-slate-100">
-                  <Image
-                    src={event.image}
-                    alt={event.title}
-                    width={800}
-                    height={450}
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 700px"
-                    priority
-                    className="object-cover w-full h-full"
-                  />
-                </div>
+                <figure className="mb-6">
+                  <div className="relative w-full rounded-xl overflow-hidden bg-slate-100">
+                    <Image
+                      src={event.image}
+                      alt={event.graphic_type === 'ik_card' ? `Karta Informacyjna IK: ${event.title}` : event.title}
+                      width={800}
+                      height={450}
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 700px"
+                      priority
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                  {/* Karta IK to grafika portalu — nie może uchodzić za oficjalny plakat Organizatora. */}
+                  {event.graphic_type === 'ik_card' && (
+                    <figcaption className="mt-2 text-xs text-slate-500">
+                      Karta Informacyjna IK — grafika przygotowana przez InicjatywaKatolicka.pl na podstawie danych
+                      wydarzenia, nie plakat Organizatora.
+                    </figcaption>
+                  )}
+                </figure>
               )}
 
               {/* Description with HTML support */}

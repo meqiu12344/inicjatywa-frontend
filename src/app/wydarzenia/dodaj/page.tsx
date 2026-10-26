@@ -24,8 +24,9 @@ import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
-import { TicketType, Category, EventType, LocationType, RecurrenceRule } from '@/types';
+import { TicketType, Category, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
 import { RecurrenceFields } from '@/components/events/RecurrenceFields';
+import { DEFAULT_IK_CARD_VARIANT, EventGraphicPicker, IkCardPreview } from '@/components/events/EventGraphicPicker';
 
 // Dynamic import for CKEditor (uses window)
 const CKEditorComponent = dynamic(
@@ -75,6 +76,8 @@ interface EventFormData {
   location_type: LocationType;
   online_link: string;
   needs_poster: boolean;
+  graphic_type: GraphicType;
+  ik_card_variant: string;
   tags: string[];
   ticket_types: Partial<TicketType>[];
   make_donation: boolean;
@@ -629,6 +632,8 @@ export default function CreateEventPage() {
       location_type: 'onsite',
       online_link: '',
       needs_poster: false,
+      graphic_type: 'ik_card',
+      ik_card_variant: DEFAULT_IK_CARD_VARIANT,
       tags: [],
       ticket_types: [],
       make_donation: true,
@@ -647,6 +652,11 @@ export default function CreateEventPage() {
   const watchRecurrence = watch('recurrence');
   const watchRecurrenceWeekdays = watch('recurrence_weekdays');
   const watchNeedsPoster = watch('needs_poster');
+  const watchGraphicType = watch('graphic_type');
+  const watchIkCardVariant = watch('ik_card_variant');
+  // Własny plakat trafia na serwer dopiero po utworzeniu wydarzenia; Kartę IK generuje backend.
+  const uploadsPoster = !watchNeedsPoster && watchGraphicType === 'poster';
+  const showsIkCard = !watchNeedsPoster && watchGraphicType === 'ik_card';
   const watchMakeDonation = watch('make_donation');
   const watchDonationAmount = watch('donation_amount');
   const watchAiPosterAmount = watch('ai_poster_amount');
@@ -786,6 +796,8 @@ export default function CreateEventPage() {
           location_type: data.location_type,
           online_event: needsOnlineLink(data.location_type),
           online_link: needsOnlineLink(data.location_type) ? data.online_link || undefined : undefined,
+          graphic_type: data.needs_poster ? 'poster' : data.graphic_type,
+          ik_card_variant: data.ik_card_variant,
         },
         payment_type: paymentType,
         amount: amount,
@@ -804,7 +816,7 @@ export default function CreateEventPage() {
     },
     onSuccess: async (response) => {
       // Upload image if selected
-      if (imageFile && response.event_id) {
+      if (uploadsPoster && imageFile && response.event_id) {
         try {
           await eventsApi.uploadImage(response.event_id, imageFile);
         } catch {
@@ -870,6 +882,8 @@ export default function CreateEventPage() {
           location_type: data.location_type,
           online_event: needsOnlineLink(data.location_type),
           online_link: needsOnlineLink(data.location_type) ? data.online_link || undefined : undefined,
+          graphic_type: data.needs_poster ? 'poster' : data.graphic_type,
+          ik_card_variant: data.ik_card_variant,
         },
         categories: data.category_ids,
         tags: data.tags,
@@ -886,7 +900,7 @@ export default function CreateEventPage() {
     },
     onSuccess: async (response) => {
       // Upload image if selected
-      if (imageFile && response.event_id) {
+      if (uploadsPoster && imageFile && response.event_id) {
         try {
           await eventsApi.uploadImage(response.event_id, imageFile);
         } catch {
@@ -908,6 +922,10 @@ export default function CreateEventPage() {
   // Handlers
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (file && file.size > 5 * 1024 * 1024) {
+      toast.error('Plik jest za duży. Maksymalny rozmiar to 5MB.');
+      return;
+    }
     if (file) {
       setImageFile(file);
       const reader = new FileReader();
@@ -921,6 +939,22 @@ export default function CreateEventPage() {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
+  };
+
+  // Dane, z których backend składa Kartę IK — podgląd uzupełnia się z kolejnych kroków formularza.
+  const ikCardData = {
+    title: watchAll.title,
+    start_date: watchAll.start_date && watchAll.start_time ? `${watchAll.start_date}T${watchAll.start_time}` : undefined,
+    ...(watchAll.start_date ? formEventEnd(watchAll) : {}),
+    is_permanent: watchAll.is_permanent,
+    recurrence: watchAll.is_permanent ? '' : watchAll.recurrence,
+    recurrence_weekdays: watchAll.recurrence_weekdays,
+    location_type: watchAll.location_type,
+    location: needsVenue(watchAll.location_type)
+      ? { address: watchAll.location_address, city: watchAll.location_city }
+      : undefined,
+    categories: watchAll.category_ids,
+    organizer: watchAll.organizer || undefined,
   };
 
   const addTag = (raw: string) => {
@@ -1193,6 +1227,10 @@ export default function CreateEventPage() {
           if (errors.title?.message) {
             toast.error(String(errors.title.message));
           }
+          return false;
+        }
+        if (uploadsPoster && !imageFile) {
+          toast.error('Prześlij plik plakatu albo wybierz gotową Kartę IK.');
           return false;
         }
         return true;
@@ -1608,7 +1646,29 @@ export default function CreateEventPage() {
                   </div>
                 )}
 
-                {/* AI Poster Option */}
+                {/* Grafika wydarzenia: gotowa Karta IK albo własny plakat */}
+                <div>
+                  <label className="form-label">Grafika wydarzenia</label>
+                  <p className="text-sm text-gray-500 mb-3">
+                    Wybierz gotową Kartę Informacyjną IK albo dodaj oficjalny plakat wydarzenia.
+                  </p>
+                  {watchNeedsPoster ? (
+                    <p className="text-sm text-gray-600">Plakat przygotuje zespół IK — szczegóły poniżej.</p>
+                  ) : (
+                    <EventGraphicPicker
+                      graphicType={watchGraphicType}
+                      onGraphicTypeChange={(value) => setValue('graphic_type', value)}
+                      variant={watchIkCardVariant}
+                      onVariantChange={(value) => setValue('ik_card_variant', value)}
+                      cardData={ikCardData}
+                      posterSrc={imagePreview}
+                      onPosterChange={handleImageChange}
+                      onPosterRemove={removeImage}
+                    />
+                  )}
+                </div>
+
+                {/* Indywidualny projekt plakatu — osobna, płatna usługa IK */}
                 <div className="ai-plakat-option">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
@@ -1619,58 +1679,16 @@ export default function CreateEventPage() {
                     <div>
                       <span className="font-bold text-gray-900 flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-amber-500" />
-                        Nie masz plakatu? Zostaw to nam!
+                        Indywidualny projekt plakatu (usługa płatna)
                       </span>
                       <p className="text-sm text-gray-600 mt-1">
-                        Jeśli zaznaczysz tę opcję, nie musisz przejmować się plakatem, zrobimy to za ciebie! 
-                        Nasi ludzie stworzą spersonalizowany plakat pod twoje wydarzenie.
+                        Zamiast gotowej Karty IK nasi graficy przygotują spersonalizowany plakat pod Twoje wydarzenie.
                       </p>
                     </div>
                   </label>
                 </div>
 
-                {/* Manual Image Upload or AI Poster Selection */}
-                {!watchNeedsPoster ? (
-                  <div>
-                    <label className="form-label">Zdjęcie główne wydarzenia</label>
-                    <p className="text-sm text-gray-500 mb-3">
-                      Wybierz zdjęcie, które najlepiej reprezentuje Twoje wydarzenie.
-                    </p>
-                    
-                    {imagePreview ? (
-                      <div className="relative">
-                        <img
-                          src={imagePreview}
-                          alt="Podgląd"
-                          className="w-full max-h-72 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={removeImage}
-                          className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-lg"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50/30 transition-all">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                          <p className="mb-2 text-sm text-gray-500">
-                            <span className="font-semibold">Kliknij, aby przesłać</span> lub przeciągnij i upuść
-                          </p>
-                          <p className="text-xs text-gray-500">PNG, JPG, WEBP (max 5MB)</p>
-                        </div>
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/jpeg, image/png, image/webp"
-                          onChange={handleImageChange}
-                        />
-                      </label>
-                    )}
-                  </div>
-                ) : (
+                {watchNeedsPoster && (
                   <div className="p-5 bg-blue-50 border border-blue-200 rounded-xl">
                     <h4 className="font-semibold text-blue-900 mb-3">Przykładowe plakaty</h4>
                     
@@ -2835,7 +2853,18 @@ export default function CreateEventPage() {
                         {PRICE_SUMMARY[watchEventType]}
                       </p>
                     </div>
+                    <div>
+                      <span className="text-gray-500">Grafika:</span>
+                      <p className="font-medium text-gray-900">
+                        {watchNeedsPoster
+                          ? 'Indywidualny plakat od zespołu IK'
+                          : showsIkCard ? `Karta IK ${watchIkCardVariant}` : 'Własny plakat'}
+                      </p>
+                    </div>
                   </div>
+                  {showsIkCard && (
+                    <IkCardPreview data={{ ...ikCardData, ik_card_variant: watchIkCardVariant }} />
+                  )}
                 </div>
 
                 {/* Warning */}

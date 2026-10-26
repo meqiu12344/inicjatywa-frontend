@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, MapPinned, Globe, ExternalLink, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Calendar, Save, Ticket, BarChart3, ArrowLeft, AlertTriangle, MapPin, MapPinned, Globe, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { eventsApi } from '@/lib/api/events';
@@ -32,8 +32,9 @@ import {
 import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { getOrganizerStatus } from '@/lib/organizerStatus';
-import type { EventStatus, EventType, LocationType, RecurrenceRule } from '@/types';
+import type { EventStatus, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
 import { RecurrenceFields } from '@/components/events/RecurrenceFields';
+import { DEFAULT_IK_CARD_VARIANT, EventGraphicPicker } from '@/components/events/EventGraphicPicker';
 
 const CKEditorWrapper = dynamic(() => import('@/components/CKEditorWrapper'), { ssr: false });
 
@@ -97,7 +98,8 @@ export default function EditEventPage({ params }: Props) {
   } | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [graphicType, setGraphicType] = useState<GraphicType>('poster');
+  const [ikCardVariant, setIkCardVariant] = useState(DEFAULT_IK_CARD_VARIANT);
   const eventId = Number(resolvedParams.id);
 
   const { data: event, isLoading } = useQuery({
@@ -262,8 +264,10 @@ export default function EditEventPage({ params }: Props) {
     const isPoland = !country || ['pl', 'poland', 'polska'].includes(country);
     setDescription(event.description);
     setLocationType(isPoland ? 'poland' : 'foreign');
-    // Set existing image as preview
-    if (event.image) {
+    // Podgląd zapisanego plakatu; Karta IK ma własny podgląd generowany z danych wydarzenia.
+    setGraphicType(event.graphic_type ?? 'poster');
+    setIkCardVariant(event.ik_card_variant || DEFAULT_IK_CARD_VARIANT);
+    if (event.image && event.graphic_type !== 'ik_card') {
       setImagePreview(event.image);
     }
     if (event.location?.address || event.location?.city) {
@@ -489,26 +493,26 @@ export default function EditEventPage({ params }: Props) {
     setImagePreview(URL.createObjectURL(file));
   };
 
-  // Upload image mutation
-  const uploadImageMutation = useMutation({
-    mutationFn: async (file: File) => {
-      return eventsApi.uploadImage(eventId, file);
-    },
-    onSuccess: (data) => {
-      setImagePreview(data.image);
-      setImageFile(null);
-      toast.success('Zdjęcie zostało zaktualizowane');
-      queryClient.invalidateQueries({ queryKey: ['event', eventId] });
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, 'Nie udało się przesłać zdjęcia'));
-    },
-  });
-
   // Remove image
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
+  };
+
+  // Dane, z których backend składa Kartę IK (kategorie i Organizator — z zapisanego wydarzenia).
+  const ikCardData = {
+    title: watchAll.title,
+    start_date: watchAll.start_date && watchAll.start_time ? `${watchAll.start_date}T${watchAll.start_time}` : undefined,
+    ...buildEventEnd(watchAll.start_date, watchAll.end_date, watchAll.end_time),
+    is_permanent: watchAll.is_permanent,
+    recurrence: watchAll.is_permanent ? '' : watchAll.recurrence,
+    recurrence_weekdays: watchAll.recurrence_weekdays,
+    location_type: watchAll.location_type,
+    location: needsVenue(watchAll.location_type)
+      ? { address: watchAll.location_address, city: watchAll.location_city }
+      : undefined,
+    categories: event?.categories?.map((category) => category.id),
+    event: eventId,
   };
 
   const updateMutation = useMutation({
@@ -546,13 +550,10 @@ export default function EditEventPage({ params }: Props) {
         is_limited: !data.is_fully_booked && !!data.participant_limit,
         is_fully_booked: data.is_fully_booked,
         meta_description: data.meta_description || undefined,
+        // Zamówiony plakat przygotowuje zespół IK — wtedy wyboru grafiki nie zmieniamy.
+        ...(event?.needs_poster ? {} : { graphic_type: graphicType, ik_card_variant: ikCardVariant }),
       };
-      try {
-        const result = await eventsApi.updateEvent(eventId, payload);
-        return result;
-      } catch (err) {
-        throw err;
-      }
+      return eventsApi.updateEvent(eventId, payload, graphicType === 'poster' ? imageFile ?? undefined : undefined);
     },
     onSuccess: (data) => {
       // Inwaliduj cache dla tego wydarzenia
@@ -573,6 +574,11 @@ export default function EditEventPage({ params }: Props) {
   });
 
   const onSubmit = (data: EditEventFormData) => {
+    // Porzucenie Karty IK bez nowego pliku zostawiłoby wydarzenie bez grafiki.
+    if (!event?.needs_poster && graphicType === 'poster' && event?.graphic_type === 'ik_card' && !imageFile) {
+      toast.error('Prześlij plik plakatu albo zostaw gotową Kartę IK.');
+      return;
+    }
     updateMutation.mutate(data);
   };
 
@@ -635,68 +641,35 @@ export default function EditEventPage({ params }: Props) {
                     <input {...register('title')} className="input w-full" />
                   </div>
 
-                  {/* Image Upload Section */}
+                  {/* Grafika wydarzenia: gotowa Karta IK albo własny plakat */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Zdjęcie wydarzenia
-                    </label>
-                    <div className="mt-2">
-                      {imagePreview ? (
-                        <div className="relative">
-                          <img
-                            src={imagePreview}
-                            alt="Podgląd wydarzenia"
-                            className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-200"
-                          />
-                          <div className="absolute top-2 right-2 flex gap-2">
-                            {imageFile && (
-                              <button
-                                type="button"
-                                onClick={() => uploadImageMutation.mutate(imageFile)}
-                                disabled={uploadImageMutation.isPending}
-                                className="p-2 bg-green-500 text-black rounded-full hover:bg-green-600 shadow-lg disabled:opacity-50"
-                                title="Zapisz zdjęcie"
-                              >
-                                {uploadImageMutation.isPending ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Save className="w-4 h-4" />
-                                )}
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={removeImage}
-                              className="p-2 bg-red-500 text-black rounded-full hover:bg-red-600 shadow-lg"
-                              title="Usuń zdjęcie"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                          {imageFile && (
-                            <p className="mt-2 text-sm text-amber-600">
-                              Kliknij zielony przycisk, aby zapisać nowe zdjęcie
-                            </p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Grafika wydarzenia</label>
+                    {event?.needs_poster ? (
+                      <p className="text-sm text-gray-600">
+                        Zamówiony plakat przygotowuje zespół IK — pojawi się tutaj po przesłaniu.
+                      </p>
+                    ) : (
+                      <>
+                        {graphicType === 'ik_card' && event?.graphic_type !== 'ik_card' && event?.image && (
+                          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                            Po zapisaniu Karta IK zastąpi obecny plakat wydarzenia.
+                          </p>
+                        )}
+                        <EventGraphicPicker
+                          graphicType={graphicType}
+                          onGraphicTypeChange={setGraphicType}
+                          variant={ikCardVariant}
+                          onVariantChange={setIkCardVariant}
+                          cardData={ikCardData}
+                          posterSrc={imagePreview}
+                          onPosterChange={handleImageChange}
+                          onPosterRemove={removeImage}
+                          posterFooter={imageFile && (
+                            <p className="mt-2 text-sm text-gray-500">Plakat zapisze się razem z wydarzeniem.</p>
                           )}
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center w-full max-w-md h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 hover:bg-primary-50/30 transition-all">
-                          <div className="flex flex-col items-center justify-center py-6">
-                            <Upload className="w-10 h-10 text-gray-400 mb-3" />
-                            <p className="mb-1 text-sm text-gray-500">
-                              <span className="font-semibold">Kliknij</span> lub przeciągnij zdjęcie
-                            </p>
-                            <p className="text-xs text-gray-400">PNG, JPG, WEBP (max 5MB)</p>
-                          </div>
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleImageChange}
-                          />
-                        </label>
-                      )}
-                    </div>
+                        />
+                      </>
+                    )}
                   </div>
 
                   <div>

@@ -20,8 +20,9 @@ import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationType, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
-import { TicketType, Category, Event, EventType, LocationType, RecurrenceRule } from '@/types';
+import { TicketType, Category, Event, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
 import { RecurrenceFields } from '@/components/events/RecurrenceFields';
+import { DEFAULT_IK_CARD_VARIANT, EventGraphicPicker } from '@/components/events/EventGraphicPicker';
 
 interface EventFormData {
   title: string;
@@ -65,6 +66,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [graphicType, setGraphicType] = useState<GraphicType>('poster');
+  const [ikCardVariant, setIkCardVariant] = useState(DEFAULT_IK_CARD_VARIANT);
   const [currentStep, setCurrentStep] = useState(1);
   const [tagInput, setTagInput] = useState('');
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
@@ -174,8 +177,10 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       const availableFrom = event.available_from ? new Date(event.available_from) : null;
       const availableTo = event.available_to ? new Date(event.available_to) : null;
 
-      // Set image preview if exists
-      if (event.image) {
+      // Podgląd zapisanego plakatu; Karta IK ma własny podgląd generowany z danych wydarzenia.
+      setGraphicType(event.graphic_type ?? 'poster');
+      setIkCardVariant(event.ik_card_variant || DEFAULT_IK_CARD_VARIANT);
+      if (event.image && event.graphic_type !== 'ik_card') {
         setImagePreview(event.image);
       }
 
@@ -312,6 +317,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         online_event: needsOnlineLink(data.location_type),
         online_link: needsOnlineLink(data.location_type) ? data.online_link || undefined : undefined,
         tags: data.tags,
+        // Zamówiony plakat przygotowuje zespół IK — wtedy wyboru grafiki nie zmieniamy.
+        ...(event?.needs_poster ? {} : { graphic_type: graphicType, ik_card_variant: ikCardVariant }),
         ticket_types: data.event_type === 'platform' ? data.ticket_types.map(tt => ({
           name: tt.name || '',
           price: tt.price || 0,
@@ -321,13 +328,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         })) : undefined,
       };
       
-      const updatedEvent = await eventsApi.updateEvent(eventId, eventData);
-
-      if (imageFile) {
-        await eventsApi.uploadImage(eventId, imageFile);
-      }
-
-      return updatedEvent;
+      return eventsApi.updateEvent(eventId, eventData, graphicType === 'poster' ? imageFile ?? undefined : undefined);
     },
     onSuccess: async (data) => {
       toast.success('Wydarzenie zostało zaktualizowane!');
@@ -355,6 +356,22 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
+  };
+
+  // Dane, z których backend składa Kartę IK — podgląd zmienia się razem z formularzem.
+  const ikCardData = {
+    title: watchAll.title,
+    start_date: watchAll.start_date && watchAll.start_time ? `${watchAll.start_date}T${watchAll.start_time}` : undefined,
+    ...buildEventEnd(watchAll.start_date, watchAll.end_date, watchAll.end_time),
+    is_permanent: watchAll.is_permanent,
+    recurrence: watchAll.is_permanent ? '' : watchAll.recurrence,
+    recurrence_weekdays: watchAll.recurrence_weekdays,
+    location_type: watchAll.location_type,
+    location: needsVenue(watchAll.location_type)
+      ? { address: watchAll.location_address, city: watchAll.location_city }
+      : undefined,
+    categories: watchAll.category_ids,
+    event: eventId ?? undefined,
   };
 
   const addTag = (raw: string) => {
@@ -495,6 +512,11 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   };
 
   const onSubmit = (data: EventFormData) => {
+    // Porzucenie Karty IK bez nowego pliku zostawiłoby wydarzenie bez grafiki.
+    if (!event?.needs_poster && graphicType === 'poster' && event?.graphic_type === 'ik_card' && !imageFile) {
+      toast.error('Prześlij plik plakatu albo zostaw gotową Kartę IK.');
+      return;
+    }
     updateMutation.mutate(data);
   };
 
@@ -671,46 +693,34 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                   )}
                 </div>
 
-                {/* Image Upload */}
+                {/* Grafika wydarzenia: gotowa Karta IK albo własny plakat */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Zdjęcie główne wydarzenia
-                  </label>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Wybierz zdjęcie, które najlepiej reprezentuje Twoje wydarzenie.
-                  </p>
-                  
-                  {imagePreview ? (
-                    <div className="relative">
-                      <img
-                        src={imagePreview}
-                        alt="Podgląd"
-                        className="w-full h-64 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={removeImage}
-                        className="absolute top-3 right-3 p-2 bg-red-500 text-black rounded-full hover:bg-red-600 shadow-lg"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Grafika wydarzenia</label>
+                  {event?.needs_poster ? (
+                    <p className="text-sm text-gray-600">
+                      Zamówiony plakat przygotowuje zespół IK — pojawi się tutaj po przesłaniu.
+                    </p>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 hover:bg-primary-50/30 transition-all">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                        <p className="mb-2 text-sm text-gray-500">
-                          <span className="font-semibold">Kliknij, aby przesłać</span> lub przeciągnij i upuść
+                    <>
+                      {graphicType === 'ik_card' && event?.graphic_type !== 'ik_card' && event?.image && (
+                        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                          Po zapisaniu Karta IK zastąpi obecny plakat wydarzenia.
                         </p>
-                        <p className="text-xs text-gray-500">PNG, JPG, WEBP (max 5MB)</p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/jpeg, image/png, image/webp"
-                        onChange={handleImageChange}
+                      )}
+                      <EventGraphicPicker
+                        graphicType={graphicType}
+                        onGraphicTypeChange={setGraphicType}
+                        variant={ikCardVariant}
+                        onVariantChange={setIkCardVariant}
+                        cardData={ikCardData}
+                        posterSrc={imagePreview}
+                        onPosterChange={handleImageChange}
+                        onPosterRemove={removeImage}
+                        posterFooter={imageFile && (
+                          <p className="mt-2 text-sm text-gray-500">Plakat zapisze się razem z wydarzeniem.</p>
+                        )}
                       />
-                    </label>
+                    </>
                   )}
                 </div>
               </div>

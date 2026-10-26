@@ -124,6 +124,8 @@ export interface Event extends RecurrenceInfo {
   organizer_website?: string;
   image?: string;
   image_thumbnail?: string;
+  graphic_type?: GraphicType;
+  ik_card_variant?: string;
   event_type: EventType;
   status: EventStatus;
   is_top10: boolean;
@@ -202,6 +204,7 @@ export interface EventListItem extends RecurrenceInfo {
   };
   image_thumbnail?: string;
   image?: string;
+  graphic_type?: GraphicType;
   event_type: EventType;
   status?: EventStatus;
   categories: Pick<Category, 'id' | 'name' | 'slug'>[];
@@ -242,6 +245,18 @@ export interface EventFilters {
   page_size?: number;
 }
 
+// Grafika wydarzenia: własny plakat Organizatora albo gotowa Karta Informacyjna IK generowana przez portal.
+export type GraphicType = 'poster' | 'ik_card';
+
+export interface IkCardVariant {
+  id: string;
+  name: string;
+  background: string;
+  band: string;
+  accent: string;
+  text: string;
+}
+
 export interface CreateEventData {
   title: string;
   description: string;
@@ -270,6 +285,8 @@ export interface CreateEventData {
   available_to?: string | null;
   is_fully_booked?: boolean;
   needs_poster?: boolean;
+  graphic_type?: GraphicType;
+  ik_card_variant?: string;
   ticket_url?: string;
   location_type?: LocationType;
   online_event?: boolean;
