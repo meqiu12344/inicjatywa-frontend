@@ -24,6 +24,7 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { adminApi, PendingEvent, PendingEventStats, AIImportInfo } from '@/lib/api/admin';
+import { getRemoteLabel } from '@/lib/eventUtils';
 import { getErrorMessage } from '@/lib/api/client';
 import { OrganizerContactDetails, OrganizerStatusSelect } from './organizerContact';
 
@@ -77,9 +78,11 @@ function formatDate(event: PendingEvent) {
 
 function formatPlace(event: PendingEvent) {
   if (event.location_type === 'nationwide') return 'Ogólnopolskie — wiele lokalizacji';
-  if (event.online_event) return 'Online';
-  if (!event.location) return null;
-  return [event.location.address, event.location.city, event.location.region].filter(Boolean).join(', ');
+  const place = event.location
+    ? [event.location.address, event.location.city, event.location.region].filter(Boolean).join(', ')
+    : null;
+  if (event.location_type === 'hybrid') return place ? `${place} + online` : 'Hybrydowe';
+  return getRemoteLabel(event) ?? place;
 }
 
 function formatPrice(event: PendingEvent) {

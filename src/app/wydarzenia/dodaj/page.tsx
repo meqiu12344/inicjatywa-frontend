@@ -22,7 +22,8 @@ import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { LOCATION_TYPE_CHOICES, buildEventEnd } from '@/lib/eventUtils';
+import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
+import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { TicketType, Category, EventType, LocationType } from '@/types';
 
 // Dynamic import for CKEditor (uses window)
@@ -79,7 +80,6 @@ interface EventFormData {
 }
 
 const DONATION_AMOUNTS = [10, 20, 50, 100];
-const LOCATION_TYPE_ICONS = { onsite: MapPin, online: Globe, nationwide: MapPinned };
 const PRICE_SUMMARY: Record<EventType, string> = {
   free: 'Bezpłatne',
   voluntary: 'Dobrowolna opłata',
@@ -635,7 +635,8 @@ export default function CreateEventPage() {
   const watchAll = watch();
   const watchEventType = watch('event_type');
   const watchLocationType = watch('location_type');
-  const watchOnlineEvent = watchLocationType === 'online';
+  const watchOnlineEvent = needsOnlineLink(watchLocationType);
+  const watchNeedsVenue = needsVenue(watchLocationType);
   const watchIsLimited = watch('is_limited');
   const watchIsPermanent = watch('is_permanent');
   const watchNeedsPoster = watch('needs_poster');
@@ -756,7 +757,7 @@ export default function CreateEventPage() {
           start_date: startDateTime,
           ...formEventEnd(data),
           is_permanent: data.is_permanent,
-          location: data.location_type === 'onsite' ? {
+          location: needsVenue(data.location_type) ? {
             address: data.location_address,
             city: data.location_city,
             postal_code: data.location_postal_code,
@@ -774,8 +775,8 @@ export default function CreateEventPage() {
           available_from: availableFrom,
           available_to: availableTo,
           location_type: data.location_type,
-          online_event: data.location_type === 'online',
-          online_link: data.online_link || undefined,
+          online_event: needsOnlineLink(data.location_type),
+          online_link: needsOnlineLink(data.location_type) ? data.online_link || undefined : undefined,
         },
         payment_type: paymentType,
         amount: amount,
@@ -838,7 +839,7 @@ export default function CreateEventPage() {
           start_date: startDateTime,
           ...formEventEnd(data),
           is_permanent: data.is_permanent,
-          location: data.location_type === 'onsite' ? {
+          location: needsVenue(data.location_type) ? {
             address: data.location_address,
             city: data.location_city,
             postal_code: data.location_postal_code,
@@ -856,8 +857,8 @@ export default function CreateEventPage() {
           available_from: availableFrom,
           available_to: availableTo,
           location_type: data.location_type,
-          online_event: data.location_type === 'online',
-          online_link: data.online_link || undefined,
+          online_event: needsOnlineLink(data.location_type),
+          online_link: needsOnlineLink(data.location_type) ? data.online_link || undefined : undefined,
         },
         categories: data.category_ids,
         tags: data.tags,
@@ -1239,9 +1240,8 @@ export default function CreateEventPage() {
             }
             return false;
           }
-          return true;
         }
-        if (watchLocationType === 'nationwide') {
+        if (!watchNeedsVenue) {
           return true;
         }
 
@@ -1817,7 +1817,7 @@ export default function CreateEventPage() {
                   <label className="form-label">Kategorie</label>
                   <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
                     <Info className="w-4 h-4" />
-                    Możesz wybrać maksymalnie 3 kategorie
+                    Możesz wybrać maksymalnie 3 kategorie — opisują charakter wydarzenia. Formę uczestnictwa (np. online, transmisja) wybierzesz w kroku „Lokalizacja”.
                   </p>
                   
                   <div className="categories-container">
@@ -1942,7 +1942,7 @@ export default function CreateEventPage() {
 
                 {/* Typ lokalizacji */}
                 <div>
-                  <label className="form-label">Gdzie odbywa się wydarzenie?</label>
+                  <label className="form-label">Forma uczestnictwa</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {LOCATION_TYPE_CHOICES.map(({ value, label, description }) => {
                       const Icon = LOCATION_TYPE_ICONS[value];
@@ -1977,7 +1977,7 @@ export default function CreateEventPage() {
                 {/* Online Link */}
                 {watchOnlineEvent && (
                   <div>
-                    <label className="form-label">Link do wydarzenia online *</label>
+                    <label className="form-label">{watchLocationType === 'broadcast' ? 'Link do transmisji *' : 'Link do wydarzenia online *'}</label>
                     <input
                       {...register('online_link', {
                         required: watchOnlineEvent ? 'Link do wydarzenia online jest wymagany' : false
@@ -1991,12 +1991,16 @@ export default function CreateEventPage() {
                         {errors.online_link.message}
                       </p>
                     )}
-                    <p className="text-sm text-gray-500 mt-2">Podaj link, pod którym odbędzie się wydarzenie online.</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {watchLocationType === 'broadcast'
+                        ? 'Podaj link, pod którym będzie można oglądać transmisję.'
+                        : 'Podaj link, pod którym odbędzie się wydarzenie online.'}
+                    </p>
                   </div>
                 )}
 
                 {/* Physical Location */}
-                {watchLocationType === 'onsite' && (
+                {watchNeedsVenue && (
                   <>
                     {/* Location Type */}
                     <div className="flex gap-4 justify-center mb-6">
@@ -2113,7 +2117,7 @@ export default function CreateEventPage() {
                         <label className="form-label-small">Miasto *</label>
                         <input
                           {...register('location_city', {
-                            required: watchLocationType === 'onsite' ? 'Miasto jest wymagane' : false
+                            required: watchNeedsVenue ? 'Miasto jest wymagane' : false
                           })}
                           className="form-input"
                           placeholder="np. Kraków"
@@ -2793,11 +2797,9 @@ export default function CreateEventPage() {
                     <div>
                       <span className="text-gray-500">Miejsce:</span>
                       <p className="font-medium text-gray-900">
-                        {watchLocationType === 'online'
-                          ? 'Online'
-                          : watchLocationType === 'nationwide'
-                            ? 'Ogólnopolskie / wiele lokalizacji'
-                            : (watchAll.location_city || '-')}
+                        {watchNeedsVenue
+                          ? `${watchAll.location_city || '-'}${watchLocationType === 'hybrid' ? ' + online' : ''}`
+                          : getLocationTypeLabel(watchLocationType)}
                       </p>
                     </div>
                     <div>

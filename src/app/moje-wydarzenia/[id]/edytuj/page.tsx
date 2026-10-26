@@ -23,11 +23,14 @@ import {
   LOCATION_TYPE_CHOICES,
   buildEventEnd,
   getLocationType,
+  needsOnlineLink,
+  needsVenue,
   shouldAutoClose,
   shouldAutoReopen,
   getEffectiveStatus
 } from '@/lib/eventUtils';
 import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
+import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { getOrganizerStatus } from '@/lib/organizerStatus';
 import type { EventStatus, EventType, LocationType } from '@/types';
 
@@ -152,7 +155,8 @@ export default function EditEventPage({ params }: Props) {
 
   const watchEventType = watch('event_type');
   const watchLocationType = watch('location_type');
-  const watchOnlineEvent = watchLocationType === 'online';
+  const watchOnlineEvent = needsOnlineLink(watchLocationType);
+  const watchNeedsVenue = needsVenue(watchLocationType);
   const watchFullyBooked = watch('is_fully_booked');
   const watchAll = watch();
   const isTicketsDisabled = watchEventType !== 'platform';
@@ -515,9 +519,9 @@ export default function EditEventPage({ params }: Props) {
           ? `${data.available_to_date}T${data.available_to_time}`
           : null,
         location_type: data.location_type,
-        online_event: data.location_type === 'online',
-        online_link: data.location_type === 'online' ? (data.online_link || undefined) : undefined,
-        location: data.location_type === 'onsite' ? {
+        online_event: needsOnlineLink(data.location_type),
+        online_link: needsOnlineLink(data.location_type) ? (data.online_link || undefined) : undefined,
+        location: needsVenue(data.location_type) ? {
           address: data.location_address || undefined,
           city: data.location_city,
           postal_code: data.location_postal_code || undefined,
@@ -778,10 +782,10 @@ export default function EditEventPage({ params }: Props) {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Lokalizacja</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Forma uczestnictwa</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {LOCATION_TYPE_CHOICES.map(({ value, label, description }) => {
-                        const Icon = { onsite: MapPin, online: Globe, nationwide: MapPinned }[value];
+                        const Icon = LOCATION_TYPE_ICONS[value];
                         return (
                           <label
                             key={value}
@@ -805,7 +809,7 @@ export default function EditEventPage({ params }: Props) {
 
                   {watchOnlineEvent && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Link online</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{watchLocationType === 'broadcast' ? 'Link do transmisji' : 'Link online'}</label>
                       <input {...register('online_link')} className="input w-full" />
                     </div>
                   )}
@@ -817,7 +821,7 @@ export default function EditEventPage({ params }: Props) {
                     </p>
                   )}
 
-                  {watchLocationType === 'onsite' && (
+                  {watchNeedsVenue && (
                     <div className="space-y-4">
                       <div className="flex gap-3">
                         <button
@@ -919,7 +923,7 @@ export default function EditEventPage({ params }: Props) {
                           <label className="block text-sm font-medium text-gray-700 mb-2">Miasto</label>
                           <input
                             {...register('location_city', {
-                              required: watchLocationType === 'onsite' ? 'Miasto jest wymagane' : false,
+                              required: watchNeedsVenue ? 'Miasto jest wymagane' : false,
                             })}
                             className="input w-full"
                             placeholder="np. Kraków"

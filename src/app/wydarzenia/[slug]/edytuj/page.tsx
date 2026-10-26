@@ -18,7 +18,8 @@ import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationType } from '@/lib/eventUtils';
+import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationType, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
+import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { TicketType, Category, Event, EventType, LocationType } from '@/types';
 
 interface EventFormData {
@@ -127,7 +128,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const watchAll = watch();
   const watchEventType = watch('event_type');
   const watchLocationType = watch('location_type');
-  const watchOnlineEvent = watchLocationType === 'online';
+  const watchOnlineEvent = needsOnlineLink(watchLocationType);
+  const watchNeedsVenue = needsVenue(watchLocationType);
   const watchIsLimited = watch('is_limited');
   const watchIsPermanent = watch('is_permanent');
   const watchTicketTypes = watch('ticket_types');
@@ -282,7 +284,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         start_date: startDateTime,
         // Przy wydarzeniu stałym nie ruszamy zapisanego zakończenia.
         ...(data.is_permanent ? {} : buildEventEnd(data.start_date, data.end_date, data.end_time)),
-        location: data.location_type === 'onsite' ? {
+        location: needsVenue(data.location_type) ? {
           address: data.location_address,
           city: data.location_city,
           postal_code: data.location_postal_code,
@@ -296,8 +298,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         available_from: availableFrom,
         available_to: availableTo,
         location_type: data.location_type,
-        online_event: data.location_type === 'online',
-        online_link: data.online_link || undefined,
+        online_event: needsOnlineLink(data.location_type),
+        online_link: needsOnlineLink(data.location_type) ? data.online_link || undefined : undefined,
         tags: data.tags,
         ticket_types: data.event_type === 'platform' ? data.ticket_types.map(tt => ({
           name: tt.name || '',
@@ -494,13 +496,10 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       case 3:
         return watchCategoryIds.length > 0;
       case 4:
-        if (watchOnlineEvent) {
-          return await trigger(['online_link']);
+        if (watchOnlineEvent && !(await trigger(['online_link']))) {
+          return false;
         }
-        if (watchLocationType === 'nationwide') {
-          return true;
-        }
-        return await trigger(['location_city']);
+        return watchNeedsVenue ? await trigger(['location_city']) : true;
       case 5:
         if (watchEventType === 'platform' && (!watchTicketTypes || watchTicketTypes.length === 0)) {
           toast.error('Dodaj przynajmniej jeden typ biletu');
@@ -978,7 +977,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                 {/* Typ lokalizacji */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {LOCATION_TYPE_CHOICES.map(({ value, label, description }) => {
-                    const Icon = { onsite: MapPin, online: Globe, nationwide: MapPinned }[value];
+                    const Icon = LOCATION_TYPE_ICONS[value];
                     return (
                       <label
                         key={value}
@@ -1007,7 +1006,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                 {watchOnlineEvent && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Link do wydarzenia online *
+                      {watchLocationType === 'broadcast' ? 'Link do transmisji *' : 'Link do wydarzenia online *'}
                     </label>
                     <input
                       {...register('online_link', { 
@@ -1023,7 +1022,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                 )}
 
                 {/* Physical Location */}
-                {watchLocationType === 'onsite' && (
+                {watchNeedsVenue && (
                   <>
                     {/* Location Type */}
                     <div className="flex gap-4 justify-center">
@@ -1108,7 +1107,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                         </label>
                         <input
                           {...register('location_city', { 
-                            required: watchLocationType === 'onsite' ? 'Miasto jest wymagane' : false 
+                            required: watchNeedsVenue ? 'Miasto jest wymagane' : false 
                           })}
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary-500 focus:ring-0"
                           placeholder="np. Kraków"
@@ -1546,11 +1545,9 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                     <div>
                       <span className="text-gray-500">Miejsce:</span>
                       <p className="font-medium text-gray-900">
-                        {watchLocationType === 'online'
-                          ? 'Online'
-                          : watchLocationType === 'nationwide'
-                            ? 'Ogólnopolskie / wiele lokalizacji'
-                            : (watchAll.location_city || '-')}
+                        {watchNeedsVenue
+                          ? `${watchAll.location_city || '-'}${watchLocationType === 'hybrid' ? ' + online' : ''}`
+                          : getLocationTypeLabel(watchLocationType)}
                       </p>
                     </div>
                     <div>

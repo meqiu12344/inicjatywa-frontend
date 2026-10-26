@@ -7,7 +7,7 @@ import { Calendar, MapPin, Users, Star, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
-import { getPlaceLabel } from '@/lib/eventUtils';
+import { getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import type { EventListItem } from '@/types';
 
 interface EventCardProps {
@@ -77,10 +77,10 @@ export function EventCard({ event, featured = false }: EventCardProps) {
           )}
 
           {/* Online badge */}
-          {event.online_event && (
+          {getRemoteLabel(event) && (
             <div className="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500 text-white rounded-full text-xs font-semibold flex items-center gap-1">
               <Wifi className="w-3 h-3" />
-              Online
+              {getRemoteLabel(event)}
             </div>
           )}
 

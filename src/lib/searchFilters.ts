@@ -1,4 +1,4 @@
-import type { EventFilters } from '@/types';
+import type { EventFilters, LocationType } from '@/types';
 
 export type SearchParameters = Record<string, string | string[] | undefined>;
 type ParamReader = { get(key: string): string | null | undefined };
@@ -12,6 +12,13 @@ export interface SearchLocation {
   includeNationwide: boolean;
   nationwideOnly: boolean;
   onlineOnly: boolean;
+}
+
+// Filtr „Forma uczestnictwa”; ogólnopolskie ma osobny przełącznik, bo wyklucza filtr miejsca.
+export const PARTICIPATION_FILTERS: LocationType[] = ['onsite', 'online', 'hybrid', 'broadcast'];
+
+export function readParticipation(value: string | null | undefined): LocationType[] {
+  return (value || '').split(',').filter((item): item is LocationType => PARTICIPATION_FILTERS.includes(item as LocationType));
 }
 
 export function readSearchLocation(params: ParamReader): SearchLocation {
@@ -72,6 +79,7 @@ export function searchFiltersFromParams(parameters: SearchParameters): EventFilt
     search: get('q') || undefined,
     ...searchLocationFilters(readSearchLocation({ get })),
     categories: (get('categories') || '').split(',').map(value => value.trim()).filter(value => /^\d+$/.test(value)).map(Number),
+    participation: readParticipation(get('participation')),
     date_from: get('date_from') || undefined, date_to: get('date_to') || undefined,
     event_type: (get('event_type') || undefined) as EventFilters['event_type'],
     ordering: get('ordering') || 'start_date', page: Number(get('page')) || 1, page_size: 12,

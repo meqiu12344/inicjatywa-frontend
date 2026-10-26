@@ -52,13 +52,22 @@ import {
   canPromote as canPromoteCheck,
   areTicketsAvailable,
   getEffectiveStatus,
-  getLocationType
+  getLocationType,
+  needsOnlineLink,
+  needsVenue
 } from '@/lib/eventUtils';
 import { StatusBadgeLight, EventStateBadge } from '@/components/StatusBadge';
 import { linkifyHtml } from '@/lib/utils/linkify';
-import type { Event, EventType } from '@/types';
+import type { Event, EventType, LocationType } from '@/types';
 
 const LeafletMap = dynamic(() => import('@/components/maps/LeafletMap'), { ssr: false });
+
+// Formy uczestnictwa, w których można dołączyć zdalnie (hybrydowe pokazuje też adres).
+const REMOTE_PARTICIPATION: Partial<Record<LocationType, { title: string; description: string; cta: string }>> = {
+  online: { title: 'Wydarzenie online', description: 'To wydarzenie odbywa się w internecie', cta: 'Przejdź do wydarzenia online' },
+  hybrid: { title: 'Na miejscu i online', description: 'Możesz przyjść na miejsce albo dołączyć przez internet', cta: 'Dołącz online' },
+  broadcast: { title: 'Transmisja', description: 'Wydarzenie można oglądać na żywo w internecie', cta: 'Oglądaj transmisję' },
+};
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
@@ -232,6 +241,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   const isUpcoming = isEventUpcoming(event);
   const isOwner = user && (user.is_staff || user.id === event.user.id);
   const locationType = getLocationType(event);
+  const remote = needsOnlineLink(locationType) ? REMOTE_PARTICIPATION[locationType] : undefined;
 
   // Sprawdzenie możliwości promocji używając eventUtils
   const promoteCheck = canPromoteCheck(event);
@@ -359,10 +369,10 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                 {cat.name}
               </Link>
             ))}
-            {locationType === 'online' && (
+            {remote && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
                 <Globe className="w-3.5 h-3.5" />
-                Wydarzenie online
+                {remote.title}
               </span>
             )}
             {locationType === 'nationwide' && (
@@ -699,10 +709,10 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
 
             {/* Location Section */}
             {(event.location || locationType !== 'onsite') && (
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Lokalizacja</h3>
+              <div className="card p-6 space-y-6">
+                <h3 className="text-lg font-semibold text-slate-900">Lokalizacja</h3>
 
-                {locationType === 'nationwide' ? (
+                {locationType === 'nationwide' && (
                   <div className="flex items-start gap-3 p-4 rounded-lg bg-primary-50 border border-primary-200">
                     <MapPinned className="w-5 h-5 text-primary-600 mt-0.5" />
                     <div>
@@ -712,14 +722,16 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                       </p>
                     </div>
                   </div>
-                ) : locationType === 'online' ? (
+                )}
+
+                {remote && (
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
                       <Wifi className="w-5 h-5 text-emerald-600 mt-0.5" />
                       <div>
-                        <div className="font-medium text-emerald-800">Wydarzenie online</div>
+                        <div className="font-medium text-emerald-800">{remote.title}</div>
                         <p className="text-sm text-emerald-700 mt-1">
-                          To wydarzenie odbywa się w internecie
+                          {remote.description}
                         </p>
                       </div>
                     </div>
@@ -732,11 +744,13 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                         className="inline-flex items-center gap-2 btn btn-primary"
                       >
                         <ExternalLink className="w-5 h-5" />
-                        Przejdź do wydarzenia online
+                        {remote.cta}
                       </a>
                     )}
                   </div>
-                ) : event.location && (
+                )}
+
+                {needsVenue(locationType) && event.location && (
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-primary-600 mt-0.5" />
@@ -834,7 +848,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                 )}
 
                 {/* Location */}
-                {event.location && locationType === 'onsite' && (
+                {event.location && needsVenue(locationType) && (
                   <div className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-primary-600 mt-0.5" />
                     <div>
@@ -849,12 +863,12 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                   </div>
                 )}
 
-                {locationType === 'online' && (
+                {remote && (
                   <div className="flex items-start gap-3">
                     <Wifi className="w-5 h-5 text-emerald-600 mt-0.5" />
                     <div>
-                      <div className="text-sm text-slate-500">Typ</div>
-                      <div className="font-medium text-emerald-700">Wydarzenie online</div>
+                      <div className="text-sm text-slate-500">Forma uczestnictwa</div>
+                      <div className="font-medium text-emerald-700">{remote.title}</div>
                     </div>
                   </div>
                 )}

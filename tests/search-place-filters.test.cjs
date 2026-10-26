@@ -230,3 +230,11 @@ test('server-rendered search passes the exact filter key used to request regiona
     assert.equal(view.options.initialData, emptyResults);
   }
 });
+
+test('participation form is a separate filter from categories and ignores unknown forms', () => {
+  assert.deepEqual([...utils.readParticipation('hybrid,broadcast,nationwide,nieznana')], ['hybrid', 'broadcast']);
+  const params = apiQuery('categories=4&participation=online,hybrid');
+  assert.deepEqual(params.getAll('participation'), ['online', 'hybrid']);
+  assert.deepEqual(params.getAll('categories'), ['4']);
+  assert.equal(apiQuery('categories=4').has('participation'), false);
+});

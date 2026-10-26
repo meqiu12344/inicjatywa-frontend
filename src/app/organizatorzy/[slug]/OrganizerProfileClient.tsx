@@ -19,7 +19,7 @@ import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { bustCache } from '@/lib/utils/media';
-import { getPlaceLabel } from '@/lib/eventUtils';
+import { getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import { EventListItem } from '@/types';
 
 // Types
@@ -877,10 +877,10 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                               <MapPin className="w-4 h-4" />
                               {getPlaceLabel(event)}
                             </span>
-                          ) : event.online_event && (
+                          ) : getRemoteLabel(event) && (
                             <span className="flex items-center gap-1 text-green-600">
                               <Video className="w-4 h-4" />
-                              Online
+                              {getRemoteLabel(event)}
                             </span>
                           )}
                         </div>

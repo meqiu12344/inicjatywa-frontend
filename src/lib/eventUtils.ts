@@ -31,15 +31,38 @@ export const EVENT_TYPE_CHOICES: { value: EventType; label: string }[] = [
   { value: 'unknown', label: 'Brak informacji o cenie' },
 ];
 
+// Forma uczestnictwa — osobno od kategorii, która opisuje charakter wydarzenia.
 export const LOCATION_TYPE_CHOICES: { value: LocationType; label: string; description: string }[] = [
   { value: 'onsite', label: 'Stacjonarne', description: 'W jednym, konkretnym miejscu' },
   { value: 'online', label: 'Online', description: 'Uczestnicy dołączają przez link' },
+  { value: 'hybrid', label: 'Hybrydowe', description: 'Na miejscu i online jednocześnie' },
+  { value: 'broadcast', label: 'Transmisja', description: 'Oglądanie na żywo, np. Msza online' },
   {
     value: 'nationwide',
     label: 'Ogólnopolskie / wiele lokalizacji',
     description: 'Bez jednego adresu, np. zbiórka we wszystkich parafiach',
   },
 ];
+
+export function getLocationTypeLabel(type: LocationType): string {
+  return LOCATION_TYPE_CHOICES.find(choice => choice.value === type)?.label ?? type;
+}
+
+/** Uczestnik przychodzi na miejsce — wymagany adres. */
+export function needsVenue(type: LocationType): boolean {
+  return type === 'onsite' || type === 'hybrid';
+}
+
+/** Można uczestniczyć zdalnie — wymagany link. */
+export function needsOnlineLink(type: LocationType): boolean {
+  return type === 'online' || type === 'hybrid' || type === 'broadcast';
+}
+
+/** Znacznik na kartach: Online / Hybrydowe / Transmisja; null, gdy udział jest tylko na miejscu. */
+export function getRemoteLabel(event: { location_type?: LocationType; online_event?: boolean }): string | null {
+  const type = getLocationType(event);
+  return needsOnlineLink(type) ? getLocationTypeLabel(type) : null;
+}
 
 /**
  * Typ lokalizacji wydarzenia. Starsze odpowiedzi API (i dane w cache) mają tylko online_event.
@@ -282,7 +305,7 @@ export function canBePublished(event: Partial<Event>): { canPublish: boolean; mi
   if (!event.title) missingFields.push('Tytuł');
   if (!event.description) missingFields.push('Opis');
   if (!event.start_date) missingFields.push('Data rozpoczęcia');
-  if (getLocationType(event) === 'onsite' && !event.location) missingFields.push('Lokalizacja lub wydarzenie online');
+  if (needsVenue(getLocationType(event)) && !event.location) missingFields.push('Lokalizacja lub wydarzenie online');
   
   return {
     canPublish: missingFields.length === 0,

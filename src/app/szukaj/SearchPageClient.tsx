@@ -17,9 +17,12 @@ import Image from 'next/image';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
-import { getPlaceLabel } from '@/lib/eventUtils';
-import { readSearchLocation, searchLocationFilters, writeSearchLocation, searchFiltersKey, searchPlaceKey } from '@/lib/searchFilters';
-import type { EventListItem, EventFilters, EventType } from '@/types';
+import { getLocationTypeLabel, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
+import {
+  PARTICIPATION_FILTERS, readParticipation, readSearchLocation, searchLocationFilters, writeSearchLocation,
+  searchFiltersKey, searchPlaceKey,
+} from '@/lib/searchFilters';
+import type { EventListItem, EventFilters, EventType, LocationType } from '@/types';
 
 // Date presets
 const getDatePresets = () => {
@@ -107,6 +110,10 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     (searchParams.get('event_type') as EventType) || ''
   );
   const [onlineOnly, setOnlineOnly] = useState(initialLocation.onlineOnly);
+  // Forma uczestnictwa jest niezależna od kategorii (charakteru) wydarzenia.
+  const [participation, setParticipation] = useState<LocationType[]>(
+    readParticipation(searchParams.get('participation'))
+  );
   const [ordering, setOrdering] = useState(searchParams.get('ordering') || 'start_date');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -161,13 +168,14 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     categories: selectedCategories.length > 0 
       ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
       : undefined,
+    participation: participation.length > 0 ? participation : undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
     event_type: eventType || undefined,
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [debouncedQuery, locationFilters, selectedCategories, dateFrom, dateTo, eventType, ordering, page]);
+  }), [debouncedQuery, locationFilters, selectedCategories, participation, dateFrom, dateTo, eventType, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
@@ -203,6 +211,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     if (query) params.set('q', query);
     writeSearchLocation(params, locationFilters);
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
+    if (participation.length > 0) params.set('participation', participation.join(','));
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
     if (datePreset) params.set('preset', datePreset);
@@ -212,7 +221,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, locationFilters, selectedCategories, dateFrom, dateTo, datePreset, eventType, ordering, page, pathname, router]);
+  }, [query, locationFilters, selectedCategories, participation, dateFrom, dateTo, datePreset, eventType, ordering, page, pathname, router]);
 
   const toggleNationwideOnly = () => {
     setNationwideOnly(!nationwideOnly);
@@ -253,6 +262,11 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     setPage(1);
   }, []);
 
+  const toggleParticipation = useCallback((form: LocationType) => {
+    setParticipation(prev => prev.includes(form) ? prev.filter(value => value !== form) : [...prev, form]);
+    setPage(1);
+  }, []);
+
   // Clear all filters
   const clearFilters = useCallback(() => {
     setQuery('');
@@ -264,6 +278,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     setIncludeNationwide(false);
     setNationwideOnly(false);
     setSelectedCategories([]);
+    setParticipation([]);
     setDateFrom('');
     setDateTo('');
     setDatePreset('');
@@ -274,7 +289,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
   }, []);
 
   const hasActiveFilters = query || selectedCity || selectedRegion || useRadius || selectedCategories.length > 0 || 
-    dateFrom || dateTo || eventType || onlineOnly || nationwideOnly;
+    participation.length > 0 || dateFrom || dateTo || eventType || onlineOnly || nationwideOnly;
 
   const filteredCities = citiesData || [];
 
@@ -442,7 +457,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
               Więcej filtrów
               {hasActiveFilters && (
                 <span className="w-5 h-5 rounded-full bg-primary-600 text-white text-xs flex items-center justify-center">
-                  {[query, !useRadius && selectedCity, selectedRegion, useRadius, selectedCategories.length > 0, dateFrom || dateTo, eventType, onlineOnly, nationwideOnly, hasPlaceFilter && includeNationwide].filter(Boolean).length}
+                  {[query, !useRadius && selectedCity, selectedRegion, useRadius, selectedCategories.length > 0, participation.length > 0, dateFrom || dateTo, eventType, onlineOnly, nationwideOnly, hasPlaceFilter && includeNationwide].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -451,6 +466,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
             <button
               onClick={() => { setOnlineOnly(!onlineOnly); setNationwideOnly(false); setIncludeNationwide(false); setPage(1); }}
               aria-pressed={onlineOnly}
+              title="Wydarzenia, w których można uczestniczyć zdalnie: online, hybrydowe i transmisje"
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 onlineOnly
                   ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200'
@@ -534,6 +550,31 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Forma uczestnictwa — osobno od kategorii */}
+              <div>
+                <span id="search-participation" className="block text-sm font-semibold text-slate-700 mb-3">
+                  <Wifi className="w-4 h-4 inline mr-2" />
+                  Forma uczestnictwa
+                </span>
+                <div role="group" aria-labelledby="search-participation" className="flex flex-wrap gap-2">
+                  {PARTICIPATION_FILTERS.map(form => (
+                    <button
+                      key={form}
+                      onClick={() => toggleParticipation(form)}
+                      aria-pressed={participation.includes(form)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        participation.includes(form)
+                          ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {getLocationTypeLabel(form)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Ogólnopolskie wybierzesz przełącznikiem nad wynikami.</p>
               </div>
 
               {/* Event Type */}
@@ -814,6 +855,18 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
                 </button>
               </span>
             ))}
+            {participation.map(form => (
+              <span
+                key={form}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium"
+              >
+                <Wifi className="w-3.5 h-3.5" />
+                {getLocationTypeLabel(form)}
+                <button onClick={() => toggleParticipation(form)} className="hover:text-emerald-900" aria-label={`Usuń filtr ${getLocationTypeLabel(form)}`}>
+                  <X className="w-4 h-4" />
+                </button>
+              </span>
+            ))}
             {datePreset && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
                 <Calendar className="w-3.5 h-3.5" />
@@ -845,7 +898,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
             {onlineOnly && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
                 <Wifi className="w-3.5 h-3.5" />
-                Tylko online
+                Online, hybrydowe i transmisje
                 <button onClick={() => { setOnlineOnly(false); setPage(1); }} className="hover:text-emerald-900">
                   <X className="w-4 h-4" />
                 </button>
@@ -993,10 +1046,10 @@ function EventListItemCard({ event }: { event: EventListItem }) {
           )}
           
           {/* Online badge */}
-          {event.online_event && (
+          {getRemoteLabel(event) && (
             <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white rounded-full text-xs font-semibold flex items-center gap-1">
               <Wifi className="w-3 h-3" />
-              Online
+              {getRemoteLabel(event)}
             </div>
           )}
         </div>

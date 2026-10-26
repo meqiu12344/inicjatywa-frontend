@@ -79,8 +79,9 @@ export interface Tag {
 
 // Rodzaj wydarzenia to zarazem stan ceny: ask_organizer = „Cena: zapytaj Organizatora”, unknown = brak informacji.
 export type EventType = 'free' | 'voluntary' | 'platform' | 'paid' | 'ask_organizer' | 'unknown';
-// nationwide — ogólnopolskie / wiele lokalizacji, bez jednego adresu
-export type LocationType = 'onsite' | 'online' | 'nationwide';
+// Forma uczestnictwa — niezależna od kategorii (charakteru) wydarzenia.
+// hybrid — na miejscu i online, broadcast — transmisja, nationwide — ogólnopolskie / wiele lokalizacji, bez jednego adresu
+export type LocationType = 'onsite' | 'online' | 'hybrid' | 'broadcast' | 'nationwide';
 // ai_draft — szkic z API asystenta AI, widoczny tylko w panelu admina
 export type EventStatus = 'pending' | 'public' | 'draft' | 'hidden' | 'closed' | 'ai_draft';
 
@@ -210,6 +211,8 @@ export interface EventFilters {
   event_type?: EventType;
   online?: boolean;
   location_type?: LocationType;
+  // Wybrane formy uczestnictwa (np. tylko hybrydowe i transmisje), niezależnie od kategorii.
+  participation?: LocationType[];
   // true — jawnie dołącz ogólnopolskie do filtra miejsca; domyślnie miejsce oznacza tylko lokalne wydarzenia.
   include_nationwide?: boolean;
   has_tickets?: boolean;
