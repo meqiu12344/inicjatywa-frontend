@@ -17,6 +17,7 @@ import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
 import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { getPlaceLabel } from '@/lib/eventUtils';
+import { readSearchLocation, searchLocationFilters, writeSearchLocation, searchFiltersKey, searchPlaceKey } from '@/lib/searchFilters';
 import type { EventListItem, EventFilters, EventType } from '@/types';
 
 // Date presets
@@ -81,18 +82,20 @@ const VOIVODESHIPS = [
 
 interface SearchPageContentProps {
   initialResults: PaginatedResponse<EventListItem>;
+  initialResultsKey: string;
   initialCategories: import('@/types').Category[];
 }
 
-function SearchPageContent({ initialResults, initialCategories }: SearchPageContentProps) {
+function SearchPageContent({ initialResults, initialResultsKey, initialCategories }: SearchPageContentProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const initialLocation = readSearchLocation(searchParams);
   
   // Initialize state from URL params
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [debouncedQuery, setDebouncedQuery] = useState(query);
-  const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || '');
+  const [selectedCity, setSelectedCity] = useState(initialLocation.city);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     searchParams.get('categories')?.split(',').filter(Boolean) || []
   );
@@ -102,7 +105,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
   const [eventType, setEventType] = useState<EventType | ''>(
     (searchParams.get('event_type') as EventType) || ''
   );
-  const [onlineOnly, setOnlineOnly] = useState(searchParams.get('online') === 'true');
+  const [onlineOnly, setOnlineOnly] = useState(initialLocation.onlineOnly);
   const [ordering, setOrdering] = useState(searchParams.get('ordering') || 'start_date');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -110,13 +113,17 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
   const [citySearch, setCitySearch] = useState('');
   const [debouncedCitySearch, setDebouncedCitySearch] = useState('');
   const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [selectedRegion, setSelectedRegion] = useState(searchParams.get('region') || '');
-  const [useRadius, setUseRadius] = useState(searchParams.get('radius_km') ? true : false);
-  const [radiusKm, setRadiusKm] = useState(parseFloat(searchParams.get('radius_km') || '25'));
-  const [radiusCity, setRadiusCity] = useState(searchParams.get('radius_city') || selectedCity);
-  // Wydarzenia ogólnopolskie (bez adresu) odbywają się wszędzie, więc domyślnie dołączamy je do filtrów miejsca.
-  const [includeNationwide, setIncludeNationwide] = useState(searchParams.get('nationwide') !== 'false');
-  const hasPlaceFilter = Boolean((!useRadius && selectedCity) || selectedRegion || useRadius);
+  const [selectedRegion, setSelectedRegion] = useState(initialLocation.region);
+  const [useRadius, setUseRadius] = useState(initialLocation.useRadius);
+  const [radiusKm, setRadiusKm] = useState(initialLocation.radiusKm);
+  const [radiusCity, setRadiusCity] = useState(initialLocation.radiusCity);
+  const [includeNationwide, setIncludeNationwide] = useState(initialLocation.includeNationwide);
+  const [nationwideOnly, setNationwideOnly] = useState(initialLocation.nationwideOnly);
+  const hasPlaceFilter = !nationwideOnly && Boolean((!useRadius && selectedCity) || selectedRegion || useRadius);
+  const locationFilters = useMemo(() => ({
+    city: selectedCity, region: selectedRegion, useRadius, radiusKm, radiusCity,
+    includeNationwide, nationwideOnly, onlineOnly,
+  }), [selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, includeNationwide, nationwideOnly, onlineOnly]);
 
   const datePresets = useMemo(() => getDatePresets(), []);
 
@@ -149,29 +156,29 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
   // Build filters object
   const filters: EventFilters = useMemo(() => ({
     search: debouncedQuery || undefined,
-    city: useRadius ? undefined : (selectedCity || undefined),
-    region: selectedRegion || undefined,
-    radius_km: useRadius ? radiusKm : undefined,
-    radius_city: useRadius ? radiusCity : undefined,
-    include_nationwide: includeNationwide ? undefined : false,
+    ...searchLocationFilters(locationFilters),
     categories: selectedCategories.length > 0 
       ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
       : undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
     event_type: eventType || undefined,
-    online: onlineOnly || undefined,
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [debouncedQuery, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, includeNationwide, selectedCategories, dateFrom, dateTo, eventType, onlineOnly, ordering, page]);
+  }), [debouncedQuery, locationFilters, selectedCategories, dateFrom, dateTo, eventType, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['search', filters],
     queryFn: () => eventsApi.getEvents(filters),
-    placeholderData: (prev) => prev, // Keep previous data while loading
-    initialData: initialResults,
+    // Po zmianie miejsca pokaż ładowanie zamiast wydarzeń z poprzedniego regionu.
+    placeholderData: (previousData, previousQuery) => {
+      const previousFilters = previousQuery?.queryKey[1] as EventFilters | undefined;
+      return previousFilters && searchPlaceKey(previousFilters) === searchPlaceKey(filters) ? previousData : undefined;
+    },
+    // Wyników dla poprzedniego województwa nie traktujemy jako świeżych danych nowego filtra.
+    initialData: searchFiltersKey(filters) === initialResultsKey ? initialResults : undefined,
   });
 
   // Deduplicate events by ID
@@ -194,25 +201,31 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
   useEffect(() => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    if (!useRadius && selectedCity) params.set('city', selectedCity);
-    if (useRadius) {
-      params.set('radius_km', radiusKm.toString());
-      params.set('radius_city', radiusCity);
-    }
-    if (selectedRegion) params.set('region', selectedRegion);
-    if (!includeNationwide) params.set('nationwide', 'false');
+    writeSearchLocation(params, locationFilters);
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
     if (datePreset) params.set('preset', datePreset);
     if (eventType) params.set('event_type', eventType);
-    if (onlineOnly) params.set('online', 'true');
     if (ordering !== 'start_date') params.set('ordering', ordering);
     if (page > 1) params.set('page', page.toString());
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, selectedCity, selectedRegion, useRadius, radiusKm, radiusCity, includeNationwide, selectedCategories, dateFrom, dateTo, datePreset, eventType, onlineOnly, ordering, page, pathname, router]);
+  }, [query, locationFilters, selectedCategories, dateFrom, dateTo, datePreset, eventType, ordering, page, pathname, router]);
+
+  const toggleNationwideOnly = () => {
+    setNationwideOnly(!nationwideOnly);
+    setIncludeNationwide(false);
+    setOnlineOnly(false);
+    setSelectedCity('');
+    setCitySearch('');
+    setShowCityDropdown(false);
+    setSelectedRegion('');
+    setUseRadius(false);
+    setRadiusCity('');
+    setPage(1);
+  };
 
   // Apply date preset
   const applyDatePreset = useCallback((preset: typeof datePresets[0]) => {
@@ -248,7 +261,8 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
     setUseRadius(false);
     setRadiusKm(25);
     setRadiusCity('');
-    setIncludeNationwide(true);
+    setIncludeNationwide(false);
+    setNationwideOnly(false);
     setSelectedCategories([]);
     setDateFrom('');
     setDateTo('');
@@ -260,7 +274,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
   }, []);
 
   const hasActiveFilters = query || selectedCity || selectedRegion || useRadius || selectedCategories.length > 0 || 
-    dateFrom || dateTo || eventType || onlineOnly;
+    dateFrom || dateTo || eventType || onlineOnly || nationwideOnly;
 
   const filteredCities = citiesData || [];
 
@@ -362,6 +376,8 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
                             type="button"
                             onClick={() => {
                               setSelectedCity(city);
+                              setNationwideOnly(false);
+                              setIncludeNationwide(false);
                               setCitySearch('');
                               setShowCityDropdown(false);
                               setPage(1);
@@ -426,14 +442,15 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
               Więcej filtrów
               {hasActiveFilters && (
                 <span className="w-5 h-5 rounded-full bg-primary-600 text-white text-xs flex items-center justify-center">
-                  {[query, selectedCity, selectedRegion, selectedCategories.length > 0, dateFrom || dateTo, eventType, onlineOnly].filter(Boolean).length}
+                  {[query, !useRadius && selectedCity, selectedRegion, useRadius, selectedCategories.length > 0, dateFrom || dateTo, eventType, onlineOnly, nationwideOnly, hasPlaceFilter && includeNationwide].filter(Boolean).length}
                 </span>
               )}
             </button>
 
             {/* Online Toggle */}
             <button
-              onClick={() => { setOnlineOnly(!onlineOnly); setPage(1); }}
+              onClick={() => { setOnlineOnly(!onlineOnly); setNationwideOnly(false); setIncludeNationwide(false); setPage(1); }}
+              aria-pressed={onlineOnly}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 onlineOnly
                   ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200'
@@ -444,8 +461,18 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
               Online
             </button>
 
-            {/* Wydarzenia ogólnopolskie — przełącznik ma sens tylko przy filtrze miejsca */}
-            {hasPlaceFilter && (
+            <button
+              onClick={toggleNationwideOnly}
+              aria-pressed={nationwideOnly}
+              title="Tylko wydarzenia ogólnopolskie / w wielu lokalizacjach, bez jednego województwa"
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${nationwideOnly ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              <MapPinned className="w-4 h-4" aria-hidden="true" />
+              Tylko ogólnopolskie / wiele lokalizacji
+            </button>
+
+            {/* Dołączenie ogólnopolskich do wybranego miejsca wymaga świadomego włączenia. */}
+            {hasPlaceFilter && !onlineOnly && (
               <button
                 onClick={() => { setIncludeNationwide(!includeNationwide); setPage(1); }}
                 aria-pressed={includeNationwide}
@@ -457,7 +484,7 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
                 }`}
               >
                 <MapPinned className="w-4 h-4" />
-                Także ogólnopolskie
+                Dołącz ogólnopolskie
               </button>
             )}
 
@@ -563,20 +590,24 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
 
               {/* Voivodeship */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                <label htmlFor="search-region" className="block text-sm font-semibold text-slate-700 mb-3">
                   <MapPin className="w-4 h-4 inline mr-2" />
                   Województwo
                 </label>
                 <select
+                  id="search-region"
                   value={selectedRegion}
-                  onChange={(e) => { setSelectedRegion(e.target.value); setPage(1); }}
+                  onChange={(e) => { setSelectedRegion(e.target.value); setNationwideOnly(false); setIncludeNationwide(false); setPage(1); }}
+                  aria-describedby="search-region-hint"
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                 >
                   <option value="">Wszystkie województwa</option>
+                  {selectedRegion && !VOIVODESHIPS.includes(selectedRegion) && <option value={selectedRegion}>{selectedRegion}</option>}
                   {VOIVODESHIPS.map(v => (
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
+                <p id="search-region-hint" className="mt-2 text-xs text-slate-500">Wybrane województwo pokazuje tylko wydarzenia z tego regionu. Ogólnopolskie możesz dołączyć osobno.</p>
               </div>
 
               {/* Radius Search */}
@@ -587,6 +618,8 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
                     checked={useRadius}
                     onChange={(e) => {
                       setUseRadius(e.target.checked);
+                      setNationwideOnly(false);
+                      setIncludeNationwide(false);
                       setPage(1);
                     }}
                     className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
@@ -656,7 +689,14 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
       )}
 
       {/* Results Section */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" aria-busy={isFetching}>
+        <p className="mb-4 text-sm text-slate-600">
+          {nationwideOnly ? 'Tylko wydarzenia ogólnopolskie / w wielu lokalizacjach. Nie są przypisane do jednego województwa.'
+            : hasPlaceFilter ? includeNationwide && !onlineOnly
+              ? 'Wyniki obejmują wybrane miejsce oraz wydarzenia ogólnopolskie — włączono opcję „Dołącz ogólnopolskie”.'
+              : 'Wyniki obejmują wybrane miejsce. Wydarzenia ogólnopolskie są pomijane.'
+              : 'Wyniki ze wszystkich lokalizacji. Wybierz województwo albo osobną opcję wydarzeń ogólnopolskich.'}
+        </p>
         {/* Results Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -722,6 +762,10 @@ function SearchPageContent({ initialResults, initialCategories }: SearchPageCont
         {/* Active Filters Tags */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mb-6">
+            {nationwideOnly && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
+              Ogólnopolskie / wiele lokalizacji
+              <button onClick={toggleNationwideOnly} aria-label="Usuń filtr ogólnopolskie"><X className="w-4 h-4" /></button>
+            </span>}
             {query && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
                 <Search className="w-3.5 h-3.5" />
@@ -1013,12 +1057,7 @@ function EventListItemCard({ event }: { event: EventListItem }) {
 }
 
 // Main export with Suspense boundary
-interface SearchPageProps {
-  initialResults: PaginatedResponse<EventListItem>;
-  initialCategories: import('@/types').Category[];
-}
-
-export default function SearchPage({ initialResults, initialCategories }: SearchPageProps) {
+export default function SearchPage({ initialResults, initialResultsKey, initialCategories }: SearchPageContentProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -1042,7 +1081,7 @@ export default function SearchPage({ initialResults, initialCategories }: Search
         </div>
       </div>
     }>
-      <SearchPageContent initialResults={initialResults} initialCategories={initialCategories} />
+      <SearchPageContent initialResults={initialResults} initialResultsKey={initialResultsKey} initialCategories={initialCategories} />
     </Suspense>
   );
 }

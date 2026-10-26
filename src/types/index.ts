@@ -207,7 +207,7 @@ export interface EventFilters {
   event_type?: EventType;
   online?: boolean;
   location_type?: LocationType;
-  // false — przy filtrze miejsca pomiń wydarzenia ogólnopolskie (domyślnie są dołączane)
+  // true — jawnie dołącz ogólnopolskie do filtra miejsca; domyślnie miejsce oznacza tylko lokalne wydarzenia.
   include_nationwide?: boolean;
   has_tickets?: boolean;
   ordering?: string;
