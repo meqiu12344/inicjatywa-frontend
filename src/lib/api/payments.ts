@@ -60,6 +60,8 @@ export interface PaymentCheckoutResponse {
 export interface EventCreatedResponse {
   event_id: number;
   event_slug: string;
+  /** 'public' u Zaufanego Organizatora, w pozostałych przypadkach 'pending'. */
+  status?: 'pending' | 'public';
   message: string;
 }
 

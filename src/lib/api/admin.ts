@@ -41,13 +41,23 @@ export interface OrganizerRequest {
   twitter_url: string | null;
   is_verified: boolean;
   is_public: boolean;
+  trust_level: OrganizerTrustLevel;
+  trust_level_display: string;
+  is_trusted: boolean;
+  trusted_at: string | null;
+  trusted_by: { id: number; username: string; email: string } | null;
+  account_active: boolean;
 }
+
+// NOWY → ZWERYFIKOWANY → ZAUFANY: tylko zaufany publikuje wydarzenia bez moderacji.
+export type OrganizerTrustLevel = 'new' | 'verified' | 'trusted';
 
 export interface OrganizerRequestStats {
   total: number;
   pending: number;
   approved: number;
   rejected: number;
+  trusted: number;
 }
 
 export interface AIDuplicateMatch {
@@ -242,6 +252,20 @@ export const adminApi = {
 
   getOrganizerRequestStats: async (): Promise<OrganizerRequestStats> => {
     return get<OrganizerRequestStats>(`${AUTH_ADMIN_BASE}/organizer-requests/stats/`);
+  },
+
+  setOrganizerTrustLevel: async (id: number, level: OrganizerTrustLevel): Promise<{ message: string; request: OrganizerRequest }> => {
+    return post<{ message: string; request: OrganizerRequest }>(
+      `${AUTH_ADMIN_BASE}/organizer-requests/${id}/trust-level/`,
+      { level }
+    );
+  },
+
+  setOrganizerAccountBlocked: async (id: number, blocked: boolean): Promise<{ message: string; request: OrganizerRequest }> => {
+    return post<{ message: string; request: OrganizerRequest }>(
+      `${AUTH_ADMIN_BASE}/organizer-requests/${id}/account-block/`,
+      { blocked }
+    );
   },
 
   // Pending Events

@@ -34,6 +34,8 @@ export interface Profile {
   phone_number?: string;
   created_at: string;
   organizer_request_pending?: boolean;
+  /** Zaufany Organizator — wydarzenia trafiają na portal bez kolejki moderacyjnej. */
+  publishes_without_moderation?: boolean;
 }
 
 // ========================

@@ -541,6 +541,7 @@ export default function CreateEventPage() {
     retry: 1,
   });
   const isOrganizer = currentAccount?.user.is_staff || currentAccount?.profile.role === 'organizer';
+  const publishesWithoutModeration = Boolean(currentAccount?.profile.publishes_without_moderation);
 
   useEffect(() => {
     if (accountChecked && !accountError && currentAccount && currentAccount.user.id === user?.id) {
@@ -880,7 +881,9 @@ export default function CreateEventPage() {
           // Image upload failed but event was created
         }
       }
-      toast.success(response.message || 'Wydarzenie zostało utworzone i czeka na zatwierdzenie!');
+      toast.success(response.message || (response.status === 'public'
+        ? 'Wydarzenie zostało opublikowane!'
+        : 'Wydarzenie zostało utworzone i czeka na zatwierdzenie!'));
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
       router.push('/moje-wydarzenia');
     },
@@ -2812,8 +2815,9 @@ export default function CreateEventPage() {
                   <div>
                     <p className="font-medium text-yellow-800">Przed opublikowaniem</p>
                     <p className="text-sm text-yellow-700 mt-1">
-                      Po utworzeniu wydarzenie zostanie przesłane do weryfikacji. 
-                      Otrzymasz powiadomienie gdy zostanie zaakceptowane.
+                      {publishesWithoutModeration
+                        ? 'Jako Zaufany Organizator publikujesz bez moderacji — wydarzenie pojawi się na portalu od razu po utworzeniu. Wydarzenia z zamówionym plakatem AI nadal sprawdza moderator.'
+                        : 'Po utworzeniu wydarzenie zostanie przesłane do weryfikacji. Otrzymasz powiadomienie gdy zostanie zaakceptowane.'}
                     </p>
                   </div>
                 </div>

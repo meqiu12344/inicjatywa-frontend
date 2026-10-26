@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/api/client';
+import type { OrganizerTrustLevel } from '@/lib/api/admin';
+import OrganizerTrustPanel from '@/components/admin/OrganizerTrustPanel';
 import {
   ArrowLeft,
   CheckCircle,
@@ -57,8 +59,12 @@ interface RequestDetail {
   instagram_url?: string;
   youtube_url?: string;
   twitter_url?: string;
-  is_verified?: boolean;
+  is_verified: boolean;
   is_public?: boolean;
+  trust_level: OrganizerTrustLevel;
+  is_trusted: boolean;
+  trusted_at: string | null;
+  account_active: boolean;
 }
 
 export default function AdminRequestDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -410,6 +416,11 @@ export default function AdminRequestDetailPage(props: { params: Promise<{ id: st
                     </div>
                   </div>
                 </div>
+
+                <OrganizerTrustPanel
+                  request={request}
+                  onUpdated={(changes) => setRequest((current) => current && { ...current, ...changes })}
+                />
 
                 {/* Action buttons */}
                 {request.status === 'pending' && (

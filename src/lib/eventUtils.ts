@@ -361,9 +361,9 @@ export function getEventDurationHours(event: Event | { start_date: string; end_d
  */
 export function getAllowedStatusTransitions(currentStatus: EventStatus): EventStatus[] {
   const transitions: Record<EventStatus, EventStatus[]> = {
-    pending: ['draft', 'hidden'],
+    pending: ['draft'],
     public: ['draft', 'hidden', 'closed'],
-    draft: ['pending', 'hidden'],
+    draft: ['pending'],
     hidden: ['public', 'pending', 'draft', 'closed'],
     closed: ['draft'],
     ai_draft: [], // tylko przez panel akceptacji szkiców AI

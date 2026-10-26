@@ -21,6 +21,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { adminApi, OrganizerRequest } from '@/lib/api/admin';
 import { getErrorMessage } from '@/lib/api/client';
+import OrganizerTrustPanel, { OrganizerTrustState } from '@/components/admin/OrganizerTrustPanel';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -78,6 +79,12 @@ export default function OrganizerRequestsPage() {
     },
   });
 
+  const handleTrustUpdated = (changes: OrganizerTrustState) => {
+    setSelectedRequest((current) => current && { ...current, ...changes });
+    queryClient.invalidateQueries({ queryKey: ['organizer-requests'] });
+    queryClient.invalidateQueries({ queryKey: ['organizer-request-stats'] });
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -126,10 +133,14 @@ export default function OrganizerRequestsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Wnioski organizatorów</h1>
               <p className="text-gray-600 mt-1">Zarządzaj wnioskami o rolę organizatora</p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <div className="bg-white rounded-lg shadow-sm border px-4 py-2">
                 <span className="text-sm text-gray-500">Oczekujące: </span>
                 <span className="font-semibold text-yellow-600">{stats?.pending || 0}</span>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border px-4 py-2">
+                <span className="text-sm text-gray-500">Zaufani: </span>
+                <span className="font-semibold text-indigo-600">{stats?.trusted || 0}</span>
               </div>
             </div>
           </div>
@@ -205,7 +216,15 @@ export default function OrganizerRequestsPage() {
                             <h3 className="font-semibold text-gray-900 truncate min-w-0">
                               {request.organization_name}
                             </h3>
-                            <span className="shrink-0">{getStatusBadge(request.status)}</span>
+                            <span className="flex shrink-0 gap-1">
+                              {getStatusBadge(request.status)}
+                              {request.is_trusted && (
+                                <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Zaufany</span>
+                              )}
+                              {!request.account_active && (
+                                <span className="bg-gray-200 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Zablokowany</span>
+                              )}
+                            </span>
                           </div>
                           <p className="text-sm text-gray-600 break-words">
                             {request.user.username} ({request.user.email})
@@ -339,6 +358,8 @@ export default function OrganizerRequestsPage() {
                     </button>
                   </div>
                 )}
+
+                <OrganizerTrustPanel request={selectedRequest} onUpdated={handleTrustUpdated} />
 
                 {selectedRequest.reviewed_by && (
                   <div className="mt-4 pt-4 border-t border-gray-200">

@@ -31,6 +31,7 @@ function EventPaymentSuccessContent() {
   
   const [isConfirming, setIsConfirming] = useState(false);
   const [eventSlug, setEventSlug] = useState<string | null>(null);
+  const [eventStatus, setEventStatus] = useState<string | null>(null);
 
   useEffect(() => {
     // Confirm payment with backend
@@ -49,6 +50,7 @@ function EventPaymentSuccessContent() {
           sessionId
         );
         setEventSlug(response.event_slug);
+        setEventStatus(response.status);
       } catch (error) {
         console.error('Failed to confirm payment:', error);
         toast.error('Nie udało się potwierdzić płatności. Skontaktuj się z nami.');
@@ -87,9 +89,14 @@ function EventPaymentSuccessContent() {
                   ze statusem <strong>&quot;Oczekujące&quot;</strong>. Plakat zostanie 
                   stworzony w ciągu 1 dnia roboczego.
                 </>
+              ) : eventStatus === 'public' ? (
+                <>
+                  Dziękujemy za Twoje wsparcie! Jako Zaufany Organizator publikujesz bez moderacji —
+                  Twoje wydarzenie jest już widoczne na portalu.
+                </>
               ) : (
                 <>
-                  Dziękujemy za Twoje wsparcie! Twoje wydarzenie zostało zapisane 
+                  Dziękujemy za Twoje wsparcie! Twoje wydarzenie zostało zapisane
                   i czeka na zatwierdzenie przez administratora.
                 </>
               )}
