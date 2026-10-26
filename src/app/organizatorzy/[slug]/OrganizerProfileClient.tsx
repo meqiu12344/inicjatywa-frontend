@@ -1,5 +1,7 @@
 'use client';
 
+import { TrackedEventLink } from '@/components/events/TrackedEventLink';
+
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
@@ -16,7 +18,6 @@ import { notFound, useParams, useSearchParams, useRouter } from 'next/navigation
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
-import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { bustCache } from '@/lib/utils/media';
 import { getPlaceLabel } from '@/lib/eventUtils';
 import { EventListItem } from '@/types';
@@ -523,7 +524,7 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
   }
 
   const events = eventsData?.results || [];
-  usePromotionImpressions(events);
+
   const reviews = reviewsData?.results || [];
   const canAddReview = reviewsData?.can_add_review ?? false;
   const userReview = reviewsData?.user_review;
@@ -830,7 +831,7 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
               ) : events.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {events.map((event: EventListItem) => (
-                    <Link
+                    <TrackedEventLink event={event}
                       key={event.id}
                       href={`/wydarzenia/${event.slug}`}
                       className="group block bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-all"
@@ -895,7 +896,7 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                           ) : null}
                         </div>
                       </div>
-                    </Link>
+                    </TrackedEventLink>
                   ))}
                 </div>
               ) : (

@@ -128,7 +128,7 @@ function searchView(query = '', initialOverrides = {}) {
     'next/navigation': { useRouter: () => router, usePathname: () => '/szukaj', useSearchParams: () => urlParams },
     'next/link': { __esModule: true, default: ({ children, ...rest }) => React.createElement('a', rest, children) },
     'next/image': { __esModule: true, default: () => null },
-    '@/hooks/usePromotionTracking': { usePromotionImpressions: () => {} },
+    '@/components/events/TrackedEventLink': { TrackedEventLink: ({ event, children, ...rest }) => React.createElement('a', rest, children) },
     '@/components/events/EventCard': { EventCard: ({ event }) => React.createElement('p', null, event.title), EventCardSkeleton: () => null },
     '@/lib/api/events': { eventsApi: { getEvents: async filters => { apiCalls.push(filters); return emptyResults; } }, categoriesApi: {} },
     '@tanstack/react-query': { useQuery: config => {

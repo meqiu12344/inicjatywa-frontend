@@ -1,5 +1,7 @@
 'use client';
 
+import { TrackedEventLink } from '@/components/events/TrackedEventLink';
+
 import { useRef, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -7,8 +9,6 @@ import { ChevronLeft, ChevronRight, Calendar, MapPin, Heart, Star } from 'lucide
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
-import { eventsApi } from '@/lib/api/events';
-import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { getPlaceLabel } from '@/lib/eventUtils';
 import type { EventListItem } from '@/types';
 
@@ -69,10 +69,9 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
   const placeLabel = getPlaceLabel(event, true);
 
   return (
-    <Link
+    <TrackedEventLink event={event}
       href={eventUrl}
       className="flex-shrink-0 w-64 sm:w-72 group relative"
-      onClick={() => { if (event.is_promoted && event.promotion_id) eventsApi.recordClick(event.promotion_id); }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -145,7 +144,7 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
           )}
         </div>
       </article>
-    </Link>
+    </TrackedEventLink>
   );
 }
 
@@ -188,7 +187,6 @@ export function EventSlider({
     });
   }, [events]);
 
-  usePromotionImpressions(uniqueEvents);
 
   const checkScrollButtons = () => {
     const container = scrollContainerRef.current;

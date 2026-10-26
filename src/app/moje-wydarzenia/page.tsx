@@ -332,7 +332,7 @@ export default function MyEventsPage() {
                               </div>
                               <div className="flex items-center gap-1.5 text-gray-400">
                                 <Eye className="w-4 h-4" />
-                                <span>{event.views_count || 0} wyświetleń</span>
+                                <span title="Wejścia w szczegóły wydarzenia z całego okresu; jedna sesja lub konto raz na 30 minut">{event.views_count ?? 0} wejść w szczegóły (łącznie)</span>
                               </div>
                             </div>
                           </div>

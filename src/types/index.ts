@@ -163,6 +163,7 @@ export interface PromotionStatus {
 
 export interface EventListItem {
   id: number;
+  organizer_id?: number;
   title: string;
   slug: string;
   start_date: string;

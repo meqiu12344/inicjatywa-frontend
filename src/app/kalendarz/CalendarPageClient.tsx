@@ -1,5 +1,7 @@
 'use client';
 
+import { TrackedEventLink } from '@/components/events/TrackedEventLink';
+
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
@@ -7,7 +9,6 @@ import { pl } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, Plus, ExternalLink, Infinity as InfinityIcon } from 'lucide-react';
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/events';
-import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { getPlaceLabel } from '@/lib/eventUtils';
 import { EventListItem } from '@/types';
 import type { PaginatedResponse } from '@/lib/api/client';
@@ -50,7 +51,6 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
     });
   }, [eventsData]);
 
-  usePromotionImpressions(events);
 
   // Wydarzenia stałe trwają latami, więc nie trafiają do siatki dni ani do listy miesiąca.
   const datedEvents = useMemo(() => events.filter((event) => !event.is_permanent), [events]);
@@ -286,7 +286,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
               ) : selectedDayEvents.length > 0 ? (
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                   {selectedDayEvents.map((event) => (
-                    <Link
+                    <TrackedEventLink event={event}
                       key={event.id}
                       href={getEventHref(event)}
                       className="block p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl border border-slate-600/30 hover:border-amber-500/30 transition-all group"
@@ -323,7 +323,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                           <ExternalLink className="w-3 h-3" />
                         </span>
                       </div>
-                    </Link>
+                    </TrackedEventLink>
                   ))}
                 </div>
               ) : (
@@ -388,7 +388,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
           ) : datedEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {datedEvents.map((event) => (
-                <Link
+                <TrackedEventLink event={event}
                   key={event.id}
                   href={getEventHref(event)}
                   className="bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-amber-500/30 transition-all shadow-lg hover:shadow-amber-500/5 group"
@@ -425,7 +425,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                       )}
                     </div>
                   </div>
-                </Link>
+                </TrackedEventLink>
               ))}
             </div>
           ) : (
@@ -460,7 +460,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {permanentEvents.map((event) => (
-                <Link
+                <TrackedEventLink event={event}
                   key={event.id}
                   href={getEventHref(event)}
                   className="bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-amber-500/30 transition-all shadow-lg hover:shadow-amber-500/5 group"
@@ -489,7 +489,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                       )}
                     </div>
                   </div>
-                </Link>
+                </TrackedEventLink>
               ))}
             </div>
           </div>

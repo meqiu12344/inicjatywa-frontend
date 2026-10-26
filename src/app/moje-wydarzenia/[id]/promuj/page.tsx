@@ -202,6 +202,7 @@ export default function PromoteEventPage() {
                 Zobacz statystyki
               </Link>
             </div>
+            <p className="mt-3 text-sm">Dane z okresu tej promocji. Karta jest widoczna, gdy co najmniej połowa pozostaje na ekranie przez sekundę lub zostanie kliknięta. Widoczność i kliknięcia liczymy osobno, raz na 30 minut dla sesji lub konta. Wejścia w szczegóły są w statystykach wydarzenia.</p>
 
             {/* Stats */}
             {stats && (
@@ -209,14 +210,14 @@ export default function PromoteEventPage() {
                 <div className="bg-white/10 rounded-lg p-4">
                   <div className="flex items-center gap-2 text-black/70 text-sm mb-1">
                     <Eye className="w-4 h-4" />
-                    Wyświetlenia
+                    Widoczne karty promocji
                   </div>
                   <p className="text-2xl font-bold">{stats.stats.impressions}</p>
                 </div>
                 <div className="bg-white/10 rounded-lg p-4">
                   <div className="flex items-center gap-2 text-black/70 text-sm mb-1">
                     <MousePointer className="w-4 h-4" />
-                    Kliknięcia
+                    Kliknięcia kart
                   </div>
                   <p className="text-2xl font-bold">{stats.stats.clicks}</p>
                 </div>

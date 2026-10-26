@@ -21,7 +21,9 @@ interface EventAnalytics {
   event_title: string;
   period_days: number;
   total_views: number;
+  all_time_views: number;
   unique_visitors: number;
+  unidentified_views: number;
   total_registrations: number;
   conversion_rate: number;
   views_by_day: Array<{ date: string; count: number }>;
@@ -45,6 +47,10 @@ export default function EventStatisticsPage() {
       return response.data;
     },
     enabled: isAuthenticated && !!eventId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000,
   });
 
   if (!isAuthenticated) {
@@ -128,8 +134,9 @@ export default function EventStatisticsPage() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Wyświetlenia</p>
+                <p className="text-sm text-gray-500">Wejścia w szczegóły ({analytics.period_days} dni)</p>
                 <p className="text-3xl font-bold text-gray-900">{analytics.total_views}</p>
+                <p className="text-sm text-gray-500 mt-1">Łącznie: {analytics.all_time_views} — jak na liście wydarzeń</p>
               </div>
               <div className="p-3 bg-indigo-100 rounded-full">
                 <Eye className="w-6 h-6 text-indigo-600" />
@@ -140,8 +147,9 @@ export default function EventStatisticsPage() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Unikalni odwiedzający</p>
+                <p className="text-sm text-gray-500">Unikalne sesje / konta</p>
                 <p className="text-3xl font-bold text-gray-900">{analytics.unique_visitors}</p>
+                {analytics.unidentified_views > 0 && <p className="text-sm text-gray-500 mt-1">Dodatkowo {analytics.unidentified_views} wejść historycznych bez identyfikatora sesji — nie określają liczby osób.</p>}
               </div>
               <div className="p-3 bg-green-100 rounded-full">
                 <Users className="w-6 h-6 text-green-600" />
@@ -174,10 +182,17 @@ export default function EventStatisticsPage() {
           </div>
         </div>
 
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 text-sm text-gray-600 space-y-2">
+          <p>Wszystkie dane i wykresy poniżej dotyczą ostatnich {analytics.period_days} dni. Licznik na liście wydarzeń obejmuje cały okres.</p>
+          <p>Wejście oznacza otwarcie widocznej strony wydarzenia w przeglądarce. Powtórne wejścia tej samej sesji lub konta liczymy raz na 30 minut. Własne wizyty Organizatora i wizyty administracji są pomijane.</p>
+          <p>Widoczna karta oznacza co najmniej połowę karty na ekranie przez sekundę lub kliknięcie karty, także jej plakatu. Widoczność i kliknięcia liczymy osobno, raz na 30 minut dla sesji lub konta.</p>
+          <p>Tryb incognito bez logowania to oddzielna sesja. Sesje i konta nie oznaczają liczby różnych osób. Konwersja to liczba rejestracji podzielona przez wejścia w szczegóły.</p>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Views Chart */}
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Wyświetlenia w czasie</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Wejścia w szczegóły w czasie</h2>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={analytics.views_by_day}>
@@ -189,7 +204,7 @@ export default function EventStatisticsPage() {
                   <YAxis />
                   <Tooltip 
                     labelFormatter={(value) => new Date(value).toLocaleDateString('pl-PL')}
-                    formatter={(value: number | undefined) => [value ?? 0, 'Wyświetlenia']}
+                    formatter={(value: number | undefined) => [value ?? 0, 'Wejścia w szczegóły']}
                   />
                   <Line type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1' }} />
                 </LineChart>
@@ -252,8 +267,10 @@ export default function EventStatisticsPage() {
                   <div className="flex items-center gap-2">
                     <MousePointer className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-700">
-                      {type === 'registration_view' && 'Otworzenie formularza'}
-                      {type === 'registration_submit' && 'Wysłanie formularza'}
+                      {type === 'card_impression' && 'Widoczne karty wydarzenia'}
+                      {type === 'card_click' && 'Kliknięcia kart / plakatów'}
+                      {type === 'registration_view' && 'Rozpoczęte zapisy'}
+                      {type === 'registration_submit' && 'Zakończone zapisy'}
                       {type === 'share' && 'Udostępnienia'}
                       {type === 'cta_click' && 'Kliknięcia CTA'}
                       {type === 'contact_click' && 'Kliknięcia kontakt'}

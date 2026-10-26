@@ -42,6 +42,8 @@ import { apiClient } from '@/lib/api/client';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import toast from 'react-hot-toast';
 import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
+import { useEventViewTracking } from '@/hooks/useEventViewTracking';
+import { trackEventInteraction } from '@/lib/event-tracking';
 import {
   isEventExpired,
   isEventOngoing,
@@ -101,6 +103,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   const router = useRouter();
 
   const { data: event, isLoading } = useEvent(slug, initialEvent);
+  useEventViewTracking(event);
   const { isAuthenticated, user, isOrganizer } = useAuth();
   const registerMutation = useRegisterForEvent();
   const cancelMutation = useCancelRegistration();
@@ -239,6 +242,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
       router.push(`/logowanie?redirect=/wydarzenia/${event.slug}`);
       return;
     }
+    void trackEventInteraction(event, 'registration_view');
     registerMutation.mutate(event.id);
   };
 
@@ -301,7 +305,16 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" onClickCapture={click => {
+      if (!(click.target instanceof Element)) return;
+      const href = click.target.closest('a')?.getAttribute('href');
+      if (!href) return;
+      const kind = Object.values(shareLinks).includes(href) ? 'share'
+        : /^(mailto:|tel:)/i.test(href) ? 'contact_click'
+          : href === event.ticket_url ? 'cta_click'
+            : /^https?:/i.test(href) ? 'website_click' : null;
+      if (kind) void trackEventInteraction(event, kind);
+    }}>
       {/* Back button - outside hero */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -1041,6 +1054,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
 
                 <button
                   onClick={() => {
+                    void trackEventInteraction(event, 'share');
                     navigator.clipboard.writeText(shareUrl);
                     toast.success('Link skopiowany do schowka!');
                   }}

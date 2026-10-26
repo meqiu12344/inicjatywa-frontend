@@ -1,12 +1,12 @@
 'use client';
 
+import { TrackedEventLink } from '@/components/events/TrackedEventLink';
+
 import Image from 'next/image';
-import Link from 'next/link';
 import { Calendar, MapPin, Users, Star, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
-import { eventsApi } from '@/lib/api/events';
 import { getPlaceLabel } from '@/lib/eventUtils';
 import type { EventListItem } from '@/types';
 
@@ -38,14 +38,9 @@ export function EventCard({ event, featured = false }: EventCardProps) {
       })();
 
   return (
-    <Link
+    <TrackedEventLink event={event}
       href={eventUrl}
       className="block group"
-      onClick={() => {
-        if (event.is_promoted && event.promotion_id) {
-          eventsApi.recordClick(event.promotion_id);
-        }
-      }}
     >      <article
         className={clsx(
           'card-hover h-full flex flex-col',
@@ -131,7 +126,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
           )}
         </div>
       </article>
-    </Link>
+    </TrackedEventLink>
   );
 }
 

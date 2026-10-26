@@ -1,5 +1,7 @@
 'use client';
 
+import { TrackedEventLink } from '@/components/events/TrackedEventLink';
+
 import { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -15,7 +17,6 @@ import Image from 'next/image';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
-import { usePromotionImpressions } from '@/hooks/usePromotionTracking';
 import { getPlaceLabel } from '@/lib/eventUtils';
 import { readSearchLocation, searchLocationFilters, writeSearchLocation, searchFiltersKey, searchPlaceKey } from '@/lib/searchFilters';
 import type { EventListItem, EventFilters, EventType } from '@/types';
@@ -192,7 +193,6 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     });
   }, [searchResults]);
 
-  usePromotionImpressions(events);
   
   const totalCount = searchResults?.count || 0;
   const totalPages = Math.ceil(totalCount / 12);
@@ -964,7 +964,7 @@ function EventListItemCard({ event }: { event: EventListItem }) {
   };
 
   return (
-    <Link
+    <TrackedEventLink event={event}
       href={`/wydarzenia/${event.slug}`}
       className="block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-slate-200 transition-all group"
     >
@@ -1052,7 +1052,7 @@ function EventListItemCard({ event }: { event: EventListItem }) {
           </div>
         </div>
       </div>
-    </Link>
+    </TrackedEventLink>
   );
 }
 

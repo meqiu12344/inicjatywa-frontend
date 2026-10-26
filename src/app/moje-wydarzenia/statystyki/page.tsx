@@ -41,6 +41,10 @@ export default function OrganizerAnalyticsPage() {
       return response.data;
     },
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000,
   });
 
   if (!isAuthenticated) {
@@ -135,7 +139,7 @@ export default function OrganizerAnalyticsPage() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Łączne wyświetlenia</p>
+                <p className="text-sm text-gray-500">Wejścia w szczegóły w wybranym okresie</p>
                 <p className="text-3xl font-bold text-gray-900">{analytics.total_views}</p>
               </div>
               <div className="p-3 bg-green-100 rounded-full">

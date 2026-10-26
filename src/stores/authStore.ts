@@ -212,7 +212,7 @@ export function useHydration() {
   useEffect(() => {
     // This runs only on the client after the first render
     const checkHydration = () => {
-      if (useAuthStore.persist.hasHydrated()) {
+      if (!useAuthStore.persist || useAuthStore.persist.hasHydrated()) {
         setHydrated(true);
       }
     };
@@ -221,7 +221,7 @@ export function useHydration() {
     checkHydration();
     
     // Also listen for hydration completion
-    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
+    const unsubFinishHydration = useAuthStore.persist?.onFinishHydration(() => {
       setHydrated(true);
     });
 
