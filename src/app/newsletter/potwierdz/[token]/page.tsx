@@ -4,37 +4,43 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { post } from '@/lib/api/client';
+import { newsletterApi, NewsletterApiError, NEWSLETTER_ARCHIVE_PATH } from '@/lib/api/newsletter';
 
 export default function ConfirmNewsletterPage() {
   const params = useParams();
-  const token = params.token as string;
+  const token = typeof params.token === 'string' ? params.token : '';
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+    setStatus('loading');
+    setEmail('');
     const confirmSubscription = async () => {
       try {
-        const response = await post<{ message: string; email?: string; already_confirmed?: boolean }>(
-          `/newsletter/confirm/${token}/`,
-          {}
-        );
+        const response = await newsletterApi.confirm(token);
+        if (cancelled) return;
         setStatus('success');
         setMessage(response.message);
         if (response.email) {
           setEmail(response.email);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (cancelled) return;
         setStatus('error');
-        setMessage(error.response?.data?.error || 'Wystąpił błąd podczas potwierdzania subskrypcji');
+        setMessage(error instanceof NewsletterApiError ? error.message : 'Wystąpił błąd podczas potwierdzania subskrypcji. Spróbuj otworzyć link ponownie.');
       }
     };
 
     if (token) {
       confirmSubscription();
+    } else {
+      setStatus('error');
+      setMessage('Brak linku potwierdzającego subskrypcję.');
     }
+    return () => { cancelled = true; };
   }, [token]);
 
   if (status === 'loading') {
@@ -66,6 +72,7 @@ export default function ConfirmNewsletterPage() {
             >
               Zapisz się ponownie
             </Link>
+            <Link href={NEWSLETTER_ARCHIVE_PATH} className="mt-4 block text-indigo-700 hover:underline">Czytaj publiczne archiwum newsletterów</Link>
           </div>
         </div>
       </div>
@@ -93,10 +100,10 @@ export default function ConfirmNewsletterPage() {
           </p>
           <div className="space-y-3">
             <Link
-              href="/szukaj"
+              href={NEWSLETTER_ARCHIVE_PATH}
               className="block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Przeglądaj wydarzenia
+              Czytaj archiwum newsletterów
             </Link>
             <Link
               href="/"

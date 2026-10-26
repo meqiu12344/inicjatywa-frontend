@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from 'lucide-react';
-import { post } from '@/lib/api/client';
+import { newsletterApi, NewsletterApiError, NEWSLETTER_ARCHIVE_PATH } from '@/lib/api/newsletter';
 import toast from 'react-hot-toast';
 
 const footerLinks = {
@@ -17,6 +17,7 @@ const footerLinks = {
   informacje: [
     { name: 'Dla mediów', href: '/dla-mediow' },
     { name: 'Newsletter', href: '/newsletter' },
+    { name: 'Archiwum newsletterów', href: NEWSLETTER_ARCHIVE_PATH },
     { name: 'FAQ', href: '/regulamin' },
     { name: 'Regulamin', href: '/regulamin' },
     { name: 'Polityka prywatności', href: '/polityka-prywatnosci' },
@@ -42,11 +43,11 @@ export function Footer() {
     
     setIsSubmitting(true);
     try {
-      await post('/newsletter/quick-subscribe/', { email });
+      await newsletterApi.quickSubscribe(email);
       toast.success('Sprawdź swoją skrzynkę email i potwierdź subskrypcję!');
       setEmail('');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Nie udało się zapisać do newslettera');
+    } catch (error: unknown) {
+      toast.error(error instanceof NewsletterApiError ? error.message : 'Nie udało się zapisać do newslettera');
     } finally {
       setIsSubmitting(false);
     }

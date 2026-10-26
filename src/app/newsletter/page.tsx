@@ -2,20 +2,16 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Mail, Check, Bell, Calendar, ChevronRight, BookOpen } from 'lucide-react';
-import { get, post } from '@/lib/api/client';
+import { Mail, Check, Bell, Calendar, BookOpen } from 'lucide-react';
+import Link from 'next/link';
+import { get } from '@/lib/api/client';
+import { newsletterApi, NewsletterApiError, NEWSLETTER_ARCHIVE_PATH } from '@/lib/api/newsletter';
+import { NewsletterArchiveList } from '@/components/newsletter/NewsletterArchiveList';
 import toast from 'react-hot-toast';
 
 interface Category {
   id: number;
   name: string;
-}
-
-interface NewsletterArchive {
-  id: number;
-  title: string;
-  sent_at: string;
-  newsletter_type: string;
 }
 
 export default function NewsletterPage() {
@@ -28,20 +24,20 @@ export default function NewsletterPage() {
     queryFn: () => get<Category[]>('/categories/'),
   });
 
-  const { data: archiveData } = useQuery({
+  const { data: archiveData, isPending: isArchivePending, isError: isArchiveError } = useQuery({
     queryKey: ['newsletter-archive'],
-    queryFn: () => get<{ newsletters: NewsletterArchive[] }>('/newsletter/archive/'),
+    queryFn: () => newsletterApi.archive(),
   });
 
   const subscribeMutation = useMutation({
     mutationFn: (data: { email: string; categories: number[] }) => 
-      post<{ message: string }>('/newsletter/subscribe/', data),
-    onSuccess: (data) => {
+      newsletterApi.subscribe(data),
+    onSuccess: () => {
       setStep('success');
       toast.success('Sprawdź swoją skrzynkę email!');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Nie udało się zapisać do newslettera');
+    onError: (error: unknown) => {
+      toast.error(error instanceof NewsletterApiError ? error.message : 'Nie udało się zapisać do newslettera');
     },
   });
 
@@ -88,6 +84,7 @@ export default function NewsletterPage() {
             <p className="text-sm text-gray-500">
               Nie widzisz emaila? Sprawdź folder spam.
             </p>
+            <Link href={NEWSLETTER_ARCHIVE_PATH} className="mt-6 inline-block font-medium text-primary-700 hover:underline">Czytaj archiwum newsletterów</Link>
           </div>
         </div>
       </div>
@@ -107,6 +104,7 @@ export default function NewsletterPage() {
             Bądź na bieżąco z wydarzeniami w Twojej okolicy. 
             Otrzymuj cotygodniowe podsumowania i polecane wydarzenia.
           </p>
+          <Link href={NEWSLETTER_ARCHIVE_PATH} className="mt-6 inline-block rounded-lg border border-white/50 px-5 py-3 font-medium text-white hover:bg-white/10">Czytaj poprzednie wydania</Link>
         </div>
       </div>
 
@@ -237,31 +235,15 @@ export default function NewsletterPage() {
             </div>
 
             {/* Archive */}
-            {archiveData?.newsletters && archiveData.newsletters.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Archiwum newsletterów</h3>
-                <ul className="space-y-3">
-                  {archiveData.newsletters.slice(0, 5).map((newsletter) => (
-                    <li 
-                      key={newsletter.id}
-                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900">{newsletter.title}</h4>
-                        <p className="text-xs text-gray-500">
-                          {new Date(newsletter.sent_at).toLocaleDateString('pl-PL', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <section aria-label="Archiwum newsletterów" className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="font-semibold text-gray-900 mb-2">Archiwum newsletterów</h2>
+              <p className="mb-3 text-sm text-gray-600">Dostępne dla wszystkich, bez logowania i subskrypcji.</p>
+              {isArchivePending ? <p className="text-sm text-gray-500">Ładowanie wydań…</p>
+                : isArchiveError ? <p className="text-sm text-gray-600">Nie udało się pobrać listy wydań. Spróbuj otworzyć archiwum ponownie.</p>
+                  : archiveData?.newsletters.length ? <NewsletterArchiveList newsletters={archiveData.newsletters.slice(0, 5)} />
+                    : <p className="text-sm text-gray-500">Pierwsze wydanie pojawi się po wysyłce newslettera.</p>}
+              <Link href={NEWSLETTER_ARCHIVE_PATH} className="mt-4 inline-block font-medium text-primary-700 hover:underline">Zobacz całe archiwum</Link>
+            </section>
           </div>
         </div>
       </div>
