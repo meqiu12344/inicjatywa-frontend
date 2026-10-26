@@ -2,7 +2,7 @@
 
 import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -10,20 +10,30 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, Plu
 import Link from 'next/link';
 import { eventsApi } from '@/lib/api/events';
 import { getPlaceLabel } from '@/lib/eventUtils';
+import { useRestoreListingScroll } from '@/lib/returnContext';
 import { EventListItem } from '@/types';
 import type { PaginatedResponse } from '@/lib/api/client';
 
 interface CalendarPageProps {
   initialEvents?: PaginatedResponse<EventListItem>;
+  // RRRR-MM-DD — miesiąc i dzień z adresu, żeby powrót z wydarzenia pokazał ten sam widok.
+  initialMonth?: string;
+  initialDay?: string;
 }
 
 function getEventHref(event: EventListItem): string {
   return `/wydarzenia/${event.slug}-${event.id}`;
 }
 
-export default function CalendarPage({ initialEvents }: CalendarPageProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+export default function CalendarPage({ initialEvents, initialMonth, initialDay }: CalendarPageProps) {
+  const [currentMonth, setCurrentMonth] = useState(() => (initialMonth ? parseISO(initialMonth) : new Date()));
+  const [selectedDate, setSelectedDate] = useState<Date>(() => (initialDay ? parseISO(initialDay) : new Date()));
+
+  // Miesiąc i dzień w adresie (bez przeładowania strony) — „Powrót” z wydarzenia wraca do tego widoku.
+  useEffect(() => {
+    const params = new URLSearchParams({ month: format(currentMonth, 'yyyy-MM'), day: format(selectedDate, 'yyyy-MM-dd') });
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}?${params}`);
+  }, [currentMonth, selectedDate]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -39,6 +49,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
     initialData: initialEvents,
   });
   const hasLoadError = isError && !eventsData;
+  useRestoreListingScroll(!isLoading);
 
   // Deduplicate events by ID
   const events = useMemo(() => {

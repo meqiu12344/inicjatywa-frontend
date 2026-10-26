@@ -13,6 +13,7 @@ import { useCategorySliders, useGoldEvents, useLatestEvents, usePromotedEvents, 
 import { useQuery } from '@tanstack/react-query';
 import { categoriesApi } from '@/lib/api/events';
 import type { Category, EventListItem } from '@/types';
+import { useRestoreListingScroll } from '@/lib/returnContext';
 
 const HeroPolandMap = dynamic(() => import('@/components/layout/HeroPolandMap'), { ssr: false });
 
@@ -113,6 +114,7 @@ function RecommendedEventsSection() {
 
 export default function HomePageContent({ data }: { data: HomePageData }) {
   const homePageData = useHomePageData(data);
+  useRestoreListingScroll(true);
 
   return (
     <>

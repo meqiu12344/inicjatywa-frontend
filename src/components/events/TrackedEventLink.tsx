@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import { canTrackEvent, trackCard, type TrackableEvent } from '@/lib/event-tracking';
 import { observeEventCard } from '@/lib/event-visibility';
+import { rememberReturnContext } from '@/lib/returnContext';
 
 type Props = Omit<ComponentProps<typeof Link>, 'ref'> & { event: TrackableEvent };
 
@@ -25,7 +26,18 @@ export function TrackedEventLink({ event, onClick, onAuxClick, ...props }: Props
   }, [hydrated, id, promotion_id, ownerId, status, user]);
 
   return <Link {...props} ref={ref}
-    onClick={click => { onClick?.(click); if (!click.defaultPrevented) void trackCard(event, 'card_click'); }}
-    onAuxClick={click => { onAuxClick?.(click); if (click.button === 1 && !click.defaultPrevented) void trackCard(event, 'card_click'); }}
+    onClick={click => {
+      onClick?.(click);
+      if (click.defaultPrevented) return;
+      // Zapamiętaj listę i miejsce przewinięcia — „Powrót” na stronie wydarzenia wróci dokładnie tutaj.
+      rememberReturnContext(id);
+      void trackCard(event, 'card_click');
+    }}
+    onAuxClick={click => {
+      onAuxClick?.(click);
+      if (click.button !== 1 || click.defaultPrevented) return;
+      rememberReturnContext(id);
+      void trackCard(event, 'card_click');
+    }}
   />;
 }

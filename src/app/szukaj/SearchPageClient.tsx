@@ -19,6 +19,7 @@ import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
 import { getLocationTypeLabel, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import { formatEventWhen } from '@/lib/eventWhen';
+import { useRestoreListingScroll } from '@/lib/returnContext';
 import {
   PARTICIPATION_FILTERS, readParticipation, readSearchLocation, resourceSectionIndex, searchLocationFilters,
   writeSearchLocation, searchFiltersKey, searchPlaceKey,
@@ -117,7 +118,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
   );
   const [ordering, setOrdering] = useState(searchParams.get('ordering') || 'start_date');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(searchParams.get('view') === 'list' ? 'list' : 'grid');
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
   const [citySearch, setCitySearch] = useState('');
   const [debouncedCitySearch, setDebouncedCitySearch] = useState('');
@@ -204,6 +205,9 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
 
   
   const totalCount = searchResults?.count || 0;
+  // Po powrocie z wydarzenia lista wraca do miejsca, z którego je otwarto.
+  useRestoreListingScroll(events.length > 0);
+
   // Aktualne wydarzenia są pierwsze; aplikacje, media i wydarzenia stałe — w osobnej sekcji za nimi.
   const resourceIndex = resourceSectionIndex(events, ordering);
   const totalPages = Math.ceil(totalCount / 12);
@@ -221,10 +225,11 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     if (eventType) params.set('event_type', eventType);
     if (ordering !== 'start_date') params.set('ordering', ordering);
     if (page > 1) params.set('page', page.toString());
+    if (viewMode === 'list') params.set('view', 'list');
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, locationFilters, selectedCategories, participation, dateFrom, dateTo, datePreset, eventType, ordering, page, pathname, router]);
+  }, [query, locationFilters, selectedCategories, participation, dateFrom, dateTo, datePreset, eventType, ordering, page, viewMode, pathname, router]);
 
   const toggleNationwideOnly = () => {
     setNationwideOnly(!nationwideOnly);

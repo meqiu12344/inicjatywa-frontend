@@ -12,10 +12,16 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-async function getCurrentMonthEvents(): Promise<PaginatedResponse<EventListItem> | undefined> {
+// ?month=RRRR-MM — miesiąc oglądany przed otwarciem wydarzenia; domyślnie bieżący.
+function requestedMonth(value: string | string[] | undefined): Date {
+  const match = typeof value === 'string' ? /^(\d{4})-(\d{2})$/.exec(value) : null;
   const now = new Date();
-  const dateFrom = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
-  const dateTo = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  return match ? new Date(Number(match[1]), Number(match[2]) - 1, 1) : new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+async function getMonthEvents(month: Date): Promise<PaginatedResponse<EventListItem> | undefined> {
+  const dateFrom = formatLocalDate(new Date(month.getFullYear(), month.getMonth(), 1));
+  const dateTo = formatLocalDate(new Date(month.getFullYear(), month.getMonth() + 1, 0));
   try {
     const response = await fetch(`${getBackendUrl()}/api/events/?date_from=${dateFrom}&date_to=${dateTo}&page_size=100`, {
       cache: 'no-store',
@@ -29,6 +35,14 @@ async function getCurrentMonthEvents(): Promise<PaginatedResponse<EventListItem>
   }
 }
 
-export default async function CalendarPage() {
-  return <CalendarPageClient initialEvents={await getCurrentMonthEvents()} />;
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const month = requestedMonth(params.month);
+  return (
+    <CalendarPageClient
+      initialEvents={await getMonthEvents(month)}
+      initialMonth={formatLocalDate(month)}
+      initialDay={typeof params.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(params.day) ? params.day : undefined}
+    />
+  );
 }

@@ -178,11 +178,13 @@ test('detail tracking waits for hydration and a visible tab, and cleans up on na
 
 test('card link tracks normal, keyboard and middle-button activation and respects prevented navigation', () => {
   const calls = [];
+  const remembered = [];
   const { TrackedEventLink } = load('components/events/TrackedEventLink.tsx', {}, {
     react: { useEffect() {}, useRef: () => ({ current: null }) }, 'next/link': { default: 'a' },
     '@/stores/authStore': { useHydration: () => true, useAuthStore: select => select({ user: null }) },
     '@/lib/event-visibility': {},
     '@/lib/event-tracking': { canTrackEvent: () => true, trackCard: (_, kind) => calls.push(kind) },
+    '@/lib/returnContext': { rememberReturnContext: id => remembered.push(id) },
   });
   const link = TrackedEventLink({ event, href: '/wydarzenia/test' });
   link.props.onClick({ defaultPrevented: false });
@@ -191,6 +193,8 @@ test('card link tracks normal, keyboard and middle-button activation and respect
   link.props.onAuxClick({ defaultPrevented: false, button: 2 });
   link.props.onClick({ defaultPrevented: true });
   assert.deepEqual(calls, ['card_click', 'card_click', 'card_click']);
+  // Każde otwarcie wydarzenia z listy zapamiętuje, dokąd wrócić; anulowana nawigacja — nie.
+  assert.deepEqual(remembered, [event.id, event.id, event.id]);
 });
 
 test('statistics display lifetime and period counts with explicit card and session definitions', () => {

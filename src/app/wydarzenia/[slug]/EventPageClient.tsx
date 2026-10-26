@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, type MouseEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
@@ -58,6 +58,7 @@ import {
 } from '@/lib/eventUtils';
 import { StatusBadgeLight, EventStateBadge } from '@/components/StatusBadge';
 import { linkifyHtml } from '@/lib/utils/linkify';
+import { markScrollRestore, returnLabel, takeReturnContext, type ReturnContext } from '@/lib/returnContext';
 import type { Event, EventType, LocationType } from '@/types';
 
 const LeafletMap = dynamic(() => import('@/components/maps/LeafletMap'), { ssr: false });
@@ -221,6 +222,13 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
     };
   }, [event?.location, API_BASE]);
 
+  // Powrót do listy, z której otwarto wydarzenie — z jej filtrami i miejscem przewinięcia.
+  const [returnTo, setReturnTo] = useState<{ context: ReturnContext; fromList: boolean } | null>(null);
+  const eventId = event?.id;
+  useEffect(() => {
+    if (eventId) setReturnTo(takeReturnContext(eventId));
+  }, [eventId]);
+
   if (isLoading) {
     return <EventPageSkeleton />;
   }
@@ -241,6 +249,16 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
   const isUpcoming = isEventUpcoming(event);
   const isOwner = user && (user.is_staff || user.id === event.user.id);
   const locationType = getLocationType(event);
+
+  const goBack = (click: MouseEvent<HTMLAnchorElement>) => {
+    if (!returnTo) return;
+    markScrollRestore(returnTo.context);
+    // Wejście prosto z listy w tej karcie: cofnięcie w historii zachowuje też stan przeglądarki.
+    if (returnTo.fromList && window.history.length > 1) {
+      click.preventDefault();
+      router.back();
+    }
+  };
   const remote = needsOnlineLink(locationType) ? REMOTE_PARTICIPATION[locationType] : undefined;
 
   // Sprawdzenie możliwości promocji używając eventUtils
@@ -336,11 +354,12 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <Link
-            href="/"
+            href={returnTo?.context.href ?? '/'}
+            onClick={goBack}
             className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Powrót do wydarzeń</span>
+            <span>{returnTo ? returnLabel(returnTo.context.href) : 'Powrót do wydarzeń'}</span>
           </Link>
         </div>
       </div>
