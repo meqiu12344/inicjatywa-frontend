@@ -85,7 +85,26 @@ export type LocationType = 'onsite' | 'online' | 'hybrid' | 'broadcast' | 'natio
 // ai_draft — szkic z API asystenta AI, widoczny tylko w panelu admina
 export type EventStatus = 'pending' | 'public' | 'draft' | 'hidden' | 'closed' | 'ai_draft';
 
-export interface Event {
+// Wydarzenie cykliczne: start_date = pierwszy termin, end_date = dzień ostatniego terminu,
+// godziny obu dat dotyczą każdego spotkania.
+export type RecurrenceRule = '' | 'weekly' | 'biweekly' | 'monthly_day' | 'monthly_weekday';
+
+export interface EventOccurrence {
+  start: string;
+  end: string;
+}
+
+export interface RecurrenceInfo {
+  recurrence?: RecurrenceRule;
+  // 0 = poniedziałek; tylko dla powtarzania co tydzień / co 2 tygodnie
+  recurrence_weekdays?: number[];
+  recurrence_label?: string;
+  next_occurrence?: EventOccurrence | null;
+  // Terminy z zakresu date_from–date_to zapytania (kalendarz) albo najbliższe terminy
+  occurrences?: EventOccurrence[];
+}
+
+export interface Event extends RecurrenceInfo {
   id: number;
   title: string;
   slug: string;
@@ -164,7 +183,7 @@ export interface PromotionStatus {
   days_remaining: number;
 }
 
-export interface EventListItem {
+export interface EventListItem extends RecurrenceInfo {
   id: number;
   organizer_id?: number;
   title: string;
@@ -228,6 +247,8 @@ export interface CreateEventData {
   end_date?: string | null;
   end_time_unknown?: boolean;
   is_permanent?: boolean;
+  recurrence?: RecurrenceRule;
+  recurrence_weekdays?: number[];
   categories?: number[];
   location_id?: number;
   location?: {

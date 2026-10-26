@@ -24,7 +24,8 @@ import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
-import { TicketType, Category, EventType, LocationType } from '@/types';
+import { TicketType, Category, EventType, LocationType, RecurrenceRule } from '@/types';
+import { RecurrenceFields } from '@/components/events/RecurrenceFields';
 
 // Dynamic import for CKEditor (uses window)
 const CKEditorComponent = dynamic(
@@ -48,6 +49,8 @@ interface EventFormData {
   category_ids: number[];
   event_type: EventType;
   is_permanent: boolean;
+  recurrence: RecurrenceRule;
+  recurrence_weekdays: number[];
   start_date: string;
   start_time: string;
   end_date: string;
@@ -600,6 +603,8 @@ export default function CreateEventPage() {
       category_ids: [],
       event_type: 'free',
       is_permanent: false,
+      recurrence: '',
+      recurrence_weekdays: [],
       start_date: '',
       start_time: '10:00',
       end_date: '',
@@ -639,6 +644,8 @@ export default function CreateEventPage() {
   const watchNeedsVenue = needsVenue(watchLocationType);
   const watchIsLimited = watch('is_limited');
   const watchIsPermanent = watch('is_permanent');
+  const watchRecurrence = watch('recurrence');
+  const watchRecurrenceWeekdays = watch('recurrence_weekdays');
   const watchNeedsPoster = watch('needs_poster');
   const watchMakeDonation = watch('make_donation');
   const watchDonationAmount = watch('donation_amount');
@@ -757,6 +764,8 @@ export default function CreateEventPage() {
           start_date: startDateTime,
           ...formEventEnd(data),
           is_permanent: data.is_permanent,
+          recurrence: data.is_permanent ? '' : data.recurrence,
+          recurrence_weekdays: data.recurrence_weekdays,
           location: needsVenue(data.location_type) ? {
             address: data.location_address,
             city: data.location_city,
@@ -839,6 +848,8 @@ export default function CreateEventPage() {
           start_date: startDateTime,
           ...formEventEnd(data),
           is_permanent: data.is_permanent,
+          recurrence: data.is_permanent ? '' : data.recurrence,
+          recurrence_weekdays: data.recurrence_weekdays,
           location: needsVenue(data.location_type) ? {
             address: data.location_address,
             city: data.location_city,
@@ -1209,6 +1220,12 @@ export default function CreateEventPage() {
           return false;
         }
         
+        if (watchAll.recurrence && !watchAll.is_permanent && !watchAll.end_date) {
+          setError('end_date', { type: 'required', message: 'Podaj dzień ostatniego terminu' });
+          toast.error('Wydarzenie cykliczne wymaga daty ostatniego terminu');
+          return false;
+        }
+
         // Zakończenie jest opcjonalne — sprawdzamy je tylko, gdy podano datę lub godzinę
         const eventEnd = formEventEnd(watchAll);
         if (eventEnd.end_date) {
@@ -1749,12 +1766,22 @@ export default function CreateEventPage() {
                   </div>
                 </label>
 
+                {!watchIsPermanent && (
+                  <RecurrenceFields
+                    rule={watchRecurrence}
+                    weekdays={watchRecurrenceWeekdays}
+                    startDate={watch('start_date')}
+                    onRuleChange={(rule) => setValue('recurrence', rule)}
+                    onWeekdaysChange={(days) => setValue('recurrence_weekdays', days)}
+                  />
+                )}
+
                 {/* End Date/Time */}
                 {!watchIsPermanent && (
                   <div className="date-time-section">
                     <div className="section-title">
                       <Square className="w-5 h-5 text-gray-600" />
-                      <span>Data i godzina zakończenia (opcjonalnie)</span>
+                      <span>{watchRecurrence ? 'Ostatni termin (wymagany) i godzina zakończenia spotkań' : 'Data i godzina zakończenia (opcjonalnie)'}</span>
                     </div>
                     <p className="text-sm text-gray-500 mb-3">
                       Jeśli organizator nie podał zakończenia, zostaw pola puste — portal pokaże tylko początek,

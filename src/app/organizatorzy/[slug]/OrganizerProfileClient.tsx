@@ -19,7 +19,7 @@ import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { bustCache } from '@/lib/utils/media';
-import { getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
+import { getDisplayStart, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import { EventListItem } from '@/types';
 
 // Types
@@ -851,10 +851,10 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                         {/* Date Badge */}
                         <div className="absolute top-3 left-3 bg-white rounded-lg px-2 py-1 shadow-md text-center">
                           <p className="text-lg font-bold text-blue-900 leading-none">
-                            {format(parseISO(event.start_date), 'd')}
+                            {format(parseISO(getDisplayStart(event)), 'd')}
                           </p>
                           <p className="text-xs text-gray-500 uppercase">
-                            {format(parseISO(event.start_date), 'MMM', { locale: pl })}
+                            {format(parseISO(getDisplayStart(event)), 'MMM', { locale: pl })}
                           </p>
                         </div>
                         {event.is_promoted && (
@@ -870,7 +870,7 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                         <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            {format(parseISO(event.start_date), 'HH:mm')}
+                            {event.recurrence_label || format(parseISO(getDisplayStart(event)), 'HH:mm')}
                           </span>
                           {getPlaceLabel(event) ? (
                             <span className="flex items-center gap-1">

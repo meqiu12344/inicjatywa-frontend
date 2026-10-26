@@ -32,7 +32,8 @@ import {
 import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { getOrganizerStatus } from '@/lib/organizerStatus';
-import type { EventStatus, EventType, LocationType } from '@/types';
+import type { EventStatus, EventType, LocationType, RecurrenceRule } from '@/types';
+import { RecurrenceFields } from '@/components/events/RecurrenceFields';
 
 const CKEditorWrapper = dynamic(() => import('@/components/CKEditorWrapper'), { ssr: false });
 
@@ -50,6 +51,8 @@ interface EditEventFormData {
   available_to_date: string;
   available_to_time: string;
   is_permanent: boolean;
+  recurrence: RecurrenceRule;
+  recurrence_weekdays: number[];
   location_type: LocationType;
   online_link: string;
   location_address: string;
@@ -136,6 +139,8 @@ export default function EditEventPage({ params }: Props) {
       available_to_date: '',
       available_to_time: '',
       is_permanent: false,
+      recurrence: '',
+      recurrence_weekdays: [],
       location_type: 'onsite',
       online_link: '',
       location_address: '',
@@ -154,6 +159,8 @@ export default function EditEventPage({ params }: Props) {
   });
 
   const watchEventType = watch('event_type');
+  const watchRecurrence = watch('recurrence');
+  const watchRecurrenceWeekdays = watch('recurrence_weekdays');
   const watchLocationType = watch('location_type');
   const watchOnlineEvent = needsOnlineLink(watchLocationType);
   const watchNeedsVenue = needsVenue(watchLocationType);
@@ -279,6 +286,8 @@ export default function EditEventPage({ params }: Props) {
       available_to_date: availableToDate,
       available_to_time: availableToTime,
       is_permanent: event.is_permanent,
+      recurrence: event.recurrence ?? '',
+      recurrence_weekdays: event.recurrence_weekdays ?? [],
       location_type: getLocationType(event),
       online_link: event.online_link || '',
       location_address: event.location?.address || '',
@@ -510,6 +519,8 @@ export default function EditEventPage({ params }: Props) {
         event_type: data.event_type,
         status: data.status,
         is_permanent: data.is_permanent,
+        recurrence: data.is_permanent ? '' : data.recurrence,
+        recurrence_weekdays: data.recurrence_weekdays,
         start_date: `${data.start_date}T${data.start_time}`,
         ...buildEventEnd(data.start_date, data.end_date, data.end_time),
         available_from: (data.available_from_date && data.available_from_time)
@@ -770,7 +781,7 @@ export default function EditEventPage({ params }: Props) {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Data zakończenia (opcjonalnie)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{watchRecurrence ? 'Ostatni termin (wymagany)' : 'Data zakończenia (opcjonalnie)'}</label>
                       <div className="grid grid-cols-2 gap-2">
                         <input type="date" {...register('end_date')} onPaste={(e) => handleDatePaste(e, 'end_date', 'end_time')} onKeyDown={(e) => handleDateKeyDown(e, 'end_date', 'end_time')} className="input w-full" />
                         <input type="time" {...register('end_time')} onPaste={(e) => handleTimePaste(e, 'end_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'end_time')} className="input w-full" />
@@ -780,6 +791,16 @@ export default function EditEventPage({ params }: Props) {
                       </p>
                     </div>
                   </div>
+
+                  {!watch('is_permanent') && (
+                    <RecurrenceFields
+                      rule={watchRecurrence}
+                      weekdays={watchRecurrenceWeekdays}
+                      startDate={watch('start_date')}
+                      onRuleChange={(rule) => setValue('recurrence', rule)}
+                      onWeekdaysChange={(days) => setValue('recurrence_weekdays', days)}
+                    />
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Forma uczestnictwa</label>

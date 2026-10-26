@@ -56,8 +56,15 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
   const datedEvents = useMemo(() => events.filter((event) => !event.is_permanent), [events]);
   const permanentEvents = useMemo(() => events.filter((event) => event.is_permanent), [events]);
 
-  // Show multi-day events on every calendar day they cover.
+  // Wielodniowe pokazujemy w każdym dniu, który obejmują; cykliczne — tylko w dniach swoich terminów.
   const eventsByDate = datedEvents.reduce((acc: Record<string, EventListItem[]>, event) => {
+    if (event.recurrence) {
+      (event.occurrences || []).forEach((term) => {
+        const dateStr = format(parseISO(term.start), 'yyyy-MM-dd');
+        (acc[dateStr] ||= []).push(event);
+      });
+      return acc;
+    }
     const start = parseISO(event.start_date);
     const end = event.end_date ? parseISO(event.end_date) : start;
     const eventStart = start < monthStart ? monthStart : start;
@@ -73,6 +80,21 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
 
     return acc;
   }, {});
+
+  // Na liście miesiąca: pierwszy dzień wydarzenia w tym miesiącu, a nie data pierwszego terminu.
+  const firstDayInMonth = (event: EventListItem): Date => {
+    const firstTerm = event.recurrence ? event.occurrences?.[0] : undefined;
+    const start = parseISO(firstTerm?.start ?? event.start_date);
+    return start < monthStart ? monthStart : start;
+  };
+  const describeTiming = (event: EventListItem): string => {
+    const time = format(parseISO(event.start_date), 'HH:mm', { locale: pl });
+    if (event.recurrence_label) return `${event.recurrence_label}, ${time}`;
+    if (event.end_date && !isSameDay(parseISO(event.start_date), parseISO(event.end_date))) {
+      return `${time} • trwa do ${format(parseISO(event.end_date), 'd MMMM', { locale: pl })}`;
+    }
+    return time;
+  };
 
   // Generuj dni miesiąca
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -396,10 +418,10 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-xl flex flex-col items-center justify-center border border-amber-500/20">
                       <span className="text-[10px] text-amber-400/80 uppercase font-semibold">
-                        {format(parseISO(event.start_date), 'MMM', { locale: pl })}
+                        {format(firstDayInMonth(event), 'MMM', { locale: pl })}
                       </span>
                       <span className="text-xl font-bold text-amber-400">
-                        {format(parseISO(event.start_date), 'd')}
+                        {format(firstDayInMonth(event), 'd')}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -409,7 +431,7 @@ export default function CalendarPage({ initialEvents }: CalendarPageProps) {
                       <div className="mt-2 space-y-1">
                         <p className="text-sm text-slate-400 flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-amber-500/70" />
-                          {format(parseISO(event.start_date), 'HH:mm', { locale: pl })}
+                          {describeTiming(event)}
                         </p>
                         {getPlaceLabel(event) && (
                           <p className="text-sm text-slate-400 flex items-center gap-1.5">

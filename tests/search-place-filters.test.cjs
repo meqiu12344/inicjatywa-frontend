@@ -25,6 +25,7 @@ function loader(overrides = {}, globals = {}) {
         if (name in overrides) return overrides[name];
         if (name === '@/lib/searchFilters') return load('lib/searchFilters.ts');
         if (name === '@/lib/eventUtils') return load('lib/eventUtils.ts');
+        if (name === '@/lib/eventWhen') return load('lib/eventWhen.ts');
         if (name === './SearchPageClient') return { default: () => null, __esModule: true };
         return require(name);
       },

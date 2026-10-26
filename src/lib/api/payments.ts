@@ -1,5 +1,5 @@
 import { post } from '@/lib/api/client';
-import type { EventType, LocationType } from '@/types';
+import type { EventType, LocationType, RecurrenceRule } from '@/types';
 
 export interface CreateEventPaymentData {
   event_data: {
@@ -9,6 +9,8 @@ export interface CreateEventPaymentData {
     end_date?: string | null;
     end_time_unknown?: boolean;
     is_permanent: boolean;
+    recurrence?: RecurrenceRule;
+    recurrence_weekdays?: number[];
     location?: {
       address: string;
       city: string;

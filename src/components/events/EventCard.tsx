@@ -4,10 +4,9 @@ import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
 import Image from 'next/image';
 import { Calendar, MapPin, Users, Star, Wifi } from 'lucide-react';
-import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
 import { getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
+import { formatEventWhen } from '@/lib/eventWhen';
 import type { EventListItem } from '@/types';
 
 interface EventCardProps {
@@ -29,13 +28,7 @@ export function EventCard({ event, featured = false }: EventCardProps) {
 
   const eventUrl = `/wydarzenia/${event.slug}`;
   const placeLabel = getPlaceLabel(event, true);
-  const dateDisplay = event.is_permanent
-    ? 'Wydarzenie trwa cały czas'
-    : (() => {
-        const startDate = new Date(event.start_date);
-        const date = format(startDate, 'd MMMM yyyy', { locale: pl });
-        return event.start_time_unknown ? date : `${date} • ${format(startDate, 'HH:mm')}`;
-      })();
+  const dateDisplay = formatEventWhen(event);
 
   return (
     <TrackedEventLink event={event}

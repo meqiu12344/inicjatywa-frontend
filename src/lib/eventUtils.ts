@@ -5,7 +5,7 @@
  * Odzwierciedla logikę z EventService/models.py
  */
 
-import type { Event, EventStatus, EventType, LocationType } from '@/types';
+import type { Event, EventOccurrence, EventStatus, EventType, LocationType, RecurrenceRule } from '@/types';
 
 // ========================
 // Status Choices & Labels
@@ -85,6 +85,52 @@ export function buildEventEnd(
   return { end_date: `${endDate || startDate}T${endTime || '23:59'}`, end_time_unknown: !endTime };
 }
 
+// ========================
+// Wydarzenia cykliczne i długotrwałe
+// ========================
+
+export const RECURRENCE_CHOICES: { value: RecurrenceRule; label: string }[] = [
+  { value: '', label: 'Jednorazowe' },
+  { value: 'weekly', label: 'Co tydzień' },
+  { value: 'biweekly', label: 'Co 2 tygodnie' },
+  { value: 'monthly_day', label: 'Co miesiąc — ten sam dzień miesiąca' },
+  { value: 'monthly_weekday', label: 'Co miesiąc — ten sam dzień tygodnia (np. pierwsza sobota)' },
+];
+
+// 0 = poniedziałek, jak w API.
+export const WEEKDAY_SHORT = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+const WEEKDAY_NAMES = ['poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota', 'niedziela'];
+const FEMININE_WEEKDAYS = new Set([2, 5, 6]);
+const ORDINALS: Record<number, [string, string]> = {
+  1: ['pierwszy', 'pierwsza'], 2: ['drugi', 'druga'], 3: ['trzeci', 'trzecia'],
+  4: ['czwarty', 'czwarta'], 5: ['ostatni', 'ostatnia'],
+};
+
+/** Dzień tygodnia (0 = poniedziałek) daty RRRR-MM-DD. */
+export function weekdayOf(isoDate: string): number {
+  return (new Date(`${isoDate}T12:00:00`).getDay() + 6) % 7;
+}
+
+/** Podgląd reguły w formularzu — ten sam opis, który zwróci API (EventService/recurrence.py). */
+export function describeRecurrence(rule: RecurrenceRule, startDate: string, weekdays: number[] = []): string {
+  if (!rule || !startDate) return '';
+  const first = new Date(`${startDate}T12:00:00`);
+  if (rule === 'weekly' || rule === 'biweekly') {
+    const days = weekdays.length ? [...weekdays].sort((a, b) => a - b) : [weekdayOf(startDate)];
+    return `${rule === 'weekly' ? 'Co tydzień' : 'Co 2 tygodnie'}: ${days.map(day => WEEKDAY_NAMES[day]).join(', ')}`;
+  }
+  if (rule === 'monthly_day') return `Co miesiąc, ${first.getDate()}. dnia`;
+  const weekday = weekdayOf(startDate);
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const position = first.getDate() + 7 > daysInMonth ? 5 : Math.floor((first.getDate() - 1) / 7) + 1;
+  return `Co miesiąc: ${ORDINALS[position][FEMININE_WEEKDAYS.has(weekday) ? 1 : 0]} ${WEEKDAY_NAMES[weekday]}`;
+}
+
+/** Początek do pokazania: najbliższy termin wydarzenia cyklicznego albo początek wydarzenia. */
+export function getDisplayStart(event: { start_date: string; recurrence?: RecurrenceRule; next_occurrence?: EventOccurrence | null }): string {
+  return event.recurrence && event.next_occurrence ? event.next_occurrence.start : event.start_date;
+}
+
 /**
  * Krótka etykieta miejsca na kartach i listach: miasto (opcjonalnie z regionem) albo „Ogólnopolskie”.
  * null — nie ma czego pokazać (np. wydarzenie online).
@@ -151,6 +197,8 @@ type EventDateFields = {
   end_date?: string | null;
   end_time_unknown?: boolean;
   is_permanent?: boolean;
+  recurrence?: RecurrenceRule;
+  next_occurrence?: EventOccurrence | null;
 };
 
 const warsawDayFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -174,13 +222,19 @@ export function isEventExpired(event: EventDateFields): boolean {
 
 /** An ongoing event cannot simultaneously be expired. */
 export function isEventOngoing(event: EventDateFields): boolean {
+  // Seria cykliczna trwa tylko w czasie spotkania, a nie przez cały okres między terminami.
+  if (event.recurrence) {
+    const term = event.next_occurrence;
+    return Boolean(term && new Date(term.start) <= new Date() && new Date(term.end) > new Date());
+  }
   return new Date(event.start_date) <= new Date() && !isEventExpired(event);
 }
 
 /**
- * Sprawdza czy wydarzenie jest nadchodzące (jeszcze się nie zaczęło)
+ * Sprawdza czy wydarzenie jest nadchodzące (jeszcze się nie zaczęło; cykliczne — najbliższy termin)
  */
-export function isEventUpcoming(event: Event | { start_date: string }): boolean {
+export function isEventUpcoming(event: Event | EventDateFields): boolean {
+  if (event.recurrence) return Boolean(event.next_occurrence && new Date(event.next_occurrence.start) > new Date());
   return new Date(event.start_date) > new Date();
 }
 
@@ -346,9 +400,9 @@ export function canPromote(event: Event): { canPromote: boolean; reason?: string
 /**
  * Oblicza ile dni pozostało do wydarzenia
  */
-export function getDaysUntilEvent(event: Event | { start_date: string }): number {
+export function getDaysUntilEvent(event: Event | EventDateFields): number {
   const now = new Date();
-  const startDate = new Date(event.start_date);
+  const startDate = new Date(getDisplayStart(event));
   const diffTime = startDate.getTime() - now.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }

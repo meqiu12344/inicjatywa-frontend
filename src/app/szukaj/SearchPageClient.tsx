@@ -18,6 +18,7 @@ import { eventsApi, categoriesApi } from '@/lib/api/events';
 import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
 import { getLocationTypeLabel, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
+import { formatEventWhen } from '@/lib/eventWhen';
 import {
   PARTICIPATION_FILTERS, readParticipation, readSearchLocation, searchLocationFilters, writeSearchLocation,
   searchFiltersKey, searchPlaceKey,
@@ -1008,7 +1009,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
 
 // List view event card
 function EventListItemCard({ event }: { event: EventListItem }) {
-  const formattedDate = format(new Date(event.start_date), 'd MMMM yyyy, HH:mm', { locale: pl });
+  const formattedDate = formatEventWhen(event);
   
   const promotionBadges = {
     gold: { label: 'Wyróżnione', className: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900' },

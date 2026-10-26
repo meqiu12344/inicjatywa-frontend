@@ -273,6 +273,13 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
     const dateStr = format(startDate, 'd MMMM yyyy', { locale: pl });
     const timeStr = format(startDate, 'HH:mm');
 
+    // Cykliczne: reguła i godziny każdego spotkania zamiast daty pierwszego terminu.
+    if (event.recurrence && event.recurrence_label) {
+      const hours = event.start_time_unknown ? ''
+        : `, godz. ${timeStr}${endDate && !event.end_time_unknown ? ` - ${format(endDate, 'HH:mm')}` : ''}`;
+      return `${event.recurrence_label}${hours} (do ${format(endDate ?? startDate, 'd MMMM yyyy', { locale: pl })})`;
+    }
+
     if (event.start_time_unknown) {
       return endDate && startDate.toDateString() !== endDate.toDateString()
         ? `${dateStr} - ${format(endDate, 'd MMMM yyyy', { locale: pl })}` : dateStr;
@@ -707,6 +714,29 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
               )
             )}
 
+            {/* Najbliższe terminy wydarzenia cyklicznego */}
+            {event.recurrence && (event.occurrences?.length ?? 0) > 0 && (
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">Najbliższe terminy</h3>
+                <p className="text-sm text-slate-500 mb-4">{event.recurrence_label}</p>
+                <ul className="divide-y divide-slate-100">
+                  {event.occurrences!.map((term) => (
+                    <li key={term.start} className="flex items-center justify-between gap-4 py-2 text-sm">
+                      <span className="font-medium text-slate-900 capitalize">
+                        {format(new Date(term.start), 'EEEE, d MMMM yyyy', { locale: pl })}
+                      </span>
+                      {!event.start_time_unknown && (
+                        <span className="text-slate-500 whitespace-nowrap">
+                          {format(new Date(term.start), 'HH:mm')}
+                          {!event.end_time_unknown && ` - ${format(new Date(term.end), 'HH:mm')}`}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Location Section */}
             {(event.location || locationType !== 'onsite') && (
               <div className="card p-6 space-y-6">
@@ -819,6 +849,20 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                     <div className="text-sm text-slate-500">Data</div>
                     {event.is_permanent ? (
                       <div className="font-medium text-slate-900">Wydarzenie trwa cały czas</div>
+                    ) : event.recurrence ? (
+                      <>
+                        <div className="font-medium text-slate-900">{event.recurrence_label}</div>
+                        {event.next_occurrence && (
+                          <div className="text-sm text-slate-500">
+                            najbliżej {format(new Date(event.next_occurrence.start), 'EEEE, d MMMM', { locale: pl })}
+                          </div>
+                        )}
+                        {endDate && (
+                          <div className="text-sm text-slate-500">
+                            ostatni termin {format(endDate, 'd MMMM yyyy', { locale: pl })}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <>
                         <div className="font-medium text-slate-900">

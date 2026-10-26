@@ -20,7 +20,8 @@ import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationType, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
-import { TicketType, Category, Event, EventType, LocationType } from '@/types';
+import { TicketType, Category, Event, EventType, LocationType, RecurrenceRule } from '@/types';
+import { RecurrenceFields } from '@/components/events/RecurrenceFields';
 
 interface EventFormData {
   title: string;
@@ -28,6 +29,8 @@ interface EventFormData {
   category_ids: number[];
   event_type: EventType;
   is_permanent: boolean;
+  recurrence: RecurrenceRule;
+  recurrence_weekdays: number[];
   start_date: string;
   start_time: string;
   end_date: string;
@@ -101,6 +104,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       category_ids: [],
       event_type: 'free',
       is_permanent: false,
+      recurrence: '',
+      recurrence_weekdays: [],
       start_date: '',
       start_time: '10:00',
       end_date: '',
@@ -132,6 +137,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const watchNeedsVenue = needsVenue(watchLocationType);
   const watchIsLimited = watch('is_limited');
   const watchIsPermanent = watch('is_permanent');
+  const watchRecurrence = watch('recurrence');
+  const watchRecurrenceWeekdays = watch('recurrence_weekdays');
   const watchTicketTypes = watch('ticket_types');
   const watchCategoryIds = watch('category_ids');
   const watchTags = watch('tags');
@@ -188,6 +195,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         category_ids: event.categories?.map((c: Category) => c.id) || [],
         event_type: event.event_type || 'free',
         is_permanent: event.is_permanent || false,
+        recurrence: event.recurrence ?? '',
+        recurrence_weekdays: event.recurrence_weekdays ?? [],
         start_date: startDate ? format(startDate, 'yyyy-MM-dd') : '',
         start_time: startDate ? format(startDate, 'HH:mm') : '10:00',
         end_date: endDate ? format(endDate, 'yyyy-MM-dd') : '',
@@ -281,6 +290,8 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         categories: data.category_ids,
         event_type: data.event_type,
         is_permanent: data.is_permanent,
+        recurrence: data.is_permanent ? '' : data.recurrence,
+        recurrence_weekdays: data.recurrence_weekdays,
         start_date: startDateTime,
         // Przy wydarzeniu stałym nie ruszamy zapisanego zakończenia.
         ...(data.is_permanent ? {} : buildEventEnd(data.start_date, data.end_date, data.end_time)),
@@ -775,6 +786,16 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                   />
                 </div>
 
+                {!watchIsPermanent && (
+                  <RecurrenceFields
+                    rule={watchRecurrence}
+                    weekdays={watchRecurrenceWeekdays}
+                    startDate={watch('start_date')}
+                    onRuleChange={(rule) => setValue('recurrence', rule)}
+                    onWeekdaysChange={(days) => setValue('recurrence_weekdays', days)}
+                  />
+                )}
+
                 {/* End Date/Time */}
                 {!watchIsPermanent && (
                   <div className="p-5 bg-gray-50 border-2 border-gray-200 rounded-xl">
@@ -782,7 +803,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                       <span className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                         <Clock className="w-4 h-4 text-gray-600" />
                       </span>
-                      Data i godzina zakończenia (opcjonalnie)
+                      {watchRecurrence ? 'Ostatni termin (wymagany) i godzina zakończenia spotkań' : 'Data i godzina zakończenia (opcjonalnie)'}
                     </h3>
                     <p className="text-sm text-gray-500 mb-4">
                       Puste pola = koniec nie podany. Sama data = znany dzień zakończenia bez godziny.
