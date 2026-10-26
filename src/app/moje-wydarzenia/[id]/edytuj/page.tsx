@@ -23,14 +23,12 @@ import {
   LOCATION_TYPE_CHOICES,
   buildEventEnd,
   getLocationType,
-  isEventEditable,
   shouldAutoClose,
   shouldAutoReopen,
-  getEffectiveStatus,
-  getAllowedStatusTransitions
+  getEffectiveStatus
 } from '@/lib/eventUtils';
-import { StatusBadge } from '@/components/StatusBadge';
-import { PromotionStatus } from '@/components/events/PromotionStatus';
+import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
+import { getOrganizerStatus } from '@/lib/organizerStatus';
 import type { EventStatus, EventType, LocationType } from '@/types';
 
 const CKEditorWrapper = dynamic(() => import('@/components/CKEditorWrapper'), { ssr: false });
@@ -546,6 +544,7 @@ export default function EditEventPage({ params }: Props) {
       queryClient.invalidateQueries({ queryKey: ['event', eventId] });
       queryClient.invalidateQueries({ queryKey: ['events', 'detail', event?.slug] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['my-events'] });
       
       toast.success('Wydarzenie zostało zapisane!');
       // Małe opóźnienie, żeby toast był widoczny przed przekierowaniem
@@ -583,7 +582,7 @@ export default function EditEventPage({ params }: Props) {
           <div className="card p-6">Ładowanie...</div>
         ) : (
           <div className="space-y-6">
-            <PromotionStatus promotion={event.promotion} eventStatus={event.status} />
+            <OrganizerEventStatus event={event} />
             <div className="bg-white rounded-xl shadow-sm">
               <nav className="flex border-b">
                 {[
@@ -729,8 +728,8 @@ export default function EditEventPage({ params }: Props) {
                         </>
                       ) : (
                         <select {...register('status')} className="input w-full">
-                          {STATUS_CHOICES.map(({ value, label }) => (
-                            <option key={value} value={value}>{label}</option>
+                          {STATUS_CHOICES.filter(({ value }) => value === event.status || getOrganizerStatus(event).allowed_transitions.includes(value)).map(({ value, label }) => (
+                            <option key={value} value={value}>{value === event.status ? getOrganizerStatus(event).label : value === 'pending' ? 'Wyślij do moderacji' : label}</option>
                           ))}
                         </select>
                       )}

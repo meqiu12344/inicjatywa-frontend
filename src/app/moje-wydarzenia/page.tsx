@@ -8,7 +8,7 @@ import {
   Calendar, MapPin, Users, Edit, Trash2, Eye, 
   Plus, Search, Star, AlertCircle, Clock,
   ChevronLeft, ChevronRight, CalendarX, Megaphone,
-  FileText, EyeOff, Lock, CheckCircle, XCircle,
+  FileText, EyeOff, Lock, CheckCircle,
   ChevronDown, BarChart3, Settings, ScanLine
 } from 'lucide-react';
 import Link from 'next/link';
@@ -18,28 +18,22 @@ import { eventsApi } from '@/lib/api/events';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { 
-  getEffectiveStatus, 
-  isEventExpired, 
-  isEventUpcoming,
-  getStatusLabel,
-  STATUS_CHOICES
-} from '@/lib/eventUtils';
-import { StatusBadge, EventStateBadge } from '@/components/StatusBadge';
-import { PromotionStatus } from '@/components/events/PromotionStatus';
+import { getOrganizerStatus, matchesOrganizerFilter, type OrganizerFilter } from '@/lib/organizerStatus';
+import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
 import type { EventStatus, EventListItem } from '@/types';
 
-type TabType = 'upcoming' | 'past' | 'pending' | 'all';
+type TabType = OrganizerFilter;
 
 const ITEMS_PER_PAGE = 10;
+const EMPTY_EVENTS: EventListItem[] = [];
 
 export default function MyEventsPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const hydrated = useHydration();
   const queryClient = useQueryClient();
   
-  const [activeTab, setActiveTab] = useState<TabType>('upcoming');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
@@ -68,9 +62,9 @@ export default function MyEventsPage() {
 
   // Pobierz wydarzenia użytkownika
   const { data: eventsData, isLoading, error } = useQuery({
-    queryKey: ['my-events'],
-    queryFn: () => eventsApi.getMyEvents(),
-    enabled: isAuthenticated,
+    queryKey: ['my-events', 'all', user?.id],
+    queryFn: () => eventsApi.getAllMyEvents(),
+    enabled: hydrated && isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
@@ -83,6 +77,7 @@ export default function MyEventsPage() {
     onSuccess: () => {
       toast.success('Wydarzenie zostało usunięte');
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
+      queryClient.invalidateQueries({ queryKey: ['event'] });
       setDeleteConfirmId(null);
     },
     onError: (error) => {
@@ -100,6 +95,8 @@ export default function MyEventsPage() {
     onSuccess: (data) => {
       toast.success(data.message || 'Status został zmieniony');
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
+      queryClient.invalidateQueries({ queryKey: ['event'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
       setStatusMenuOpen(null);
     },
     onError: (error: any) => {
@@ -108,29 +105,28 @@ export default function MyEventsPage() {
     },
   });
 
-  const allEvents: EventListItem[] = eventsData?.results || [];
+  const allEvents = eventsData || EMPTY_EVENTS;
   
-  // Status options for dropdown - używamy STATUS_CHOICES z eventUtils
   const statusOptions = [
-    { value: 'public' as EventStatus, label: 'Publiczne', icon: CheckCircle, color: 'text-green-400' },
-    { value: 'draft' as EventStatus, label: 'Szkic', icon: FileText, color: 'text-gray-400' },
-    { value: 'hidden' as EventStatus, label: 'Ukryte', icon: EyeOff, color: 'text-purple-400' },
-    { value: 'closed' as EventStatus, label: 'Zamknięte', icon: Lock, color: 'text-red-400' },
+    { value: 'pending' as EventStatus, label: 'Wyślij do moderacji', icon: Clock, color: 'text-amber-400' },
+    { value: 'public' as EventStatus, label: 'Opublikuj', icon: CheckCircle, color: 'text-green-400' },
+    { value: 'draft' as EventStatus, label: 'Zapisz jako szkic', icon: FileText, color: 'text-gray-400' },
+    { value: 'hidden' as EventStatus, label: 'Ukryj', icon: EyeOff, color: 'text-purple-400' },
+    { value: 'closed' as EventStatus, label: 'Zamknij', icon: Lock, color: 'text-red-400' },
   ];
 
   const handleStatusChange = (eventId: number, newStatus: EventStatus) => {
     changeStatusMutation.mutate({ eventId, status: newStatus });
   };
 
-  // Calculate counts for tabs - używamy logiki z eventUtils
+  // Te same statusy odpowiadają za etykiety, liczniki i filtry.
   const counts = useMemo(() => {
     return {
-      upcoming: allEvents.filter(e => {
-        const effectiveStatus = getEffectiveStatus(e as any);
-        return isEventUpcoming(e) && effectiveStatus !== 'closed';
-      }).length,
-      past: allEvents.filter(e => isEventExpired(e)).length,
-      pending: allEvents.filter(e => e.status === 'pending').length,
+      public: allEvents.filter(e => matchesOrganizerFilter(e, 'public')).length,
+      pending: allEvents.filter(e => matchesOrganizerFilter(e, 'pending')).length,
+      rejected: allEvents.filter(e => matchesOrganizerFilter(e, 'rejected')).length,
+      ended: allEvents.filter(e => matchesOrganizerFilter(e, 'ended')).length,
+      promoted: allEvents.filter(e => matchesOrganizerFilter(e, 'promoted')).length,
       all: allEvents.length,
     };
   }, [allEvents]);
@@ -139,25 +135,15 @@ export default function MyEventsPage() {
   const filteredEvents = useMemo(() => {
     return allEvents.filter(event => {
       const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const effectiveStatus = getEffectiveStatus(event as any);
-      
-      switch (activeTab) {
-        case 'upcoming':
-          return matchesSearch && isEventUpcoming(event) && effectiveStatus !== 'closed';
-        case 'past':
-          return matchesSearch && isEventExpired(event);
-        case 'pending':
-          return matchesSearch && event.status === 'pending';
-        case 'all':
-          return matchesSearch;
-        default:
-          return matchesSearch;
-      }
+      return matchesSearch && matchesOrganizerFilter(event, activeTab);
     });
   }, [allEvents, activeTab, searchQuery]);
 
   // Pagination
   const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
+  useEffect(() => {
+    setCurrentPage(page => Math.min(page, Math.max(1, totalPages)));
+  }, [totalPages]);
   const paginatedEvents = filteredEvents.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
@@ -167,20 +153,17 @@ export default function MyEventsPage() {
     deleteMutation.mutate(eventId);
   };
 
-  // Funkcja getStatusBadge używa komponentu StatusBadge z eventUtils
-  const getStatusBadge = (status: EventStatus) => {
-    return <StatusBadge status={status} size="md" showIcon={true} />;
-  };
-
   if (!hydrated || !isAuthenticated) {
     return null;
   }
 
   const tabs = [
-    { id: 'upcoming' as TabType, label: 'Nadchodzące', count: counts.upcoming, icon: Calendar },
-    { id: 'past' as TabType, label: 'Przeszłe', count: counts.past, icon: Clock },
-    { id: 'pending' as TabType, label: 'Oczekujące', count: counts.pending, icon: AlertCircle },
     { id: 'all' as TabType, label: 'Wszystkie', count: counts.all, icon: FileText },
+    { id: 'public' as TabType, label: 'Opublikowane', count: counts.public, icon: CheckCircle },
+    { id: 'pending' as TabType, label: 'Do moderacji', count: counts.pending, icon: Clock },
+    { id: 'rejected' as TabType, label: 'Do poprawy', count: counts.rejected, icon: AlertCircle },
+    { id: 'ended' as TabType, label: 'Zakończone', count: counts.ended, icon: CalendarX },
+    { id: 'promoted' as TabType, label: 'Promowane', count: counts.promoted, icon: Megaphone },
   ];
 
   return (
@@ -230,7 +213,7 @@ export default function MyEventsPage() {
                     `}
                   >
                     <Icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span>{tab.label}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       activeTab === tab.id 
                         ? 'bg-amber-500/20 text-amber-400' 
@@ -311,17 +294,12 @@ export default function MyEventsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div className="flex-1">
-                            {/* Status Badges */}
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              {getStatusBadge(event.status || 'public')}
-                            </div>
-                            
                             {/* Title */}
                             <h3 className="text-lg font-semibold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
                               {event.title}
                             </h3>
                             <div className="mt-3">
-                              <PromotionStatus promotion={event.promotion} eventStatus={event.status} dark />
+                              <OrganizerEventStatus event={event} dark />
                             </div>
                             
                             {/* Date & Location */}
@@ -329,7 +307,7 @@ export default function MyEventsPage() {
                               <div className="flex items-center gap-2 text-sm text-gray-400">
                                 <Calendar className="w-4 h-4 text-amber-500/70" />
                                 <span>
-                                  {format(parseISO(event.start_date), 'd MMMM yyyy, HH:mm', { locale: pl })}
+                                  {event.is_permanent ? 'Wydarzenie stałe' : format(parseISO(event.start_date), event.start_time_unknown ? 'd MMMM yyyy' : 'd MMMM yyyy, HH:mm', { locale: pl })}
                                 </span>
                               </div>
                               {event.location && (
@@ -401,7 +379,7 @@ export default function MyEventsPage() {
                       </Link>
                       
                       {/* Status Dropdown */}
-                      {event.status !== 'pending' && (
+                      {getOrganizerStatus(event).allowed_transitions.some(value => value !== event.status) && (
                         <div className="relative">
                           <button
                             onClick={(e) => {
@@ -409,34 +387,31 @@ export default function MyEventsPage() {
                               setStatusMenuOpen(statusMenuOpen === event.id ? null : event.id);
                             }}
                             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition-colors"
+                            aria-expanded={statusMenuOpen === event.id}
+                            aria-controls={`event-status-options-${event.id}`}
                           >
                             <Settings className="w-4 h-4" />
-                            Status
+                            Zmień status
                             <ChevronDown className="w-3 h-3" />
                           </button>
                           
                           {statusMenuOpen === event.id && (
                             <div 
-                              className="absolute left-0 top-full mt-1 z-50 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+                              id={`event-status-options-${event.id}`}
+                              className="absolute left-0 bottom-full mb-2 z-50 w-64 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {statusOptions.map((option) => {
+                              {statusOptions.filter(option => option.value !== event.status && getOrganizerStatus(event).allowed_transitions.includes(option.value)).map((option) => {
                                 const Icon = option.icon;
-                                const isActive = event.status === option.value;
                                 return (
                                   <button
                                     key={option.value}
                                     onClick={() => handleStatusChange(event.id, option.value)}
-                                    disabled={isActive || changeStatusMutation.isPending}
-                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors ${
-                                      isActive 
-                                        ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed' 
-                                        : 'text-gray-300 hover:bg-gray-700'
-                                    }`}
+                                    disabled={changeStatusMutation.isPending}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors text-gray-300 hover:bg-gray-700 disabled:opacity-50"
                                   >
                                     <Icon className={`w-4 h-4 ${option.color}`} />
                                     <span>{option.label}</span>
-                                    {isActive && <span className="ml-auto text-xs text-gray-500">(aktualny)</span>}
                                   </button>
                                 );
                               })}
@@ -560,16 +535,12 @@ export default function MyEventsPage() {
             <p className="text-gray-400 mb-6 max-w-md mx-auto">
               {searchQuery 
                 ? 'Nie znaleziono wydarzeń pasujących do wyszukiwania. Spróbuj zmienić kryteria.'
-                : activeTab === 'upcoming' 
-                  ? 'Nie masz żadnych nadchodzących wydarzeń. Dodaj swoje pierwsze wydarzenie!'
-                  : activeTab === 'past'
-                    ? 'Nie masz żadnych przeszłych wydarzeń.'
-                    : activeTab === 'pending'
-                      ? 'Nie masz żadnych wydarzeń oczekujących na akceptację.'
-                      : 'Nie masz jeszcze żadnych wydarzeń. Zacznij od dodania pierwszego!'
+                : activeTab === 'all'
+                  ? 'Nie masz jeszcze żadnych wydarzeń. Zacznij od dodania pierwszego!'
+                  : 'Nie masz wydarzeń o wybranym statusie. Wybierz „Wszystkie”, aby zobaczyć całą listę.'
               }
             </p>
-            {!searchQuery && (activeTab === 'upcoming' || activeTab === 'all') && (
+            {!searchQuery && activeTab === 'all' && (
               <Link 
                 href="/wydarzenia/dodaj" 
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-semibold rounded-xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300"

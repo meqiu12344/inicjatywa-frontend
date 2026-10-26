@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import { getErrorMessage } from '@/lib/api/client';
@@ -54,12 +55,14 @@ export function useInfiniteEvents(filters?: EventFilters) {
 }
 
 export function useEvent(idOrSlug: string | number, initialData?: Event) {
+  const user = useAuthStore(state => state.user);
   return useQuery({
-    queryKey: eventKeys.detail(idOrSlug),
+    queryKey: [...eventKeys.detail(idOrSlug), user?.id ?? 'visitor'],
     queryFn: () => eventsApi.getEvent(idOrSlug),
     enabled: !!idOrSlug,
     initialData,
-    staleTime: initialData ? 5 * 60 * 1000 : 0, // 5 min if has initialData, else refetch immediately
+    // SSR ma dane publiczne; zalogowany Organizator pobiera też bieżący status i uwagi moderatora.
+    staleTime: initialData && !user ? 5 * 60 * 1000 : 0,
   });
 }
 

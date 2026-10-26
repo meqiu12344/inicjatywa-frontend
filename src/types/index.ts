@@ -122,6 +122,7 @@ export interface Event {
   is_promoted: boolean;
   promotion_level?: 'bronze' | 'silver' | 'gold';
   promotion?: PromotionStatus | null;
+  organizer_status?: OrganizerEventStatus | null;
   views_count?: number;
   registrations_count?: number;
   is_registered?: boolean;
@@ -137,6 +138,14 @@ export interface Event {
     description?: string | null;
     is_platform?: boolean;
   } | null;
+}
+
+export interface OrganizerEventStatus {
+  code: EventStatus | 'rejected' | 'ended' | 'unknown';
+  label: string;
+  description: string;
+  rejection_reason: string;
+  allowed_transitions: EventStatus[];
 }
 
 export interface PromotionStatus {
@@ -176,6 +185,7 @@ export interface EventListItem {
   promotion_level?: 'bronze' | 'silver' | 'gold';
   promotion_id?: number;
   promotion?: PromotionStatus | null;
+  organizer_status?: OrganizerEventStatus | null;
   is_fully_booked: boolean;
   location_type?: LocationType;
   online_event: boolean;

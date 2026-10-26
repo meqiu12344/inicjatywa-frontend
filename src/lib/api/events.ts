@@ -99,6 +99,20 @@ export const eventsApi = {
   getMyEvents: async (filters?: EventFilters): Promise<PaginatedResponse<EventListItem>> => {
     return get<PaginatedResponse<EventListItem>>(`${EVENTS_BASE}/my/${buildQueryString(filters)}`);
   },
+
+  // Panel filtruje i stronicuje lokalnie, więc musi otrzymać całą listę Organizatora.
+  getAllMyEvents: async (): Promise<EventListItem[]> => {
+    const events: EventListItem[] = [];
+    let page = 1;
+    let hasNext = true;
+    while (hasNext) {
+      const response = await eventsApi.getMyEvents({ page, page_size: 100 });
+      events.push(...response.results);
+      hasNext = Boolean(response.next);
+      page += 1;
+    }
+    return events;
+  },
   
   // Create event
   createEvent: async (data: CreateEventData): Promise<Event> => {
