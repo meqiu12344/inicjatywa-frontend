@@ -185,6 +185,8 @@ export interface PromotionStatus {
 
 export interface EventListItem extends RecurrenceInfo {
   id: number;
+  // Zasób bez terminu (aplikacja, media, wydarzenie stałe) — w wynikach za aktualnymi wydarzeniami
+  is_resource?: boolean;
   organizer_id?: number;
   title: string;
   slug: string;

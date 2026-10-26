@@ -239,3 +239,11 @@ test('participation form is a separate filter from categories and ignores unknow
   assert.deepEqual(params.getAll('categories'), ['4']);
   assert.equal(apiQuery('categories=4').has('participation'), false);
 });
+
+test('resources without a date get their own section only when results are sorted by date', () => {
+  const events = [{ is_resource: false }, { is_resource: false }, { is_resource: true }, { is_resource: true }];
+  assert.equal(utils.resourceSectionIndex(events, 'start_date'), 2);
+  assert.equal(utils.resourceSectionIndex(events, '-start_date'), 2);
+  assert.equal(utils.resourceSectionIndex(events, 'title'), -1);
+  assert.equal(utils.resourceSectionIndex([{ is_resource: false }], 'start_date'), -1);
+});

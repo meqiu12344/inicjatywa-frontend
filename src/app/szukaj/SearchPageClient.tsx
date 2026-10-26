@@ -2,7 +2,7 @@
 
 import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
-import { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
+import { Fragment, useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { format, addDays, startOfWeek, endOfMonth } from 'date-fns';
@@ -20,8 +20,8 @@ import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
 import { getLocationTypeLabel, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import { formatEventWhen } from '@/lib/eventWhen';
 import {
-  PARTICIPATION_FILTERS, readParticipation, readSearchLocation, searchLocationFilters, writeSearchLocation,
-  searchFiltersKey, searchPlaceKey,
+  PARTICIPATION_FILTERS, readParticipation, readSearchLocation, resourceSectionIndex, searchLocationFilters,
+  writeSearchLocation, searchFiltersKey, searchPlaceKey,
 } from '@/lib/searchFilters';
 import type { EventListItem, EventFilters, EventType, LocationType } from '@/types';
 
@@ -204,6 +204,8 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
 
   
   const totalCount = searchResults?.count || 0;
+  // Aktualne wydarzenia są pierwsze; aplikacje, media i wydarzenia stałe — w osobnej sekcji za nimi.
+  const resourceIndex = resourceSectionIndex(events, ordering);
   const totalPages = Math.ceil(totalCount / 12);
 
   // Update URL when filters change
@@ -922,14 +924,20 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
           <>
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {events.map((event: EventListItem) => (
-                  <EventCard key={event.id} event={event} />
+                {events.map((event: EventListItem, index) => (
+                  <Fragment key={event.id}>
+                    {index === resourceIndex && <ResourceSectionHeader className="col-span-full" />}
+                    <EventCard event={event} />
+                  </Fragment>
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
-                {events.map((event: EventListItem) => (
-                  <EventListItemCard key={event.id} event={event} />
+                {events.map((event: EventListItem, index) => (
+                  <Fragment key={event.id}>
+                    {index === resourceIndex && <ResourceSectionHeader />}
+                    <EventListItemCard event={event} />
+                  </Fragment>
                 ))}
               </div>
             )}
@@ -1003,6 +1011,17 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ResourceSectionHeader({ className = '' }: { className?: string }) {
+  return (
+    <div className={`border-t border-slate-200 pt-6 ${className}`}>
+      <h3 className="text-lg font-semibold text-slate-900">Materiały i zasoby bez terminu</h3>
+      <p className="mt-1 text-sm text-slate-500">
+        Aplikacje, media i wydarzenia trwające cały czas — bez konkretnego terminu.
+      </p>
     </div>
   );
 }

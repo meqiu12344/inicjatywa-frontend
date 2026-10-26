@@ -1,4 +1,4 @@
-import type { EventFilters, LocationType } from '@/types';
+import type { EventFilters, EventListItem, LocationType } from '@/types';
 
 export type SearchParameters = Record<string, string | string[] | undefined>;
 type ParamReader = { get(key: string): string | null | undefined };
@@ -19,6 +19,11 @@ export const PARTICIPATION_FILTERS: LocationType[] = ['onsite', 'online', 'hybri
 
 export function readParticipation(value: string | null | undefined): LocationType[] {
   return (value || '').split(',').filter((item): item is LocationType => PARTICIPATION_FILTERS.includes(item as LocationType));
+}
+
+/** Gdzie wstawić nagłówek sekcji zasobów bez terminu; -1 — brak (np. sortowanie po tytule miesza wyniki). */
+export function resourceSectionIndex(events: Pick<EventListItem, 'is_resource'>[], ordering: string): number {
+  return ordering.includes('start_date') ? events.findIndex(event => event.is_resource) : -1;
 }
 
 export function readSearchLocation(params: ParamReader): SearchLocation {
