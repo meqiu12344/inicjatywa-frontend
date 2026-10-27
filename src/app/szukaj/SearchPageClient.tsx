@@ -156,11 +156,19 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
   });
 
   // Get categories
-  const { data: categories } = useQuery({
+  const {
+    data: categories,
+    isFetching: categoriesLoading,
+    isError: categoriesError,
+    refetch: refetchCategories,
+  } = useQuery({
     queryKey: ['categories'],
     queryFn: categoriesApi.getCategories,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    initialData: initialCategories,
+    // An empty SSR fallback must not block the browser request for five minutes.
+    initialData: initialCategories.length > 0 ? initialCategories : undefined,
+    // Other pages share this cache and may also have seeded it with an empty fallback.
+    refetchOnMount: query => query.state.data?.length ? true : 'always',
   });
 
   // Build filters object
@@ -540,11 +548,33 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
                   <Tag className="w-4 h-4 inline mr-2" />
                   Kategorie
                 </label>
+                {!categories?.length && (
+                  categoriesLoading ? (
+                    <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                      Ładowanie kategorii…
+                    </p>
+                  ) : (
+                    <div className="space-y-2 text-sm">
+                      <p role={categoriesError ? 'alert' : 'status'} className="text-slate-600">
+                        {categoriesError ? 'Nie udało się pobrać kategorii.' : 'Brak dostępnych kategorii.'}
+                      </p>
+                      <button
+                        onClick={() => void refetchCategories()}
+                        className="inline-flex items-center gap-1 text-primary-700 hover:underline"
+                      >
+                        <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                        Ponów pobieranie kategorii
+                      </button>
+                    </div>
+                  )
+                )}
                 <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                   {categories?.map(cat => (
                     <button
                       key={cat.id}
                       onClick={() => toggleCategory(cat.id.toString())}
+                      aria-pressed={selectedCategories.includes(cat.id.toString())}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                         selectedCategories.includes(cat.id.toString())
                           ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200'

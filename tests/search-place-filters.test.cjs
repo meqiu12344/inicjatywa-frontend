@@ -102,12 +102,13 @@ function textOf(node) {
   return typeof node === 'string' || typeof node === 'number' ? String(node) : '';
 }
 
-function searchView(query = '', initialOverrides = {}) {
+function searchView(query = '', initialOverrides = {}, categoryState = {}) {
   const states = [];
   const nodes = [];
   const effects = [];
   let stateIndex = 0;
   let searchOptions;
+  let categoryOptions;
   let lastUrl;
   const urlParams = new URLSearchParams(query);
   const router = { replace: url => { lastUrl = url; } };
@@ -138,6 +139,10 @@ function searchView(query = '', initialOverrides = {}) {
         searchOptions = config;
         return { data: config.initialData || emptyResults, isLoading: false, isFetching: false, refetch: () => {} };
       }
+      if (config.queryKey[0] === 'categories') {
+        categoryOptions = config;
+        return { data: config.initialData, isFetching: false, isError: false, refetch: () => {}, ...categoryState };
+      }
       return { data: [] };
     } },
   };
@@ -152,7 +157,7 @@ function searchView(query = '', initialOverrides = {}) {
   }
   render();
   return {
-    get html() { return html; }, get options() { return searchOptions; }, get url() { return lastUrl; }, apiCalls,
+    get html() { return html; }, get options() { return searchOptions; }, get categoryOptions() { return categoryOptions; }, get url() { return lastUrl; }, apiCalls,
     click(label) {
       const button = nodes.find(node => node.type === 'button' && textOf(node.props.children).trim().startsWith(label));
       assert.ok(button, `Button ${label}`); button.props.onClick(); render();
@@ -247,4 +252,78 @@ test('resources without a date get their own section only when results are sorte
   assert.equal(utils.resourceSectionIndex(events, '-start_date'), 2);
   assert.equal(utils.resourceSectionIndex(events, 'title'), -1);
   assert.equal(utils.resourceSectionIndex([{ is_resource: false }], 'start_date'), -1);
+});
+
+const categoryList = [{ id: 4, name: 'rekolekcje' }, { id: 7, name: 'koncerty' }];
+
+test('categories are fetched immediately when server rendering supplied an empty fallback', async () => {
+  const { QueryClient, QueryObserver } = require('@tanstack/react-query');
+  for (const cachedEmpty of [false, true]) {
+    const view = searchView();
+    const client = new QueryClient();
+    if (cachedEmpty) client.setQueryData(['categories'], []);
+    let calls = 0;
+    const observer = new QueryObserver(client, {
+      ...view.categoryOptions, retry: false,
+      queryFn: async () => { calls++; return categoryList; },
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    try {
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(calls, 1, `categories fetch with cachedEmpty=${cachedEmpty}`);
+      assert.equal(observer.getCurrentResult().data.length, 2);
+    } finally {
+      unsubscribe();
+      client.clear();
+    }
+  }
+});
+
+test('valid server categories remain visible without an unnecessary initial request', async () => {
+  const { QueryClient, QueryObserver } = require('@tanstack/react-query');
+  const view = searchView('', { initialCategories: categoryList });
+  const client = new QueryClient();
+  let calls = 0;
+  const observer = new QueryObserver(client, {
+    ...view.categoryOptions, queryFn: async () => { calls++; return categoryList; },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls, 0);
+    view.click('Więcej filtrów');
+    assert.ok(view.html.includes('rekolekcje'));
+    assert.ok(view.html.includes('koncerty'));
+  } finally {
+    unsubscribe();
+    client.clear();
+  }
+});
+
+test('category loading and failures are explained and a failed request can be retried', () => {
+  const loading = searchView('', {}, { isFetching: true });
+  loading.click('Więcej filtrów');
+  assert.ok(loading.html.includes('Ładowanie kategorii'));
+  let retries = 0;
+  const failure = searchView('categories=4', {}, { isError: true, refetch: () => { retries++; } });
+  failure.click('Więcej filtrów');
+  assert.ok(failure.html.includes('Nie udało się pobrać kategorii'));
+  failure.click('Ponów pobieranie kategorii');
+  assert.equal(retries, 1);
+  assert.equal(failure.options.queryKey[1].categories[0], 4);
+});
+
+test('categories can be selected, preserved on refresh and deselected independently of other filters', () => {
+  const view = searchView('region=Pomorskie', { initialCategories: categoryList });
+  view.click('Więcej filtrów');
+  view.click('rekolekcje');
+  assert.equal(view.options.queryKey[1].categories[0], 4);
+  assert.equal(new URL(view.url, 'https://example.com').searchParams.get('categories'), '4');
+  const refreshed = searchView(new URL(view.url, 'https://example.com').search.slice(1), { initialCategories: categoryList });
+  refreshed.click('Więcej filtrów');
+  assert.ok(refreshed.html.includes('aria-pressed="true"'));
+  assert.equal(refreshed.options.queryKey[1].categories[0], 4);
+  refreshed.click('rekolekcje');
+  assert.equal(refreshed.options.queryKey[1].categories, undefined);
+  assert.equal(refreshed.options.queryKey[1].region, 'Pomorskie');
 });
