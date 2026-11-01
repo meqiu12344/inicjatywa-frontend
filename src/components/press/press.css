@@ -47,6 +47,7 @@
 .press-error { background: #fff2f1; color: #97251e; }
 .press-success { background: #edf8f0; color: #28663b; }
 .press-toolbar { margin: 0 0 24px; min-height: 44px; }
+.press-email-alerts { margin: 0 0 16px; }
 .press-filters { display: grid; grid-template-columns: minmax(0, 1fr) 240px; align-items: end; gap: 16px; margin-bottom: 16px; }
 .press-filters > .press-checkbox { min-height: 44px; }
 .press-filters label span { display: flex; align-items: center; gap: 8px; }

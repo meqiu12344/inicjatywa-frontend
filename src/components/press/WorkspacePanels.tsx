@@ -59,6 +59,23 @@ export function PreferencesPanel({ userId }: { userId: number }) {
   </form>;
 }
 
+export function EmailAlertsToggle({ userId }: { userId: number }) {
+  const query = useQuery({ queryKey: ['press', userId, 'preferences'], queryFn: async () => (await apiClient.get<Preferences>('/press/preferences/')).data, retry: false, gcTime: 0 });
+  const [pending, setPending] = useState<boolean | null>(null);
+  const [error, setError] = useState('');
+  async function toggle(enabled: boolean) {
+    setPending(enabled); setError('');
+    try { await apiClient.put('/press/preferences/', { email_frequency: enabled ? 'daily' : 'off' }); await query.refetch(); }
+    catch (failure) { setError(pressError(failure)); } finally { setPending(null); }
+  }
+  if (query.isPending) return null;
+  if (query.isError) return <QueryFailure error={query.error} retry={() => void query.refetch()} />;
+  return <div className="press-email-alerts">
+    <label className="press-checkbox"><input type="checkbox" checked={pending ?? query.data.email_frequency !== 'off'} disabled={pending !== null} onChange={event => void toggle(event.target.checked)} />Powiadamiaj mnie e-mailem o nowych materiałach (najwyżej raz dziennie)</label>
+    {error && <p role="alert" className="press-error">{error}</p>}
+  </div>;
+}
+
 type BookmarkState = { saved: boolean; note: string; interested: boolean };
 
 export function BookmarkPanel({ materialId, userId }: { materialId: number; userId: number }) {

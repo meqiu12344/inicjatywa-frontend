@@ -21,10 +21,14 @@ export interface PressMaterial extends PressRights {
   radio_short: string; radio_long: string; guest: string; youtube_url: string; transcript: string;
   contact_name: string; contact_phone: string;
 }
-export interface PressDownload { id: number; email: string; material: string; filename: string; created_at: string }
+export interface PressDownload { id: number; email: string; material: string; filename: string; action: 'download' | 'preview'; created_at: string }
+export interface PressDecision { notification_sent: boolean }
 export interface PressPage<T> { count: number; next: string | null; previous: string | null; results: T[]; regions?: string[] }
 export const pressKinds: Record<string, string> = { release: 'Komunikat', photo: 'Zdjęcia', audio: 'Audio', video: 'Wideo', package: 'Paczka prasowa', program: 'Materiał prasowy', interview: 'Wywiad', broll: 'B-roll' };
+// Funkcje spoza obecnego zakresu Hubu: radio, Oto Nadchodzi, Media Alert, API i RSS.
 export const pressExtendedFeaturesEnabled = false;
+// Pulpit, Zapisane z notatkami i Zainteresowania. Specyfikacja panelu dziennikarza ich nie obejmuje.
+export const pressPartnerToolsEnabled = false;
 export const pressWorkflow: Record<string, string> = { draft: 'Szkic', review: 'Do weryfikacji', approved: 'Zaakceptowany', published: 'Opublikowany', archived: 'Archiwalny', rejected: 'Odrzucony' };
 export const pressMedia: Record<string, string> = { radio: 'Radio', tv: 'Telewizja', internet: 'Internet', social: 'Social media', print: 'Druk' };
 export const splitPressValues = (value: FormDataEntryValue | null) => String(value ?? '').split(',').map(item => item.trim()).filter(Boolean);
