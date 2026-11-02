@@ -572,7 +572,16 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
               {/* Event Image */}
               {event.image && (
                 <figure className="mb-6">
+                  {/* Cały plakat w oryginalnych proporcjach; bardzo wysoki ograniczamy do ekranu, a boki wypełnia rozmyte tło. */}
                   <div className="relative w-full rounded-xl overflow-hidden bg-slate-100">
+                    <Image
+                      src={event.image}
+                      alt=""
+                      aria-hidden
+                      fill
+                      sizes="64px"
+                      className="object-cover scale-125 blur-xl brightness-90"
+                    />
                     <Image
                       src={event.image}
                       alt={event.graphic_type === 'ik_card' ? `Karta Informacyjna IK: ${event.title}` : event.title}
@@ -580,7 +589,7 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
                       height={450}
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 700px"
                       priority
-                      className="object-cover w-full h-full"
+                      className="relative mx-auto w-auto max-w-full h-auto max-h-[80vh] object-contain"
                     />
                   </div>
                   {/* Karta IK to grafika portalu — nie może uchodzić za oficjalny plakat Organizatora. */}

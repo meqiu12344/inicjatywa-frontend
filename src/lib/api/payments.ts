@@ -6,6 +6,7 @@ export interface CreateEventPaymentData {
     title: string;
     description: string;
     start_date: string;
+    start_time_unknown?: boolean;
     end_date?: string | null;
     end_time_unknown?: boolean;
     is_permanent: boolean;

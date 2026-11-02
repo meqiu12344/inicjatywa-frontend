@@ -98,11 +98,14 @@ export default function CalendarPage({ initialEvents, initialMonth, initialDay }
     const start = parseISO(firstTerm?.start ?? event.start_date);
     return start < monthStart ? monthStart : start;
   };
+  // Bez podanej godziny rozpoczęcia nie pokazujemy wymyślonego „00:00”.
+  const startTime = (event: EventListItem): string =>
+    event.start_time_unknown ? '' : format(parseISO(event.start_date), 'HH:mm', { locale: pl });
   const describeTiming = (event: EventListItem): string => {
-    const time = format(parseISO(event.start_date), 'HH:mm', { locale: pl });
-    if (event.recurrence_label) return `${event.recurrence_label}, ${time}`;
+    const time = startTime(event);
+    if (event.recurrence_label) return [event.recurrence_label, time].filter(Boolean).join(', ');
     if (event.end_date && !isSameDay(parseISO(event.start_date), parseISO(event.end_date))) {
-      return `${time} • trwa do ${format(parseISO(event.end_date), 'd MMMM', { locale: pl })}`;
+      return [time, `trwa do ${format(parseISO(event.end_date), 'd MMMM', { locale: pl })}`].filter(Boolean).join(' • ');
     }
     return time;
   };
@@ -329,13 +332,13 @@ export default function CalendarPage({ initialEvents, initialMonth, initialDay }
                       </h4>
                       
                       <div className="mt-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-slate-400">
-                          <Clock className="w-4 h-4 text-amber-500/70" />
-                          <span>
-                            {format(parseISO(event.start_date), 'HH:mm', { locale: pl })}
-                          </span>
-                        </div>
-                        
+                        {startTime(event) && (
+                          <div className="flex items-center gap-2 text-sm text-slate-400">
+                            <Clock className="w-4 h-4 text-amber-500/70" />
+                            <span>{startTime(event)}</span>
+                          </div>
+                        )}
+
                         {getPlaceLabel(event) && (
                           <div className="flex items-center gap-2 text-sm text-slate-400">
                             <MapPin className="w-4 h-4 text-amber-500/70" />
@@ -440,10 +443,12 @@ export default function CalendarPage({ initialEvents, initialMonth, initialDay }
                         {event.title}
                       </h3>
                       <div className="mt-2 space-y-1">
-                        <p className="text-sm text-slate-400 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-amber-500/70" />
-                          {describeTiming(event)}
-                        </p>
+                        {describeTiming(event) && (
+                          <p className="text-sm text-slate-400 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-amber-500/70" />
+                            {describeTiming(event)}
+                          </p>
+                        )}
                         {getPlaceLabel(event) && (
                           <p className="text-sm text-slate-400 flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-amber-500/70" />

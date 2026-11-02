@@ -1,6 +1,9 @@
 'use client';
 
 import L from 'leaflet';
+// Without Leaflet's stylesheet tiles are laid out as plain images and the map
+// falls apart (shifted fragments, blank areas) when this is the only map on the page.
+import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useCallback } from 'react';
 
 const defaultIcon = L.icon({
@@ -79,10 +82,17 @@ export default function LeafletMap({
     mapRef.current = map;
     markerRef.current = marker;
 
-    // Fix tile rendering after container is visible
-    setTimeout(() => map.invalidateSize(), 100);
+    // Recalculate map size whenever the container changes (initial layout,
+    // viewport resize, client-side navigation), otherwise tiles stay misaligned.
+    const invalidateTimer = setTimeout(() => map.invalidateSize(), 100);
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => map.invalidateSize())
+      : null;
+    resizeObserver?.observe(containerRef.current);
 
     return () => {
+      clearTimeout(invalidateTimer);
+      resizeObserver?.disconnect();
       map.remove();
       mapRef.current = null;
       markerRef.current = null;

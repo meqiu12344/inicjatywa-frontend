@@ -160,6 +160,7 @@ export interface PendingEvent {
     name: string;
   }>;
   start_date: string;
+  start_time_unknown?: boolean;
   end_date: string | null;
   end_time_unknown?: boolean;
   status: string;

@@ -22,7 +22,7 @@ import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
+import { LOCATION_TYPE_CHOICES, buildEventEnd, buildEventStart, getLocationTypeLabel, isEventStartInPast, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { TicketType, Category, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
 import { RecurrenceFields } from '@/components/events/RecurrenceFields';
@@ -609,7 +609,8 @@ export default function CreateEventPage() {
       recurrence: '',
       recurrence_weekdays: [],
       start_date: '',
-      start_time: '10:00',
+      // Bez domyślnej godziny — wpisujemy tylko tę podaną przez Organizatora.
+      start_time: '',
       end_date: '',
       end_time: '',
       available_from_date: '',
@@ -752,11 +753,10 @@ export default function CreateEventPage() {
         throw new Error('Musisz być zalogowany aby dokonać płatności');
       }
 
-      if (!data.start_date || !data.start_time) {
+      if (!data.start_date) {
         throw new Error('Data rozpoczęcia jest wymagana');
       }
-      
-      const startDateTime = `${data.start_date}T${data.start_time}`;
+
       const availableFrom = data.available_from_date && data.available_from_time
         ? `${data.available_from_date}T${data.available_from_time}`
         : undefined;
@@ -771,7 +771,7 @@ export default function CreateEventPage() {
         event_data: {
           title: data.title,
           description: data.description,
-          start_date: startDateTime,
+          ...buildEventStart(data.start_date, data.start_time),
           ...formEventEnd(data),
           is_permanent: data.is_permanent,
           recurrence: data.is_permanent ? '' : data.recurrence,
@@ -841,11 +841,10 @@ export default function CreateEventPage() {
         throw new Error('Musisz być zalogowany aby dodać wydarzenie');
       }
 
-      if (!data.start_date || !data.start_time) {
+      if (!data.start_date) {
         throw new Error('Data rozpoczęcia jest wymagana');
       }
-      
-      const startDateTime = `${data.start_date}T${data.start_time}`;
+
       const availableFrom = data.available_from_date && data.available_from_time
         ? `${data.available_from_date}T${data.available_from_time}`
         : undefined;
@@ -857,7 +856,7 @@ export default function CreateEventPage() {
         event_data: {
           title: data.title,
           description: data.description,
-          start_date: startDateTime,
+          ...buildEventStart(data.start_date, data.start_time),
           ...formEventEnd(data),
           is_permanent: data.is_permanent,
           recurrence: data.is_permanent ? '' : data.recurrence,
@@ -944,8 +943,7 @@ export default function CreateEventPage() {
   // Dane, z których backend składa Kartę IK — podgląd uzupełnia się z kolejnych kroków formularza.
   const ikCardData = {
     title: watchAll.title,
-    start_date: watchAll.start_date && watchAll.start_time ? `${watchAll.start_date}T${watchAll.start_time}` : undefined,
-    ...(watchAll.start_date ? formEventEnd(watchAll) : {}),
+    ...(watchAll.start_date ? { ...buildEventStart(watchAll.start_date, watchAll.start_time), ...formEventEnd(watchAll) } : {}),
     is_permanent: watchAll.is_permanent,
     recurrence: watchAll.is_permanent ? '' : watchAll.recurrence,
     recurrence_weekdays: watchAll.recurrence_weekdays,
@@ -1235,10 +1233,10 @@ export default function CreateEventPage() {
         }
         return true;
       case 2:
-        if (!watchAll.start_date || !watchAll.start_time) {
+        // Godzina rozpoczęcia jest opcjonalna — Organizator nie zawsze ją podaje.
+        if (!watchAll.start_date) {
           setError('start_date', { type: 'required', message: 'Data rozpoczęcia jest wymagana' });
-          setError('start_time', { type: 'required', message: 'Godzina rozpoczęcia jest wymagana' });
-          toast.error('Data i godzina rozpoczęcia są wymagane');
+          toast.error('Data rozpoczęcia jest wymagana');
           return false;
         }
         clearErrors(['start_date', 'start_time']);
@@ -1250,13 +1248,13 @@ export default function CreateEventPage() {
           }
           return false;
         }
-        
+
         // Validate dates not in past
-        const startDate = new Date(`${watchAll.start_date}T${watchAll.start_time}`);
-        if (startDate < new Date()) {
+        if (isEventStartInPast(watchAll.start_date, watchAll.start_time)) {
           toast.error('Data i godzina rozpoczęcia nie może być w przeszłości.');
           return false;
         }
+        const startDate = new Date(buildEventStart(watchAll.start_date, watchAll.start_time).start_date);
         
         if (watchAll.recurrence && !watchAll.is_permanent && !watchAll.end_date) {
           setError('end_date', { type: 'required', message: 'Podaj dzień ostatniego terminu' });
@@ -1760,16 +1758,20 @@ export default function CreateEventPage() {
                       )}
                     </div>
                     <div>
-                      <label className="form-label-small">Godzina rozpoczęcia *</label>
+                      <label className="form-label-small">Godzina rozpoczęcia (opcjonalnie)</label>
                       <input
                         type="time"
-                        {...register('start_time', { required: 'Godzina jest wymagana' })}
+                        {...register('start_time')}
                         onPaste={(e) => handleTimePaste(e, 'start_time')}
                         onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')}
                         className="form-input"
                       />
                     </div>
                   </div>
+                  <p className="text-sm text-gray-500 mt-3">
+                    Jeśli Organizator nie podał dokładnej godziny, zostaw pole puste — portal pokaże samą datę.
+                    Informację typu „rozpoczęcie kolacją” albo „po Mszy św. o 18:00” wpisz w opisie.
+                  </p>
                 </div>
 
                 {/* Permanent Event Toggle */}

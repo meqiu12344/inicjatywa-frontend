@@ -278,7 +278,7 @@ export default function PendingEventsPage() {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
                             <Clock className="h-4 w-4" />
-                            {format(new Date(event.start_date), 'd MMM yyyy, HH:mm', { locale: pl })}
+                            {format(new Date(event.start_date), event.start_time_unknown ? 'd MMM yyyy' : 'd MMM yyyy, HH:mm', { locale: pl })}
                           </div>
                           {event.location && (
                             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -331,7 +331,7 @@ export default function PendingEventsPage() {
                     <Clock className="h-4 w-4 text-gray-400" />
                     <span className="text-gray-600">Data:</span>
                     <span className="text-gray-900">
-                      {format(new Date(selectedEvent.start_date), 'd MMM yyyy, HH:mm', { locale: pl })}
+                      {format(new Date(selectedEvent.start_date), selectedEvent.start_time_unknown ? 'd MMM yyyy' : 'd MMM yyyy, HH:mm', { locale: pl })}
                     </span>
                   </div>
                   

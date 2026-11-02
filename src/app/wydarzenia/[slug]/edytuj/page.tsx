@@ -18,7 +18,7 @@ import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { LOCATION_TYPE_CHOICES, buildEventEnd, getLocationType, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
+import { LOCATION_TYPE_CHOICES, buildEventEnd, buildEventStart, getLocationType, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
 import { TicketType, Category, Event, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
 import { RecurrenceFields } from '@/components/events/RecurrenceFields';
@@ -110,7 +110,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       recurrence: '',
       recurrence_weekdays: [],
       start_date: '',
-      start_time: '10:00',
+      start_time: '',
       end_date: '',
       end_time: '',
       available_from_date: '',
@@ -203,7 +203,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         recurrence: event.recurrence ?? '',
         recurrence_weekdays: event.recurrence_weekdays ?? [],
         start_date: startDate ? format(startDate, 'yyyy-MM-dd') : '',
-        start_time: startDate ? format(startDate, 'HH:mm') : '10:00',
+        start_time: startDate && !event.start_time_unknown ? format(startDate, 'HH:mm') : '',
         end_date: endDate ? format(endDate, 'yyyy-MM-dd') : '',
         end_time: endDate && !event.end_time_unknown ? format(endDate, 'HH:mm') : '',
         available_from_date: availableFrom ? format(availableFrom, 'yyyy-MM-dd') : '',
@@ -277,11 +277,10 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         throw new Error('Brak ID wydarzenia');
       }
       
-      if (!data.start_date || !data.start_time) {
+      if (!data.start_date) {
         throw new Error('Data rozpoczęcia jest wymagana');
       }
-      
-      const startDateTime = `${data.start_date}T${data.start_time}`;
+
       const availableFrom = data.available_from_date && data.available_from_time
         ? `${data.available_from_date}T${data.available_from_time}`
         : undefined;
@@ -297,7 +296,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         is_permanent: data.is_permanent,
         recurrence: data.is_permanent ? '' : data.recurrence,
         recurrence_weekdays: data.recurrence_weekdays,
-        start_date: startDateTime,
+        ...buildEventStart(data.start_date, data.start_time),
         // Przy wydarzeniu stałym nie ruszamy zapisanego zakończenia.
         ...(data.is_permanent ? {} : buildEventEnd(data.start_date, data.end_date, data.end_time)),
         location: needsVenue(data.location_type) ? {
@@ -361,7 +360,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   // Dane, z których backend składa Kartę IK — podgląd zmienia się razem z formularzem.
   const ikCardData = {
     title: watchAll.title,
-    start_date: watchAll.start_date && watchAll.start_time ? `${watchAll.start_date}T${watchAll.start_time}` : undefined,
+    ...(watchAll.start_date ? buildEventStart(watchAll.start_date, watchAll.start_time) : {}),
     ...buildEventEnd(watchAll.start_date, watchAll.end_date, watchAll.end_time),
     is_permanent: watchAll.is_permanent,
     recurrence: watchAll.is_permanent ? '' : watchAll.recurrence,
@@ -769,11 +768,11 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Godzina rozpoczęcia *
+                        Godzina rozpoczęcia (opcjonalnie)
                       </label>
                       <input
                         type="time"
-                        {...register('start_time', { required: 'Godzina jest wymagana' })}
+                        {...register('start_time')}
                         onPaste={(e) => handleTimePaste(e, 'start_time')}
                         onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary-500 focus:ring-0"

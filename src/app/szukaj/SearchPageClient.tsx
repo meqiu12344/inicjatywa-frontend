@@ -13,10 +13,10 @@ import {
   Wifi, Tag, Loader2, RefreshCw, MapPinned
 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { eventsApi, categoriesApi } from '@/lib/api/events';
 import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
+import { EventPoster } from '@/components/events/EventPoster';
 import { getLocationTypeLabel, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import { formatEventWhen } from '@/lib/eventWhen';
 import { useRestoreListingScroll } from '@/lib/returnContext';
@@ -1078,13 +1078,11 @@ function EventListItemCard({ event }: { event: EventListItem }) {
     >
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
-        <div className="relative sm:w-48 md:w-56 h-40 sm:h-auto flex-shrink-0">
+        <div className="relative sm:w-48 md:w-56 h-40 sm:h-auto flex-shrink-0 bg-slate-100 overflow-hidden">
           {event.image_thumbnail ? (
-            <Image
+            <EventPoster
               src={event.image_thumbnail}
               alt={event.title}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
               sizes="(max-width: 640px) 100vw, 224px"
             />
           ) : (
@@ -1092,28 +1090,24 @@ function EventListItemCard({ event }: { event: EventListItem }) {
               <Calendar className="w-10 h-10 text-primary-400" />
             </div>
           )}
-          
-          {/* Promotion badge */}
-          {event.promotion_level && (
-            <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold ${promotionBadges[event.promotion_level].className}`}>
-              {promotionBadges[event.promotion_level].label}
-            </div>
-          )}
-          
-          {/* Online badge */}
-          {getRemoteLabel(event) && (
-            <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white rounded-full text-xs font-semibold flex items-center gap-1">
-              <Wifi className="w-3 h-3" />
-              {getRemoteLabel(event)}
-            </div>
-          )}
         </div>
 
         {/* Content */}
         <div className="flex-1 p-4 sm:p-5 flex flex-col justify-between">
           <div>
-            {/* Categories */}
+            {/* Plakietki i kategorie — obok plakatu, żeby nie zasłaniały jego treści */}
             <div className="flex flex-wrap gap-1.5 mb-2">
+              {event.promotion_level && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${promotionBadges[event.promotion_level].className}`}>
+                  {promotionBadges[event.promotion_level].label}
+                </span>
+              )}
+              {getRemoteLabel(event) && (
+                <span className="px-2 py-0.5 bg-emerald-500 text-white rounded-full text-xs font-semibold flex items-center gap-1">
+                  <Wifi className="w-3 h-3" />
+                  {getRemoteLabel(event)}
+                </span>
+              )}
               {event.categories.slice(0, 3).map(cat => (
                 <span 
                   key={cat.id}

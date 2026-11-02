@@ -4,8 +4,8 @@ import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
 import { useRef, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Calendar, MapPin, Heart, Star } from 'lucide-react';
+import { EventPoster } from '@/components/events/EventPoster';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { clsx } from 'clsx';
@@ -77,30 +77,16 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
     >
       <article className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-full">
         {/* Image Container */}
-        <div className="relative aspect-[1/1.414] overflow-hidden">
+        <div className="relative aspect-[1/1.414] bg-slate-100 overflow-hidden">
           {event.image_thumbnail ? (
-            <Image
+            <EventPoster
               src={event.image_thumbnail}
               alt={event.title}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-110"
               sizes="(max-width: 640px) 256px, 288px"
             />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
               <Calendar className="w-12 h-12 text-primary-400" />
-            </div>
-          )}
-
-          {/* Promotion Badge */}
-          {showPromoBadge && event.promotion_level && (
-            <div
-              className={clsx(
-                'absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold z-10',
-                promoBadgeStyles[event.promotion_level]
-              )}
-            >
-              {promoBadgeLabels[event.promotion_level]}
             </div>
           )}
 
@@ -133,6 +119,17 @@ function SliderEventCard({ event, showPromoBadge = false }: { event: EventListIt
 
         {/* Content */}
         <div className="p-4">
+          {/* Plakietka pod plakatem, żeby nie zasłaniała jego treści */}
+          {showPromoBadge && event.promotion_level && (
+            <span
+              className={clsx(
+                'inline-block mb-2 px-3 py-1 rounded-full text-xs font-semibold',
+                promoBadgeStyles[event.promotion_level]
+              )}
+            >
+              {promoBadgeLabels[event.promotion_level]}
+            </span>
+          )}
           <h3 className="font-semibold text-slate-900 line-clamp-2 group-hover:text-primary-600 transition-colors mb-2">
             {event.title}
           </h3>

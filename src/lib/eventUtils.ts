@@ -72,6 +72,22 @@ export function getLocationType(event: { location_type?: LocationType; online_ev
 }
 
 /**
+ * Początek z pól formularza (RRRR-MM-DD, GG:MM). Godzina jest opcjonalna — nie zgadujemy jej: sama data to
+ * 00:00 tego dnia z flagą start_time_unknown, a portal pokaże samą datę.
+ */
+export function buildEventStart(
+  startDate: string,
+  startTime: string,
+): { start_date: string; start_time_unknown: boolean } {
+  return { start_date: `${startDate}T${startTime || '00:00'}`, start_time_unknown: !startTime };
+}
+
+/** Czy początek z pól formularza już minął; bez godziny liczy się cały dzień rozpoczęcia. */
+export function isEventStartInPast(startDate: string, startTime: string, now = new Date()): boolean {
+  return startTime ? new Date(`${startDate}T${startTime}`) < now : new Date(`${startDate}T23:59:59`) < now;
+}
+
+/**
  * Zakończenie z pól formularza (RRRR-MM-DD, GG:MM). Koniec jest opcjonalny: bez daty i godziny — brak końca;
  * sama godzina — dzień rozpoczęcia; sama data — znany dzień bez godziny (backend zapisze 23:59, a portal
  * pokaże samą datę).

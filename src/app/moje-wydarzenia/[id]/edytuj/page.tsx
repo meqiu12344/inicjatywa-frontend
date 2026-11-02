@@ -22,6 +22,7 @@ import {
   EVENT_TYPE_CHOICES,
   LOCATION_TYPE_CHOICES,
   buildEventEnd,
+  buildEventStart,
   getLocationType,
   needsOnlineLink,
   needsVenue,
@@ -133,7 +134,7 @@ export default function EditEventPage({ params }: Props) {
       event_type: 'free',
       status: 'draft',
       start_date: '',
-      start_time: '10:00',
+      start_time: '',
       end_date: '',
       end_time: '',
       available_from_date: '',
@@ -282,7 +283,7 @@ export default function EditEventPage({ params }: Props) {
       status: event.status || 'draft',
       // API zwraca czas lokalny (bez strefy) — toISOString() przesunąłby godziny do UTC.
       start_date: format(start, 'yyyy-MM-dd'),
-      start_time: format(start, 'HH:mm'),
+      start_time: event.start_time_unknown ? '' : format(start, 'HH:mm'),
       end_date: end ? format(end, 'yyyy-MM-dd') : '',
       end_time: end && !event.end_time_unknown ? format(end, 'HH:mm') : '',
       available_from_date: availableFromDate,
@@ -502,7 +503,7 @@ export default function EditEventPage({ params }: Props) {
   // Dane, z których backend składa Kartę IK (kategorie i Organizator — z zapisanego wydarzenia).
   const ikCardData = {
     title: watchAll.title,
-    start_date: watchAll.start_date && watchAll.start_time ? `${watchAll.start_date}T${watchAll.start_time}` : undefined,
+    ...(watchAll.start_date ? buildEventStart(watchAll.start_date, watchAll.start_time) : {}),
     ...buildEventEnd(watchAll.start_date, watchAll.end_date, watchAll.end_time),
     is_permanent: watchAll.is_permanent,
     recurrence: watchAll.is_permanent ? '' : watchAll.recurrence,
@@ -525,7 +526,7 @@ export default function EditEventPage({ params }: Props) {
         is_permanent: data.is_permanent,
         recurrence: data.is_permanent ? '' : data.recurrence,
         recurrence_weekdays: data.recurrence_weekdays,
-        start_date: `${data.start_date}T${data.start_time}`,
+        ...buildEventStart(data.start_date, data.start_time),
         ...buildEventEnd(data.start_date, data.end_date, data.end_time),
         available_from: (data.available_from_date && data.available_from_time)
           ? `${data.available_from_date}T${data.available_from_time}`
@@ -747,7 +748,7 @@ export default function EditEventPage({ params }: Props) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Data rozpoczęcia</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Data rozpoczęcia (godzina opcjonalnie)</label>
                       <div className="grid grid-cols-2 gap-2">
                         <input type="date" {...register('start_date')} onPaste={(e) => handleDatePaste(e, 'start_date', 'start_time')} onKeyDown={(e) => handleDateKeyDown(e, 'start_date', 'start_time')} className="input w-full" />
                         <input type="time" {...register('start_time')} onPaste={(e) => handleTimePaste(e, 'start_time')} onKeyDown={(e) => handleTimeKeyDown(e, 'start_time')} className="input w-full" />

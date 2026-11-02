@@ -27,6 +27,7 @@ export interface IkCardPreviewData {
   ik_card_variant: string;
   title?: string;
   start_date?: string;
+  start_time_unknown?: boolean;
   end_date?: string | null;
   end_time_unknown?: boolean;
   is_permanent?: boolean;

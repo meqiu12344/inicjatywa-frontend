@@ -3,8 +3,8 @@
 import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
 import { useMemo } from 'react';
-import Image from 'next/image';
 import { Calendar, MapPin, ArrowRight } from 'lucide-react';
+import { EventPoster } from '@/components/events/EventPoster';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { getPlaceLabel } from '@/lib/eventUtils';
@@ -67,13 +67,11 @@ function GoldBannerCard({ event }: { event: EventListItem }) {
         <div className="relative z-10 p-6 sm:p-8">
           <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
             {/* Image */}
-            <div className="w-full md:w-48 lg:w-56 aspect-video md:aspect-[4/3] relative rounded-xl overflow-hidden border-4 border-white shadow-lg flex-shrink-0">
+            <div className="w-full md:w-48 lg:w-56 aspect-video md:aspect-[4/3] relative rounded-xl overflow-hidden border-4 border-white shadow-lg flex-shrink-0 bg-amber-100">
               {event.image_thumbnail ? (
-                <Image
+                <EventPoster
                   src={event.image_thumbnail}
                   alt={event.title}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 768px) 100vw, 224px"
                   priority
                 />

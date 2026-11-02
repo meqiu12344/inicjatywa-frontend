@@ -2,8 +2,8 @@
 
 import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
-import Image from 'next/image';
 import { Calendar, MapPin, Users, Star, Wifi } from 'lucide-react';
+import { EventPoster } from '@/components/events/EventPoster';
 import { clsx } from 'clsx';
 import { getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
 import { formatEventWhen } from '@/lib/eventWhen';
@@ -40,14 +40,12 @@ export function EventCard({ event, featured = false }: EventCardProps) {
           featured && 'ring-2 ring-primary-500/20'
         )}
       >
-        {/* Image */}
+        {/* Image — plakat w całości; plakietki są pod nim, żeby nie zasłaniały jego treści. */}
         <div className="relative aspect-[1/1.414] bg-slate-100 overflow-hidden">
           {event.image_thumbnail ? (
-            <Image
+            <EventPoster
               src={event.image_thumbnail}
               alt={event.title}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
@@ -55,50 +53,44 @@ export function EventCard({ event, featured = false }: EventCardProps) {
               <Calendar className="w-12 h-12 text-primary-400" />
             </div>
           )}
+        </div>
 
-          {/* Promotion badge */}
-          {event.promotion_level && (
-            <div
-              className={clsx(
-                'absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1',
-                promotionBadges[event.promotion_level].className
-              )}
-            >
-              <Star className="w-3 h-3" />
-              {promotionBadges[event.promotion_level].label}
-            </div>
-          )}
-
-          {/* Online badge */}
-          {getRemoteLabel(event) && (
-            <div className="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500 text-white rounded-full text-xs font-semibold flex items-center gap-1">
-              <Wifi className="w-3 h-3" />
-              {getRemoteLabel(event)}
-            </div>
-          )}
-
-          {/* Fully booked badge */}
-          {event.is_fully_booked && (
-            <div className="absolute bottom-3 left-3 px-2.5 py-1 bg-red-500 text-white rounded-full text-xs font-semibold">
-              Brak miejsc
-            </div>
-          )}
-
-          {/* Categories */}
-          <div className="absolute bottom-3 right-3 flex gap-1.5 flex-wrap justify-end">
+        {/* Content */}
+        <div className="p-4 flex-1 flex flex-col">
+          {/* Badges */}
+          <div className="flex gap-1.5 flex-wrap mb-3">
+            {event.promotion_level && (
+              <span
+                className={clsx(
+                  'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1',
+                  promotionBadges[event.promotion_level].className
+                )}
+              >
+                <Star className="w-3 h-3" />
+                {promotionBadges[event.promotion_level].label}
+              </span>
+            )}
+            {getRemoteLabel(event) && (
+              <span className="px-2.5 py-1 bg-emerald-500 text-white rounded-full text-xs font-semibold flex items-center gap-1">
+                <Wifi className="w-3 h-3" />
+                {getRemoteLabel(event)}
+              </span>
+            )}
+            {event.is_fully_booked && (
+              <span className="px-2.5 py-1 bg-red-500 text-white rounded-full text-xs font-semibold">
+                Brak miejsc
+              </span>
+            )}
             {event.categories.slice(0, 2).map((cat) => (
               <span
                 key={cat.id}
-                className="px-2 py-0.5 bg-white/90 backdrop-blur-sm text-slate-700 rounded text-xs font-medium"
+                className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium"
               >
                 {cat.name}
               </span>
             ))}
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="p-4 flex-1 flex flex-col">
           {/* Date */}
           <div className="flex items-center gap-2 text-sm text-primary-600 font-medium mb-2">
             <Calendar className="w-4 h-4" />

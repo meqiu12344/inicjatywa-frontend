@@ -12,7 +12,6 @@ import {
   ChevronDown, BarChart3, Settings, ScanLine
 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { eventsApi } from '@/lib/api/events';
 import { apiClient, getErrorMessage } from '@/lib/api/client';
@@ -20,6 +19,7 @@ import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { getOrganizerStatus, matchesOrganizerFilter, type OrganizerFilter } from '@/lib/organizerStatus';
 import { OrganizerEventStatus } from '@/components/events/OrganizerEventStatus';
+import { EventPoster } from '@/components/events/EventPoster';
 import type { EventStatus, EventListItem } from '@/types';
 
 type TabType = OrganizerFilter;
@@ -277,12 +277,7 @@ export default function MyEventsPage() {
                       {/* Event Image */}
                       <div className="w-full sm:w-36 h-36 rounded-xl overflow-hidden bg-gray-900/50 flex-shrink-0 relative">
                         {event.image ? (
-                          <Image
-                            src={event.image}
-                            alt={event.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
+                          <EventPoster src={event.image} alt={event.title} sizes="(max-width: 640px) 100vw, 144px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-600">
                             <Calendar className="w-12 h-12" />

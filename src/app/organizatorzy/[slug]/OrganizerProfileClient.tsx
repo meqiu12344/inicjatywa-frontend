@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { bustCache } from '@/lib/utils/media';
 import { getDisplayStart, getPlaceLabel, getRemoteLabel } from '@/lib/eventUtils';
+import { EventPoster } from '@/components/events/EventPoster';
 import { EventListItem } from '@/types';
 
 // Types
@@ -77,8 +78,8 @@ interface ReviewsResponse {
 
 interface OrganizerProfilePageProps {
   initialOrganizer: Organizer;
-  initialEvents: { results: EventListItem[] };
-  initialReviews: ReviewsResponse;
+  initialEvents?: { results: EventListItem[] };
+  initialReviews?: ReviewsResponse;
 }
 
 // Star Rating Input Component
@@ -836,42 +837,41 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                       href={`/wydarzenia/${event.slug}`}
                       className="group block bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-all"
                     >
-                      <div className="relative aspect-[1/1.414] w-full">
+                      <div className="relative aspect-[1/1.414] w-full bg-gray-100 overflow-hidden">
                         {event.image_thumbnail ? (
-                          <img
+                          <EventPoster
                             src={event.image_thumbnail}
                             alt={event.title}
-                            className="w-full h-full object-cover"
+                            sizes="(max-width: 768px) 100vw, 400px"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
                             <Calendar className="w-10 h-10" />
                           </div>
                         )}
-                        {/* Date Badge */}
-                        <div className="absolute top-3 left-3 bg-white rounded-lg px-2 py-1 shadow-md text-center">
-                          <p className="text-lg font-bold text-blue-900 leading-none">
-                            {format(parseISO(getDisplayStart(event)), 'd')}
-                          </p>
-                          <p className="text-xs text-gray-500 uppercase">
-                            {format(parseISO(getDisplayStart(event)), 'MMM', { locale: pl })}
-                          </p>
-                        </div>
-                        {event.is_promoted && (
-                          <span className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
-                            Promowane
-                          </span>
-                        )}
                       </div>
                       <div className="p-4">
+                        {/* Data i plakietka pod plakatem, żeby nie zasłaniały jego treści */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-bold text-blue-900">
+                            {format(parseISO(getDisplayStart(event)), 'd MMM', { locale: pl })}
+                          </span>
+                          {event.is_promoted && (
+                            <span className="bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
+                              Promowane
+                            </span>
+                          )}
+                        </div>
                         <h4 className="font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
                           {event.title}
                         </h4>
                         <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {event.recurrence_label || format(parseISO(getDisplayStart(event)), 'HH:mm')}
-                          </span>
+                          {(event.recurrence_label || !event.start_time_unknown) && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {event.recurrence_label || format(parseISO(getDisplayStart(event)), 'HH:mm')}
+                            </span>
+                          )}
                           {getPlaceLabel(event) ? (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-4 h-4" />

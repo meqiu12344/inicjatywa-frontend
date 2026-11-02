@@ -261,6 +261,8 @@ export interface CreateEventData {
   title: string;
   description: string;
   start_date: string;
+  // Organizator nie podał godziny — start_date to 00:00 tego dnia.
+  start_time_unknown?: boolean;
   end_date?: string | null;
   end_time_unknown?: boolean;
   is_permanent?: boolean;
