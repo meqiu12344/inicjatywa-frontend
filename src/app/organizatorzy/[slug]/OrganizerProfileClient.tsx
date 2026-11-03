@@ -82,6 +82,9 @@ interface OrganizerProfilePageProps {
   initialReviews?: ReviewsResponse;
 }
 
+// Must match OrganizerReviewCreateSerializer.validate_comment on the backend.
+const MIN_REVIEW_LENGTH = 10;
+
 // Star Rating Input Component
 function StarRatingInput({ 
   value, 
@@ -438,9 +441,13 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
     initialData: initialEvents,
   });
 
-  // Fetch reviews
+  // Fetch reviews. can_add_review / user_review depend on who is asking, but the
+  // server-rendered first page is fetched anonymously — so the query is keyed by
+  // viewer and only anonymous visitors get it as initial data. Otherwise a
+  // logged-in user would see can_add_review: false and no form at all.
+  const reviewsViewer = isAuthenticated ? user?.id ?? 'authenticated' : 'anonymous';
   const { data: reviewsData, isLoading: isLoadingReviews } = useQuery({
-    queryKey: ['organizer-reviews', slug, reviewPage],
+    queryKey: ['organizer-reviews', slug, reviewPage, reviewsViewer],
     queryFn: async () => {
       const response = await apiClient.get(`/organizers/${slug}/reviews/`, {
         params: { page: reviewPage }
@@ -448,7 +455,7 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
       return response.data as ReviewsResponse;
     },
     enabled: !!organizer,
-    initialData: initialReviews,
+    initialData: reviewsViewer === 'anonymous' && reviewPage === 1 ? initialReviews : undefined,
   });
 
   // Add review mutation
@@ -505,8 +512,8 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
 
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rating || !comment.trim()) {
-      toast.error('Wypełnij wszystkie pola');
+    if (!rating || comment.trim().length < MIN_REVIEW_LENGTH) {
+      toast.error(`Wybierz ocenę i napisz opinię (minimum ${MIN_REVIEW_LENGTH} znaków)`);
       return;
     }
     addReviewMutation.mutate({ rating, comment });
@@ -960,14 +967,17 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                           placeholder="Podziel się swoją opinią o tym organizatorze..."
                           className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                           rows={4}
+                          minLength={MIN_REVIEW_LENGTH}
                           maxLength={1000}
                           required
                         />
-                        <p className="text-xs text-gray-500 mt-1">Maksymalnie 1000 znaków</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Od {MIN_REVIEW_LENGTH} do 1000 znaków ({comment.trim().length}/1000)
+                        </p>
                       </div>
                       <button
                         type="submit"
-                        disabled={addReviewMutation.isPending || !rating || !comment.trim()}
+                        disabled={addReviewMutation.isPending || !rating || comment.trim().length < MIN_REVIEW_LENGTH}
                         className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                       >
                         <Send className="w-4 h-4" />
@@ -984,6 +994,10 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                       Już dodałeś opinię o tym organizatorze.
                     </p>
                   </div>
+                ) : isOrganizer ? (
+                  <div className="bg-gray-50 rounded-xl p-4 mb-6 text-gray-600">
+                    To jest profil Twojej organizacji. Opinie mogą dodawać inni użytkownicy, a Ty możesz na nie odpowiadać.
+                  </div>
                 ) : null
               ) : (
                 <div className="bg-gray-50 rounded-xl p-6 mb-6 text-center">
@@ -994,7 +1008,7 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                     Zaloguj się, aby dodać opinię
                   </p>
                   <Link
-                    href={`/logowanie?next=/organizatorzy/${slug}#opinie`}
+                    href={`/logowanie?next=${encodeURIComponent(`/organizatorzy/${slug}#opinie`)}`}
                     className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Zaloguj się
@@ -1045,7 +1059,9 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
                 <div className="text-center py-12 text-gray-500">
                   <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p className="text-lg">Ten organizator nie ma jeszcze żadnych opinii.</p>
-                  <p className="text-sm mt-1">Bądź pierwszy!</p>
+                  {(canAddReview || !isAuthenticated) && (
+                    <p className="text-sm mt-1">Bądź pierwszy!</p>
+                  )}
                 </div>
               )}
             </section>
