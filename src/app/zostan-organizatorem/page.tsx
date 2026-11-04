@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ImageCropper from '@/components/ImageCropper';
-import { get, post } from '@/lib/api/client';
+import { get, getErrorMessage, post } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 
 interface OrganizerRequestCheck {
@@ -136,8 +136,8 @@ export default function BecomeOrganizerPage() {
       setIsSubmitted(true);
       toast.success('Wniosek został złożony pomyślnie!');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Nie udało się złożyć wniosku');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Nie udało się złożyć wniosku. Spróbuj ponownie za chwilę.'));
     },
   });
 
@@ -603,11 +603,12 @@ export default function BecomeOrganizerPage() {
                 <div className="relative">
                   <Globe className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type="url"
+                    type="text" inputMode="url"
                     value={formData.official_website}
                     onChange={(e) => setFormData({ ...formData, official_website: e.target.value })}
                     className="w-full border border-gray-300 rounded-xl pl-11 pr-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    placeholder="https://www.przyklad.pl"
+                    autoComplete="url"
+                    placeholder="www.przyklad.pl"
                   />
                 </div>
               </div>

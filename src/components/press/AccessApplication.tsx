@@ -62,11 +62,11 @@ export function Application({ access, onDone }: { access: PressAccess | null; on
             </label>
             <label>
               Strona redakcji
-              <input name="website" type="url" defaultValue={access?.website} />
+              <input name="website" type="text" inputMode="url" defaultValue={access?.website} />
             </label>
             <label>
               Link do publikacji / profil autora
-              <input name="portfolio" type="url" required defaultValue={access?.portfolio} />
+              <input name="portfolio" type="text" inputMode="url" required defaultValue={access?.portfolio} />
             </label>
           </div>
           <label>

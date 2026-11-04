@@ -10,7 +10,7 @@ import {
   ArrowLeft, Save, Upload, Loader2, Building2, 
   Globe, Mail, Phone, Facebook, Instagram, Youtube, Twitter
 } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getErrorMessage } from '@/lib/api/client';
 import { bustCache } from '@/lib/utils/media';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -92,8 +92,8 @@ export default function EditOrganizerPage() {
       queryClient.invalidateQueries({ queryKey: ['organizer-edit', slug] });
       router.push(`/organizatorzy/${slug}`);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Błąd podczas aktualizacji profilu');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Błąd podczas aktualizacji profilu'));
     },
   });
 
@@ -343,7 +343,7 @@ export default function EditOrganizerPage() {
                 Strona internetowa
               </label>
               <input
-                type="url"
+                type="text" inputMode="url"
                 value={formData.website || ''}
                 onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                 placeholder="https://example.com"
@@ -388,7 +388,7 @@ export default function EditOrganizerPage() {
                 Facebook
               </label>
               <input
-                type="url"
+                type="text" inputMode="url"
                 value={formData.facebook || ''}
                 onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
                 placeholder="https://facebook.com/..."
@@ -402,7 +402,7 @@ export default function EditOrganizerPage() {
                 Instagram
               </label>
               <input
-                type="url"
+                type="text" inputMode="url"
                 value={formData.instagram || ''}
                 onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
                 placeholder="https://instagram.com/..."
@@ -416,7 +416,7 @@ export default function EditOrganizerPage() {
                 YouTube
               </label>
               <input
-                type="url"
+                type="text" inputMode="url"
                 value={formData.youtube || ''}
                 onChange={(e) => setFormData({ ...formData, youtube: e.target.value })}
                 placeholder="https://youtube.com/..."
@@ -430,7 +430,7 @@ export default function EditOrganizerPage() {
                 Twitter / X
               </label>
               <input
-                type="url"
+                type="text" inputMode="url"
                 value={formData.twitter || ''}
                 onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
                 placeholder="https://twitter.com/..."

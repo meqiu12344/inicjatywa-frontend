@@ -764,9 +764,10 @@ export default function RegisterPage() {
                   <div className="relative">
                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                     <input
-                      type="url"
+                      type="text" inputMode="url"
                       id="organization_website"
-                      placeholder="https://www.example.pl"
+                      autoComplete="url"
+                      placeholder="www.przyklad.pl"
                       {...register('organization_website')}
                       className={clsx(
                         'w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500',
