@@ -43,6 +43,8 @@ const FIELD_MAP: Record<string, keyof RegisterFormData | 'root'> = {
   motivation: 'organizer_motivation',
 };
 
+const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
 function joinErr(val: any): string {
   if (Array.isArray(val)) return val.map(String).join(' ');
   if (typeof val === 'string') return val;
@@ -165,9 +167,9 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setLogoError('Dozwolone są tylko pliki graficzne (JPG, PNG, GIF)');
+    // Validate file type (backend opens the logo with Pillow — SVG/HEIC are rejected there)
+    if (!LOGO_TYPES.includes(file.type)) {
+      setLogoError('Dozwolone są tylko pliki JPG, PNG, GIF lub WebP');
       return;
     }
 
@@ -269,8 +271,10 @@ export default function RegisterPage() {
       });
       form.append('organization_logo', logoFile);
       payload = form;
-      // Let the browser set the multipart boundary header automatically
-      config = undefined;
+      // apiClient defaults to application/json, which makes axios serialize FormData
+      // to JSON (the file becomes {} and the backend answers 400). Asking for
+      // multipart lets axios hand the FormData to the browser, which adds the boundary.
+      config = { headers: { 'Content-Type': 'multipart/form-data' } };
     }
 
     registerUser(payload, {
@@ -282,40 +286,43 @@ export default function RegisterPage() {
         if (isRecaptchaEnabled) resetRecaptcha();
         const data = error?.response?.data;
         let mappedAny = false;
+        // Messages without a matching form field (non_field_errors, detail, unknown keys)
+        // go to the global alert — never fall back to axios' "Request failed with status code …".
+        const generalMessages: string[] = [];
 
         if (data && typeof data === 'object' && !Array.isArray(data)) {
           for (const [backendField, val] of Object.entries(data)) {
-            // skip wrapper keys
-            if (['message', 'detail', 'error', 'non_field_errors', 'errors'].includes(backendField)) continue;
-            const formField = FIELD_MAP[backendField];
             const msg = joinErr(val);
             if (!msg) continue;
-            if (formField && formField !== 'root') {
-              setError(formField as any, { message: msg });
+            if (backendField === 'organization_logo') {
+              setLogoError(msg);
               mappedAny = true;
-            }
-          }
-          // Handle non_field_errors as global
-          if (data.non_field_errors) {
-            const msg = joinErr(data.non_field_errors);
-            if (msg) {
-              setError('root', { message: msg });
+            } else if (backendField === 'recaptcha_token') {
+              setRecaptchaError(msg);
               mappedAny = true;
+            } else if (FIELD_MAP[backendField] && FIELD_MAP[backendField] !== 'root') {
+              setError(FIELD_MAP[backendField] as any, { message: msg });
+              mappedAny = true;
+            } else {
+              generalMessages.push(msg);
             }
           }
         }
 
-        if (!mappedAny) {
-          const fallback =
-            data?.message ||
-            data?.detail ||
-            data?.error ||
-            error?.message ||
-            'Wystąpił błąd podczas rejestracji.';
-          setError('root', { message: String(fallback) });
-          toast.error(String(fallback));
-        } else {
+        if (generalMessages.length) {
+          setError('root', { message: generalMessages.join(' ') });
+        }
+
+        if (mappedAny) {
           toast.error('Sprawdź formularz i popraw oznaczone pola.');
+        } else {
+          const fallback = generalMessages.length
+            ? generalMessages.join(' ')
+            : error?.response
+              ? 'Nie udało się utworzyć konta. Spróbuj ponownie za chwilę.'
+              : 'Brak połączenia z serwerem. Sprawdź połączenie z internetem i spróbuj ponownie.';
+          setError('root', { message: fallback });
+          toast.error(fallback);
         }
       },
     }, config);
@@ -396,6 +403,7 @@ export default function RegisterPage() {
                     )}
                   />
                 </div>
+                <FieldError message={errors.first_name?.message} />
               </div>
               <div>
                 <label htmlFor="last_name" className="block text-sm font-medium text-slate-300 mb-2">
@@ -416,6 +424,7 @@ export default function RegisterPage() {
                     )}
                   />
                 </div>
+                <FieldError message={errors.last_name?.message} />
               </div>
             </div>
 
@@ -507,6 +516,7 @@ export default function RegisterPage() {
                   )}
                 />
               </div>
+              <FieldError message={errors.phone_number?.message} />
             </div>
 
             {/* Password */}
@@ -695,7 +705,7 @@ export default function RegisterPage() {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept={LOGO_TYPES.join(',')}
                         onChange={handleLogoChange}
                         className="hidden"
                         id="logo-upload"
@@ -712,7 +722,7 @@ export default function RegisterPage() {
                         <span>Wybierz plik</span>
                       </label>
                       <p className="mt-2 text-xs text-slate-500">
-                        JPG, PNG lub GIF. Maks. 5MB.
+                        JPG, PNG, GIF lub WebP. Maks. 5MB.
                       </p>
                       {logoError && (
                         <p className="mt-2 text-sm text-red-400">{logoError}</p>
@@ -742,6 +752,7 @@ export default function RegisterPage() {
                       )}
                     />
                   </div>
+                  <FieldError message={errors.organization_nip?.message} />
                 </div>
 
                 {/* Website */}
@@ -765,6 +776,7 @@ export default function RegisterPage() {
                       )}
                     />
                   </div>
+                  <FieldError message={errors.organization_website?.message} />
                 </div>
 
                 {/* Organization Description */}
@@ -901,6 +913,11 @@ export default function RegisterPage() {
       </div>
     </div>
   );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="mt-2 text-sm text-red-400">{message}</p>;
 }
 
 function PasswordCheck({ passed, label }: { passed: boolean; label: string }) {
