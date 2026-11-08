@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { useAuth } from './useAuth';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
-import { eventsApi, categoriesApi } from '@/lib/api/events';
+import { eventsApi, categoriesApi, classificationApi } from '@/lib/api/events';
 import { getErrorMessage } from '@/lib/api/client';
 import type { Event, EventFilters, CreateEventData } from '@/types';
 
@@ -219,6 +219,15 @@ export function useCancelRegistration() {
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
+  });
+}
+
+// Słowniki nowego podziału (Rodzaj / Dla kogo / Tematyka / Zasoby)
+export function useClassification() {
+  return useQuery({
+    queryKey: ['classification'],
+    queryFn: classificationApi.getDimensions,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

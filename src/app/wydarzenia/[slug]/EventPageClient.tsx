@@ -1,5 +1,6 @@
 'use client';
 
+import { FIELD_LABELS, searchHref } from '@/lib/classification';
 import { use, useEffect, useState, type MouseEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -383,18 +384,18 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
             )}
           </div>
 
-          {/* Categories */}
+          {/* Rodzaj / Zasoby — główne etykiety; Dla kogo i Tematyka niżej */}
           <div className="flex flex-wrap gap-2">
-            {event.categories.map((cat) => (
+            {(['event_types', 'resource_types'] as const).flatMap(field => (event[field] || []).map(value => (
               <Link
-                key={cat.id}
-                href={`/?category=${cat.id}`}
+                key={`${field}-${value.slug}`}
+                href={searchHref(field, value.slug)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-100 text-primary-700 text-sm font-medium hover:bg-primary-200 transition-colors"
               >
                 <Tag className="w-3.5 h-3.5" />
-                {cat.name}
+                {value.name}
               </Link>
-            ))}
+            )))}
             {remote && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
                 <Globe className="w-3.5 h-3.5" />
@@ -408,6 +409,27 @@ export default function EventPage({ params, initialEvent }: EventPageProps) {
               </span>
             )}
           </div>
+
+          {(['audiences', 'topics'] as const).some(field => event[field]?.length) && (
+            <dl className="mt-3 space-y-1 text-sm">
+              {(['audiences', 'topics'] as const).filter(field => event[field]?.length).map(field => (
+                <div key={field} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <dt className="text-slate-500">{FIELD_LABELS[field]}</dt>
+                  <dd className="flex flex-wrap gap-1.5">
+                    {(event[field] || []).map(value => (
+                      <Link
+                        key={value.slug}
+                        href={searchHref(field, value.slug)}
+                        className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                      >
+                        {value.name}
+                      </Link>
+                    ))}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
       </div>
 

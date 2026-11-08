@@ -4,10 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { Category } from '@/types';
+import type { ClassificationField, ClassificationValue } from '@/types';
+import { searchHref } from '@/lib/classification';
 
+// Siatka wartości jednego pola nowego podziału (np. Rodzaj wydarzenia, Dla kogo?) z linkami do wyszukiwarki.
 interface CategoryGridProps {
-  categories: Category[];
+  title: string;
+  field: ClassificationField;
+  values: ClassificationValue[];
   initialVisibleCount?: number;
 }
 
@@ -25,9 +29,11 @@ const categoryColors = [
   'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200',
 ];
 
-export function CategoryGrid({ categories, initialVisibleCount = 9 }: CategoryGridProps) {
+export function CategoryGrid({ title, field, values, initialVisibleCount = 9 }: CategoryGridProps) {
   const [showAll, setShowAll] = useState(false);
-  const categoriesWithEvents = categories.filter((category) => (category.event_count ?? 0) > 0);
+  const categoriesWithEvents = values
+    .filter((value) => (value.event_count ?? 0) > 0)
+    .sort((a, b) => (b.event_count ?? 0) - (a.event_count ?? 0));
 
   if (categoriesWithEvents.length === 0) {
     return null;
@@ -41,14 +47,14 @@ export function CategoryGrid({ categories, initialVisibleCount = 9 }: CategoryGr
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-xl sm:text-2xl font-semibold text-slate-900">
-          Kategorie wydarzeń
+          {title}
         </h2>
         {hasMore && (
           <button
             onClick={() => setShowAll(!showAll)}
             className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors"
           >
-            {showAll ? 'Pokaż mniej' : 'Pokaż wszystkie kategorie'}
+            {showAll ? 'Pokaż mniej' : 'Pokaż wszystkie'}
             <ChevronRight
               className={clsx('w-4 h-4 transition-transform', showAll && 'rotate-90')}
             />
@@ -60,8 +66,8 @@ export function CategoryGrid({ categories, initialVisibleCount = 9 }: CategoryGr
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {visibleCategories.map((category, index) => (
           <Link
-            key={category.id}
-            href={`/szukaj?categories=${category.id}`}
+            key={category.slug}
+            href={searchHref(field, category.slug)}
             className={clsx(
               'px-4 py-3 rounded-xl text-center font-medium text-sm',
               'border transition-all duration-200',
@@ -69,7 +75,7 @@ export function CategoryGrid({ categories, initialVisibleCount = 9 }: CategoryGr
               categoryColors[index % categoryColors.length]
             )}
           >
-            <span className="capitalize">{category.name}</span>
+            <span>{category.name}</span>
             {category.event_count !== undefined && category.event_count > 0 && (
               <span className="block text-xs opacity-70 mt-0.5">
                 {category.event_count} {category.event_count === 1 ? 'wydarzenie' : (category.event_count % 10 >= 2 && category.event_count % 10 <= 4 && (category.event_count % 100 < 10 || category.event_count % 100 >= 20)) ? 'wydarzenia' : 'wydarzeń'}

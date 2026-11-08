@@ -347,9 +347,9 @@ export default function CalendarPage({ initialEvents, initialMonth, initialDay }
                         )}
                       </div>
 
-                      {event.category && (
+                      {event.event_types?.[0] && (
                         <span className="inline-block mt-3 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-lg">
-                          {event.category.name}
+                          {event.event_types[0].name}
                         </span>
                       )}
 
@@ -456,9 +456,9 @@ export default function CalendarPage({ initialEvents, initialMonth, initialDay }
                           </p>
                         )}
                       </div>
-                      {event.category && (
+                      {event.event_types?.[0] && (
                         <span className="inline-block mt-2 px-2 py-0.5 bg-amber-500/10 text-amber-400 text-xs font-medium rounded">
-                          {event.category.name}
+                          {event.event_types[0].name}
                         </span>
                       )}
                     </div>
@@ -520,9 +520,9 @@ export default function CalendarPage({ initialEvents, initialMonth, initialDay }
                           </p>
                         )}
                       </div>
-                      {event.category && (
+                      {event.event_types?.[0] && (
                         <span className="inline-block mt-2 px-2 py-0.5 bg-amber-500/10 text-amber-400 text-xs font-medium rounded">
-                          {event.category.name}
+                          {event.event_types[0].name}
                         </span>
                       )}
                     </div>

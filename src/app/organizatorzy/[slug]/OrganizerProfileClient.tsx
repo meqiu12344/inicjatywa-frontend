@@ -1,5 +1,6 @@
 'use client';
 
+import { searchHref } from '@/lib/classification';
 import { TrackedEventLink } from '@/components/events/TrackedEventLink';
 
 import { useState, useCallback } from 'react';
@@ -48,7 +49,8 @@ interface Organizer {
     avg_rating: number;
     total_reviews: number;
   };
-  categories: Array<{ id: number; name: string }>;
+  // Rodzaje wydarzeń organizatora (nowy podział)
+  categories: Array<{ id: number; name: string; slug?: string }>;
   created_at: string;
   can_edit: boolean;
 }
@@ -778,14 +780,19 @@ export default function OrganizerProfilePage({ initialOrganizer, initialEvents, 
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="flex items-center gap-2 text-lg font-semibold text-blue-900 mb-4">
                   <Tag className="w-5 h-5" />
-                  Kategorie wydarzeń
+                  Rodzaje wydarzeń
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {organizer.categories.map((category) => (
-                    <span
+                  {organizer.categories.map((category) => category.slug ? (
+                    <Link
                       key={category.id}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-full"
+                      href={searchHref('event_types', category.slug)}
+                      className="px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-full hover:bg-blue-100"
                     >
+                      {category.name}
+                    </Link>
+                  ) : (
+                    <span key={category.id} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-full">
                       {category.name}
                     </span>
                   ))}

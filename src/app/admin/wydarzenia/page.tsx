@@ -1,5 +1,6 @@
 'use client';
 
+import { CLASSIFICATION_FIELDS, FIELD_LABELS } from '@/lib/classification';
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -348,17 +349,21 @@ export default function PendingEventsPage() {
                     </div>
                   )}
                   
-                  {selectedEvent.categories.length > 0 && (
-                    <div className="flex items-start gap-2 text-sm">
+                  {CLASSIFICATION_FIELDS.filter(field => selectedEvent[field]?.length).map(field => (
+                    <div key={field} className="flex items-start gap-2 text-sm">
                       <Tag className="h-4 w-4 text-gray-400 mt-0.5" />
-                      <div className="flex flex-wrap gap-1">
-                        {selectedEvent.categories.map((cat) => (
-                          <span key={cat.id} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">
-                            {cat.name}
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="text-gray-500 mr-1">{FIELD_LABELS[field]}:</span>
+                        {(selectedEvent[field] || []).map((value) => (
+                          <span key={value.slug} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">
+                            {value.name}
                           </span>
                         ))}
                       </div>
                     </div>
+                  ))}
+                  {!selectedEvent.event_types?.length && !selectedEvent.resource_types?.length && (
+                    <p className="text-sm text-amber-700">Brak rodzaju wydarzenia — uzupełnij przy edycji.</p>
                   )}
                   
                   {selectedEvent.description && (

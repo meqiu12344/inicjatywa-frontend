@@ -5,19 +5,19 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Check, Loader2, Mail, Save, XCircle } from 'lucide-react';
 import { get, put, post } from '@/lib/api/client';
+import { useClassification } from '@/hooks/useEvents';
+import { ClassificationPicker } from '@/components/events/ClassificationPicker';
+import { choiceFromIds, emptyChoice } from '@/lib/classification';
+import type { ClassificationChoice, ClassificationField } from '@/types';
 import toast from 'react-hot-toast';
 
-interface Category {
-  id: number;
-  name: string;
-}
-
-interface ManageResponse {
+// Wybory w nowym podziale przychodzą jako ID wartości; zapisujemy slugi.
+type ManageResponse = Partial<Record<ClassificationField, number[]>> & {
   email: string;
   is_active: boolean;
-  categories: number[];
-  all_categories: Category[];
-}
+};
+
+const NEWSLETTER_FIELDS: ClassificationField[] = ['audiences', 'event_types', 'topics'];
 
 export default function ManageNewsletterPage() {
   const params = useParams();
@@ -28,8 +28,9 @@ export default function ManageNewsletterPage() {
 
   const [email, setEmail] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const classificationQuery = useClassification();
+  const [savedIds, setSavedIds] = useState<ManageResponse | null>(null);
+  const [choice, setChoice] = useState<ClassificationChoice>(emptyChoice);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isUnsubscribing, setIsUnsubscribing] = useState(false);
@@ -40,8 +41,7 @@ export default function ManageNewsletterPage() {
         const response = await get<ManageResponse>(`/newsletter/manage/${token}/`);
         setEmail(response.email);
         setIsActive(response.is_active);
-        setCategories(response.all_categories || []);
-        setSelectedCategories(response.categories || []);
+        setSavedIds(response);
         setStatus('ready');
       } catch (error: any) {
         setStatus('error');
@@ -54,22 +54,22 @@ export default function ManageNewsletterPage() {
     }
   }, [token]);
 
-  const hasCategories = useMemo(() => categories.length > 0, [categories]);
+  useEffect(() => {
+    if (savedIds && classificationQuery.data) setChoice(choiceFromIds(savedIds, classificationQuery.data));
+  }, [savedIds, classificationQuery.data]);
 
-  const toggleCategory = (categoryId: number) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
+  const selectedCount = useMemo(
+    () => NEWSLETTER_FIELDS.reduce((sum, field) => sum + choice[field].length, 0), [choice],
+  );
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await put<{ message: string }>(`/newsletter/manage/${token}/`, {
         is_active: isActive,
-        categories: selectedCategories,
+        event_types: choice.event_types,
+        audiences: choice.audiences,
+        topics: choice.topics,
       });
       toast.success('Preferencje zostaly zapisane');
     } catch (error: any) {
@@ -150,61 +150,30 @@ export default function ManageNewsletterPage() {
               <div>
                 <p className="font-medium text-gray-900">Aktywna subskrypcja</p>
                 <p className="text-sm text-gray-600">
-                  Wylaczenie opcji zatrzymuje wysylke newslettera, ale zachowuje preferencje kategorii.
+                  Wylaczenie opcji zatrzymuje wysylke newslettera, ale zachowuje Twoje wybory.
                 </p>
               </div>
             </label>
           </div>
 
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Kategorie</h2>
-              {hasCategories && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategories(categories.map((c) => c.id))}
-                  className="text-sm text-primary-700 hover:text-primary-900"
-                >
-                  Zaznacz wszystkie
-                </button>
-              )}
-            </div>
-
-            {!hasCategories ? (
-              <p className="text-sm text-gray-600">Brak dostepnych kategorii.</p>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-2">
-                {categories.map((category) => (
-                  <label
-                    key={category.id}
-                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedCategories.includes(category.id)
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(category.id)}
-                      onChange={() => toggleCategory(category.id)}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`w-4 h-4 rounded border flex items-center justify-center ${
-                        selectedCategories.includes(category.id)
-                          ? 'bg-primary-600 border-primary-600'
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      {selectedCategories.includes(category.id) && (
-                        <Check className="h-3 w-3 text-white" />
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-700">{category.name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Co Cię interesuje?</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {selectedCount === 0
+                ? 'Nic nie wybrano — wysyłamy wszystkie wydarzenia.'
+                : 'Wysyłamy wydarzenia, które mają którąkolwiek z zaznaczonych wartości.'}
+            </p>
+            <ClassificationPicker
+              dimensions={classificationQuery.data}
+              loading={classificationQuery.isFetching}
+              error={classificationQuery.isError}
+              onRetry={() => void classificationQuery.refetch()}
+              value={choice}
+              onChange={setChoice}
+              fields={NEWSLETTER_FIELDS}
+              mode="preferences"
+              className="space-y-5"
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">

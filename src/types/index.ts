@@ -62,6 +62,7 @@ export interface Category {
   id: number;
   name: string;
   slug: string;
+  display_name?: string;
   icon?: string;
   color?: string;
   event_count?: number;
@@ -71,6 +72,40 @@ export interface Tag {
   id: number;
   name: string;
   slug: string;
+}
+
+// ========================
+// Nowy podział: Rodzaj / Dla kogo / Tematyka / Zasoby katolickie (słowniki: GET /api/classification/)
+// ========================
+
+export type ClassificationField = 'event_types' | 'audiences' | 'topics' | 'resource_types';
+
+export interface ClassificationValue {
+  id: number;
+  name: string;
+  slug: string;
+  // Aktualne, publiczne wydarzenia z tą wartością (tylko w słowniku).
+  event_count?: number;
+  // „Dla wszystkich” — nie łączy się z innymi grupami.
+  is_exclusive?: boolean;
+}
+
+export interface ClassificationDimension {
+  field: ClassificationField;
+  label: string;
+  limit: number | null;
+  required: boolean;
+  values: ClassificationValue[];
+}
+
+// Wybór w formularzu, filtrze albo preferencjach — slugi wartości dla każdego pola.
+export type ClassificationChoice = Record<ClassificationField, string[]>;
+
+export interface EventClassification {
+  event_types?: ClassificationValue[];
+  audiences?: ClassificationValue[];
+  topics?: ClassificationValue[];
+  resource_types?: ClassificationValue[];
 }
 
 // ========================
@@ -104,7 +139,7 @@ export interface RecurrenceInfo {
   occurrences?: EventOccurrence[];
 }
 
-export interface Event extends RecurrenceInfo {
+export interface Event extends RecurrenceInfo, EventClassification {
   id: number;
   title: string;
   slug: string;
@@ -209,6 +244,10 @@ export interface EventListItem extends RecurrenceInfo {
   status?: EventStatus;
   categories: Pick<Category, 'id' | 'name' | 'slug'>[];
   category?: Pick<Category, 'id' | 'name' | 'slug'>;
+  event_types?: ClassificationValue[];
+  audiences?: ClassificationValue[];
+  topics?: ClassificationValue[];
+  resource_types?: ClassificationValue[];
   is_promoted: boolean;
   promotion_level?: 'bronze' | 'silver' | 'gold';
   promotion_id?: number;
@@ -224,8 +263,14 @@ export interface EventListItem extends RecurrenceInfo {
 
 export interface EventFilters {
   search?: string;
+  // Stare linki (?categories=ID) — backend tłumaczy je na nowe pola.
   category?: number;
   categories?: number[];
+  // Nowy podział: slugi; OR w obrębie pola, AND między polami.
+  event_types?: string[];
+  audiences?: string[];
+  topics?: string[];
+  resource_types?: string[];
   city?: string;
   region?: string;
   radius_km?: number;
@@ -269,6 +314,10 @@ export interface CreateEventData {
   recurrence?: RecurrenceRule;
   recurrence_weekdays?: number[];
   categories?: number[];
+  event_types?: string[];
+  audiences?: string[];
+  topics?: string[];
+  resource_types?: string[];
   location_id?: number;
   location?: {
     address?: string;

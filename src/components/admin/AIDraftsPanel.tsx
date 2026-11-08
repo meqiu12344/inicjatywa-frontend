@@ -45,6 +45,7 @@ const MISSING_LABELS: Record<string, string> = {
   price: 'cena',
   currency: 'waluta inna niż PLN',
   categories: 'kategorie',
+  event_types: 'rodzaj wydarzenia',
 };
 
 const DATA_STATUS: Record<AIImportInfo['data_status'], { icon: string; label: string; className: string }> = {
@@ -319,9 +320,14 @@ export function AIDraftsPanel({ stats, initialEventId }: { stats?: PendingEventS
                   )}
                 </DetailRow>
                 <DetailRow icon={Wallet} label="Cena">{formatPrice(selected)}</DetailRow>
-                <DetailRow icon={Tag} label="Kategorie">
-                  {selected.categories.length ? selected.categories.map((category) => category.name).join(', ') : 'brak'}
+                <DetailRow icon={Tag} label="Rodzaj">
+                  {selected.event_types?.length ? selected.event_types.map((value) => value.name).join(', ') : 'brak'}
                 </DetailRow>
+                {(selected.audiences?.length || selected.topics?.length) ? (
+                  <DetailRow icon={Tag} label="Dla kogo / Tematyka">
+                    {[...(selected.audiences || []), ...(selected.topics || [])].map((value) => value.name).join(', ')}
+                  </DetailRow>
+                ) : null}
                 {selected.ticket_url && (
                   <DetailRow icon={ExternalLink} label="Zapisy / bilety">
                     <a href={selected.ticket_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline break-all">

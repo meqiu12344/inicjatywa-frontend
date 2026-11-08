@@ -12,7 +12,10 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { eventsApi, categoriesApi } from '@/lib/api/events';
+import { eventsApi } from '@/lib/api/events';
+import { useClassification } from '@/hooks/useEvents';
+import { ClassificationPicker } from '@/components/events/ClassificationPicker';
+import { EVENT_FIELDS, choiceFromEvent, emptyChoice, validateEventChoice } from '@/lib/classification';
 import { getErrorMessage } from '@/lib/api/client';
 import { splitTags, parsePastedDateTime } from '@/lib/utils/datetime';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
@@ -20,14 +23,13 @@ import { useAuthStore, useHydration } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { LOCATION_TYPE_CHOICES, buildEventEnd, buildEventStart, getLocationType, getLocationTypeLabel, needsOnlineLink, needsVenue } from '@/lib/eventUtils';
 import { LOCATION_TYPE_ICONS } from '@/components/events/locationTypeIcons';
-import { TicketType, Category, Event, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
+import { TicketType, ClassificationChoice, ClassificationField, Event, EventType, GraphicType, LocationType, RecurrenceRule } from '@/types';
 import { RecurrenceFields } from '@/components/events/RecurrenceFields';
 import { DEFAULT_IK_CARD_VARIANT, EventGraphicPicker } from '@/components/events/EventGraphicPicker';
 
 interface EventFormData {
   title: string;
   description: string;
-  category_ids: number[];
   event_type: EventType;
   is_permanent: boolean;
   recurrence: RecurrenceRule;
@@ -86,11 +88,15 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
     enabled: isAuthenticated,
   });
 
-  // Fetch categories
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: categoriesApi.getCategories,
-  });
+  // Rodzaj / Dla kogo / Tematyka (+ Zasoby katolickie) — słowniki z panelu admina
+  const classificationQuery = useClassification();
+  const [classification, setClassification] = useState<ClassificationChoice>(emptyChoice);
+  const [classificationErrors, setClassificationErrors] = useState<Partial<Record<ClassificationField, string>>>({});
+  const [isResource, setIsResource] = useState(false);
+  const updateClassification = (next: ClassificationChoice) => {
+    setClassification(next);
+    setClassificationErrors({});
+  };
 
   const {
     register,
@@ -104,7 +110,6 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
     defaultValues: {
       title: '',
       description: '',
-      category_ids: [],
       event_type: 'free',
       is_permanent: false,
       recurrence: '',
@@ -143,7 +148,6 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const watchRecurrence = watch('recurrence');
   const watchRecurrenceWeekdays = watch('recurrence_weekdays');
   const watchTicketTypes = watch('ticket_types');
-  const watchCategoryIds = watch('category_ids');
   const watchTags = watch('tags');
 
   // Redirect if not authenticated
@@ -193,11 +197,14 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         setLocationQuery(locationParts.join(', '));
       }
 
+      // Wydarzenia sprzed nowego podziału mogą nie mieć Rodzaju — formularz poprosi o wybór przed zapisem.
+      setClassification(choiceFromEvent(event));
+      setIsResource(Boolean(event.resource_types?.length));
+
       // Reset form with event data
       reset({
         title: event.title || '',
         description: event.description || '',
-        category_ids: event.categories?.map((c: Category) => c.id) || [],
         event_type: event.event_type || 'free',
         is_permanent: event.is_permanent || false,
         recurrence: event.recurrence ?? '',
@@ -291,7 +298,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
       const eventData = {
         title: data.title,
         description: data.description,
-        categories: data.category_ids,
+        ...classification,
         event_type: data.event_type,
         is_permanent: data.is_permanent,
         recurrence: data.is_permanent ? '' : data.recurrence,
@@ -369,7 +376,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
     location: needsVenue(watchAll.location_type)
       ? { address: watchAll.location_address, city: watchAll.location_city }
       : undefined,
-    categories: watchAll.category_ids,
+    event_types: classification.event_types,
     event: eventId ?? undefined,
   };
 
@@ -473,15 +480,6 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
     }
   };
 
-  const toggleCategory = (categoryId: number) => {
-    const current = watchCategoryIds || [];
-    if (current.includes(categoryId)) {
-      setValue('category_ids', current.filter(id => id !== categoryId));
-    } else if (current.length < 3) {
-      setValue('category_ids', [...current, categoryId]);
-    }
-  };
-
   const addTicketType = () => {
     const current = watchTicketTypes || [];
     setValue('ticket_types', [
@@ -525,8 +523,15 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
         return await trigger(['title']);
       case 2:
         return await trigger(['start_date', 'start_time']);
-      case 3:
-        return watchCategoryIds.length > 0;
+      case 3: {
+        const problems = validateEventChoice(classification, classificationQuery.data || []);
+        if (Object.keys(problems).length > 0) {
+          setClassificationErrors(problems);
+          toast.error(Object.values(problems)[0] || 'Uzupełnij rodzaj wydarzenia');
+          return false;
+        }
+        return true;
+      }
       case 4:
         if (watchOnlineEvent && !(await trigger(['online_link']))) {
           return false;
@@ -597,7 +602,7 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
   const steps = [
     { id: 1, name: 'Podstawowe', icon: FileText },
     { id: 2, name: 'Termin', icon: Calendar },
-    { id: 3, name: 'Kategoria', icon: Tag },
+    { id: 3, name: 'Charakter', icon: Tag },
     { id: 4, name: 'Lokalizacja', icon: MapPin },
     { id: 5, name: 'Uczestnicy', icon: Users },
     { id: 6, name: 'Opis', icon: FileText },
@@ -848,65 +853,69 @@ export default function EditEventPage({ params }: { params: Promise<{ slug: stri
               </div>
             )}
 
-            {/* ===== STEP 3: Categories & Tags ===== */}
+            {/* ===== STEP 3: Rodzaj / Dla kogo / Tematyka & Tags ===== */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 pb-4 border-b-2 border-primary-500">
                   <Tag className="w-6 h-6 text-primary-500" />
-                  Kategoria i tagi
+                  Charakter wydarzenia i tagi
                 </h2>
 
                 <div className="p-4 bg-blue-50 border-l-4 border-primary-500 rounded-r-lg">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-primary-800">
-                      Odpowiednia kategoryzacja zwiększa szansę, że Twoje wydarzenie zostanie zauważone przez właściwych odbiorców.
+                      Wybierz, czym jest wydarzenie, dla kogo jest przeznaczone i czego dotyczy. Dzięki temu trafi do właściwych osób w wyszukiwarce i newsletterze.
                     </p>
                   </div>
                 </div>
 
-                {/* Categories */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Kategorie *
+                <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <ClassificationPicker
+                    dimensions={classificationQuery.data}
+                    loading={classificationQuery.isFetching}
+                    error={classificationQuery.isError}
+                    onRetry={() => void classificationQuery.refetch()}
+                    value={classification}
+                    onChange={updateClassification}
+                    fields={EVENT_FIELDS}
+                    mode="event"
+                    errors={classificationErrors}
+                    hints={{
+                      event_types: 'Czym jest wydarzenie — od 1 do 3. Formę uczestnictwa (online, transmisja) ustawiasz w kroku „Lokalizacja”.',
+                      audiences: 'Do kogo jest skierowane — do 5. „Dla wszystkich” nie łączy się z innymi grupami.',
+                      topics: 'Czego dotyczy — do 5, nieobowiązkowo.',
+                    }}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isResource}
+                      onChange={changeEvent => {
+                        setIsResource(changeEvent.target.checked);
+                        if (!changeEvent.target.checked) updateClassification({ ...classification, resource_types: [] });
+                      }}
+                      className="w-5 h-5 rounded mt-0.5"
+                    />
+                    <span className="text-sm text-gray-700">
+                      <span className="font-semibold">To nie wydarzenie, tylko zasób katolicki</span>
+                      <span className="block text-gray-500">Aplikacja, kanał YouTube, radio, telewizja, wydawnictwo albo podcast — trafi do „Zasobów katolickich”, a rodzaj wydarzenia nie jest wtedy wymagany.</span>
+                    </span>
                   </label>
-                  <p className="text-sm text-gray-500 mb-3">
-                    <Info className="w-4 h-4 inline mr-1" />
-                    Możesz wybrać maksymalnie 3 kategorie
-                  </p>
-                  
-                  <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto bg-gray-50">
-                    <div className="space-y-2">
-                      {categories
-                        .filter((cat: Category) => cat.name.toLowerCase() !== 'top10' && cat.name.toLowerCase() !== 'polecane')
-                        .map((category: Category) => {
-                          const isSelected = watchCategoryIds.includes(category.id);
-                          const isDisabled = !isSelected && watchCategoryIds.length >= 3;
-                          
-                          return (
-                            <label
-                              key={category.id}
-                              className={`
-                                flex items-center gap-3 p-3 bg-white border-2 rounded-lg cursor-pointer transition-all
-                                ${isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-primary-300'}
-                                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-                              `}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => !isDisabled && toggleCategory(category.id)}
-                                disabled={isDisabled}
-                                className="w-5 h-5 text-primary-500 rounded focus:ring-primary-500"
-                              />
-                              <span className="font-medium text-gray-700">{category.name}</span>
-                            </label>
-                          );
-                        })}
+                  {isResource && (
+                    <div className="mt-4">
+                      <ClassificationPicker
+                        dimensions={classificationQuery.data}
+                        value={classification}
+                        onChange={updateClassification}
+                        fields={['resource_types']}
+                        mode="event"
+                        errors={classificationErrors}
+                      />
                     </div>
-                  </div>
-                  {watchCategoryIds.length === 0 && (
-                    <p className="mt-2 text-sm text-red-500">Wybierz przynajmniej jedną kategorię</p>
                   )}
                 </div>
 

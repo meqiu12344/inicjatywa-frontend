@@ -193,10 +193,10 @@ export default function AdminStatystykiPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Events by Category */}
+              {/* Wydarzenia według Rodzaju (backend: events_by_category) */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Wydarzenia według kategorii
+                  Wydarzenia według rodzaju
                 </h2>
                 {stats.events_by_category.length > 0 ? (
                   <div className="space-y-3">

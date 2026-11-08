@@ -35,7 +35,13 @@ export interface CreateEventPaymentData {
   };
   payment_type: 'donation' | 'ai_poster';
   amount: number;
-  categories: number[];
+  // Stare kategorie (starsze wersje formularza) — backend tłumaczy je na nowe pola.
+  categories?: number[];
+  // Nowy podział: slugi z GET /api/classification/
+  event_types?: string[];
+  audiences?: string[];
+  topics?: string[];
+  resource_types?: string[];
   tags: string[];
   ticket_types?: {
     name: string;
@@ -48,7 +54,11 @@ export interface CreateEventPaymentData {
 
 export interface CreateEventFreeData {
   event_data: CreateEventPaymentData['event_data'];
-  categories: number[];
+  categories?: number[];
+  event_types?: string[];
+  audiences?: string[];
+  topics?: string[];
+  resource_types?: string[];
   tags: string[];
   ticket_types?: CreateEventPaymentData['ticket_types'];
 }

@@ -1,6 +1,6 @@
 import HomePageContent, { type HomePageData } from './HomePageContent';
 import { getBackendUrl } from '@/lib/env';
-import type { Category, EventListItem } from '@/types';
+import type { ClassificationDimension, EventListItem } from '@/types';
 
 export const revalidate = 60;
 
@@ -10,7 +10,7 @@ const EMPTY_HOME_PAGE_DATA: HomePageData = {
   latestEvents: [],
   top10Events: [],
   categorySliders: [],
-  categories: [],
+  classification: [],
 };
 
 async function fetchPublicData<T>(path: string): Promise<T | null> {
@@ -26,13 +26,13 @@ async function fetchPublicData<T>(path: string): Promise<T | null> {
 }
 
 async function getHomePageData(): Promise<HomePageData> {
-  const [goldEvents, promotedEvents, latestEvents, top10Events, categorySliders, categories] = await Promise.all([
+  const [goldEvents, promotedEvents, latestEvents, top10Events, categorySliders, classification] = await Promise.all([
     fetchPublicData<EventListItem[]>('/events/gold/'),
     fetchPublicData<EventListItem[]>('/events/promoted/'),
     fetchPublicData<EventListItem[]>('/events/latest/?limit=15'),
     fetchPublicData<EventListItem[]>('/events/top10/'),
     fetchPublicData<HomePageData['categorySliders']>('/events/category-sliders/'),
-    fetchPublicData<Category[]>('/categories/'),
+    fetchPublicData<{ fields: ClassificationDimension[] }>('/classification/'),
   ]);
 
   return {
@@ -41,7 +41,7 @@ async function getHomePageData(): Promise<HomePageData> {
     latestEvents: latestEvents ?? EMPTY_HOME_PAGE_DATA.latestEvents,
     top10Events: top10Events ?? EMPTY_HOME_PAGE_DATA.top10Events,
     categorySliders: categorySliders ?? EMPTY_HOME_PAGE_DATA.categorySliders,
-    categories: categories ?? EMPTY_HOME_PAGE_DATA.categories,
+    classification: classification?.fields ?? EMPTY_HOME_PAGE_DATA.classification,
   };
 }
 

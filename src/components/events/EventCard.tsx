@@ -81,12 +81,12 @@ export function EventCard({ event, featured = false }: EventCardProps) {
                 Brak miejsc
               </span>
             )}
-            {event.categories.slice(0, 2).map((cat) => (
+            {(event.event_types?.length ? event.event_types : event.resource_types || []).slice(0, 2).map((value) => (
               <span
-                key={cat.id}
+                key={value.slug}
                 className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium"
               >
-                {cat.name}
+                {value.name}
               </span>
             ))}
           </div>

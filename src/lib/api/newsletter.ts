@@ -1,3 +1,4 @@
+import type { ClassificationChoice } from '@/types';
 import { getBackendUrl, getPublicApiBaseUrl } from '@/lib/env';
 
 export const NEWSLETTER_ARCHIVE_PATH = '/newsletter/archiwum';
@@ -56,6 +57,7 @@ export const newsletterApi = {
   archive: (page = 1) => request<NewsletterArchive>(`archive/?page=${page}`),
   detail: (id: string) => request<ArchivedNewsletter>(`archive/${encodeURIComponent(id)}/`),
   confirm: (token: string) => request<SubscriptionConfirmation>(`confirm/${encodeURIComponent(token)}/`, {}),
-  subscribe: (data: { email: string; categories: number[] }) => request<{ message: string }>('subscribe/', data),
+  // Wybory w nowym podziale (slugi); bez wyboru = wszystkie wydarzenia.
+  subscribe: (data: { email: string } & Partial<ClassificationChoice>) => request<{ message: string }>('subscribe/', data),
   quickSubscribe: (email: string) => request<{ message: string }>('quick-subscribe/', { email }),
 };

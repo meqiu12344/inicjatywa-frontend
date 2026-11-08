@@ -2,27 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, Save, ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { Heart, Save, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useClassification } from '@/hooks/useEvents';
 import { authApi } from '@/lib/api/auth';
 import { getErrorMessage } from '@/lib/api/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { ClassificationPicker } from '@/components/events/ClassificationPicker';
+import { choiceFromIds, emptyChoice } from '@/lib/classification';
+import type { ClassificationChoice, ClassificationField } from '@/types';
 
-interface Category {
-  id: number;
-  name: string;
-  value: string;
-}
+// „Dla kogo?” na początku — tak użytkownik najłatwiej opisuje siebie (np. Single, Rodziny, Seniorzy).
+const INTEREST_FIELDS: ClassificationField[] = ['audiences', 'event_types', 'topics'];
 
 export default function InterestsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+  const classificationQuery = useClassification();
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [choice, setChoice] = useState<ClassificationChoice>(emptyChoice);
+  const [savedIds, setSavedIds] = useState<Partial<Record<ClassificationField, number[]>> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -33,41 +35,30 @@ export default function InterestsPage() {
     }
 
     if (isAuthenticated) {
-      loadInterests();
+      authApi.getInterests()
+        .then(data => setSavedIds(data))
+        .catch(error => toast.error(getErrorMessage(error, 'Nie udało się załadować zainteresowań')))
+        .finally(() => setIsLoading(false));
     }
   }, [isAuthenticated, authLoading, router]);
 
-  const loadInterests = async () => {
-    try {
-      const data = await authApi.getInterests();
-      setCategories(data.all_categories);
-      setSelectedCategories(data.favorite_categories);
-    } catch (error) {
-      console.error('Failed to load interests:', error);
-      toast.error(getErrorMessage(error, 'Nie udało się załadować zainteresowań'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Preferencje przychodzą jako ID — zamieniamy je na slugi, gdy słowniki są już pobrane.
+  useEffect(() => {
+    if (savedIds && classificationQuery.data) setChoice(choiceFromIds(savedIds, classificationQuery.data));
+  }, [savedIds, classificationQuery.data]);
 
-  const toggleCategory = (categoryId: number) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
+  const selectedCount = INTEREST_FIELDS.reduce((sum, field) => sum + choice[field].length, 0);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await authApi.updateInterests(selectedCategories);
+      await authApi.updateInterests({
+        event_types: choice.event_types, audiences: choice.audiences, topics: choice.topics,
+      });
       toast.success('Zainteresowania zostały zapisane!');
-      // Invalidate recommended events query
       queryClient.invalidateQueries({ queryKey: ['events', 'recommended'] });
       router.push('/');
     } catch (error) {
-      console.error('Failed to save interests:', error);
       toast.error(getErrorMessage(error, 'Nie udało się zapisać zainteresowań'));
     } finally {
       setIsSaving(false);
@@ -85,7 +76,6 @@ export default function InterestsPage() {
   return (
     <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
         <div className="mb-8">
           <Link
             href="/profil"
@@ -101,61 +91,41 @@ export default function InterestsPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Twoje zainteresowania</h1>
               <p className="text-slate-600">
-                Wybierz kategorie wydarzeń, które Cię interesują
+                Powiedz nam, dla kogo szukasz wydarzeń i co Cię interesuje
               </p>
             </div>
           </div>
         </div>
 
-        {/* Info box */}
         <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 rounded-xl p-4 mb-6">
           <p className="text-rose-800 text-sm">
-            <strong>💡 Tip:</strong> Na podstawie Twoich zainteresowań pokażemy Ci spersonalizowane
-            rekomendacje wydarzeń na stronie głównej i w cotygodniowym newsletterze.
+            Na tej podstawie pokażemy Ci polecane wydarzenia na stronie głównej. Wydarzenie pasuje, jeśli ma
+            którąkolwiek z wybranych wartości.
           </p>
         </div>
 
-        {/* Categories grid */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Wybierz kategorie</h2>
-          
-          {categories.length === 0 ? (
-            <p className="text-slate-500">Brak dostępnych kategorii</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {categories.map((category) => {
-                const isSelected = selectedCategories.includes(category.id);
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => toggleCategory(category.id)}
-                    className={`
-                      relative flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all
-                      ${isSelected
-                        ? 'border-rose-500 bg-rose-50 text-rose-700'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                      }
-                    `}
-                  >
-                    {isSelected && (
-                      <Check className="w-4 h-4 text-rose-500 absolute top-1 right-1" />
-                    )}
-                    <span className="text-sm font-medium text-center">{category.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <ClassificationPicker
+            dimensions={classificationQuery.data}
+            loading={classificationQuery.isFetching}
+            error={classificationQuery.isError}
+            onRetry={() => void classificationQuery.refetch()}
+            value={choice}
+            onChange={setChoice}
+            fields={INTEREST_FIELDS}
+            mode="preferences"
+            hints={{
+              audiences: 'Na przykład: Single, Rodziny, Małżeństwa, Seniorzy.',
+              event_types: 'Jakie wydarzenia lubisz — rekolekcje, koncerty, warsztaty…',
+              topics: 'Tematy, które są Ci bliskie.',
+            }}
+          />
         </div>
 
-        {/* Selected count */}
-        <div className="flex items-center justify-between bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-xl shadow-sm border border-slate-200 p-4">
           <div>
-            <span className="text-slate-600">Wybrano: </span>
-            <span className="font-semibold text-slate-900">
-              {selectedCategories.length} {selectedCategories.length === 1 ? 'kategoria' : 
-                selectedCategories.length < 5 ? 'kategorie' : 'kategorii'}
-            </span>
+            <span className="text-slate-600">Wybrane wartości: </span>
+            <span className="font-semibold text-slate-900">{selectedCount}</span>
           </div>
           <button
             onClick={handleSave}

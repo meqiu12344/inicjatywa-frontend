@@ -13,7 +13,12 @@ import {
   Wifi, Tag, Loader2, RefreshCw, MapPinned
 } from 'lucide-react';
 import Link from 'next/link';
-import { eventsApi, categoriesApi } from '@/lib/api/events';
+import { eventsApi, categoriesApi, classificationApi } from '@/lib/api/events';
+import { ClassificationPicker } from '@/components/events/ClassificationPicker';
+import {
+  CLASSIFICATION_FIELDS, choiceToFilters, emptyChoice, findValue, hasChoice, readChoiceFromParams,
+  readLegacyCategories, writeChoiceToParams,
+} from '@/lib/classification';
 import type { PaginatedResponse } from '@/lib/api/client';
 import { EventCard, EventCardSkeleton } from '@/components/events/EventCard';
 import { EventPoster } from '@/components/events/EventPoster';
@@ -24,7 +29,7 @@ import {
   PARTICIPATION_FILTERS, readParticipation, readSearchLocation, resourceSectionIndex, searchLocationFilters,
   writeSearchLocation, searchFiltersKey, searchPlaceKey,
 } from '@/lib/searchFilters';
-import type { EventListItem, EventFilters, EventType, LocationType } from '@/types';
+import type { ClassificationChoice, ClassificationDimension, EventListItem, EventFilters, EventType, LocationType } from '@/types';
 
 // Date presets
 const getDatePresets = () => {
@@ -89,10 +94,10 @@ const VOIVODESHIPS = [
 interface SearchPageContentProps {
   initialResults: PaginatedResponse<EventListItem>;
   initialResultsKey: string;
-  initialCategories: import('@/types').Category[];
+  initialClassification: ClassificationDimension[];
 }
 
-function SearchPageContent({ initialResults, initialResultsKey, initialCategories }: SearchPageContentProps) {
+function SearchPageContent({ initialResults, initialResultsKey, initialClassification }: SearchPageContentProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -102,9 +107,10 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [selectedCity, setSelectedCity] = useState(initialLocation.city);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    searchParams.get('categories')?.split(',').filter(Boolean) || []
-  );
+  // Rodzaj / Dla kogo / Tematyka / Zasoby — w adresie: ?rodzaj=rekolekcje&dla_kogo=mlodziez
+  const [classification, setClassification] = useState<ClassificationChoice>(() => readChoiceFromParams(searchParams));
+  // Stare linki (?categories=ID z Google, newslettera) — backend tłumaczy je na nowe pola.
+  const [legacyCategories, setLegacyCategories] = useState<number[]>(() => readLegacyCategories(searchParams));
   const [dateFrom, setDateFrom] = useState(searchParams.get('date_from') || '');
   const [dateTo, setDateTo] = useState(searchParams.get('date_to') || '');
   const [datePreset, setDatePreset] = useState(searchParams.get('preset') || '');
@@ -155,29 +161,34 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     enabled: showCityDropdown,
   });
 
-  // Get categories
+  // Słowniki nowego podziału z liczbą aktualnych wydarzeń
   const {
-    data: categories,
-    isFetching: categoriesLoading,
-    isError: categoriesError,
-    refetch: refetchCategories,
+    data: dimensions,
+    isFetching: dimensionsLoading,
+    isError: dimensionsError,
+    refetch: refetchDimensions,
   } = useQuery({
+    queryKey: ['classification'],
+    queryFn: classificationApi.getDimensions,
+    staleTime: 1000 * 60 * 5,
+    initialData: initialClassification.length > 0 ? initialClassification : undefined,
+    refetchOnMount: query => query.state.data?.length ? true : 'always',
+  });
+
+  // Nazwy starych kategorii potrzebne tylko do opisu filtra ze starego linku.
+  const { data: legacyCategoryList } = useQuery({
     queryKey: ['categories'],
     queryFn: categoriesApi.getCategories,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    // An empty SSR fallback must not block the browser request for five minutes.
-    initialData: initialCategories.length > 0 ? initialCategories : undefined,
-    // Other pages share this cache and may also have seeded it with an empty fallback.
-    refetchOnMount: query => query.state.data?.length ? true : 'always',
+    staleTime: 1000 * 60 * 30,
+    enabled: legacyCategories.length > 0,
   });
 
   // Build filters object
   const filters: EventFilters = useMemo(() => ({
     search: debouncedQuery || undefined,
     ...searchLocationFilters(locationFilters),
-    categories: selectedCategories.length > 0 
-      ? selectedCategories.map(s => parseInt(s)).filter(n => !isNaN(n))
-      : undefined,
+    ...choiceToFilters(classification),
+    categories: legacyCategories.length > 0 ? legacyCategories : undefined,
     participation: participation.length > 0 ? participation : undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
@@ -185,7 +196,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     ordering: ordering,
     page: page,
     page_size: 12,
-  }), [debouncedQuery, locationFilters, selectedCategories, participation, dateFrom, dateTo, eventType, ordering, page]);
+  }), [debouncedQuery, locationFilters, classification, legacyCategories, participation, dateFrom, dateTo, eventType, ordering, page]);
 
   // Search events
   const { data: searchResults, isLoading, isFetching, refetch } = useQuery({
@@ -225,7 +236,8 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     writeSearchLocation(params, locationFilters);
-    if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
+    writeChoiceToParams(params, classification);
+    if (legacyCategories.length > 0) params.set('categories', legacyCategories.join(','));
     if (participation.length > 0) params.set('participation', participation.join(','));
     if (dateFrom) params.set('date_from', dateFrom);
     if (dateTo) params.set('date_to', dateTo);
@@ -237,7 +249,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
 
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [query, locationFilters, selectedCategories, participation, dateFrom, dateTo, datePreset, eventType, ordering, page, viewMode, pathname, router]);
+  }, [query, locationFilters, classification, legacyCategories, participation, dateFrom, dateTo, datePreset, eventType, ordering, page, viewMode, pathname, router]);
 
   const toggleNationwideOnly = () => {
     setNationwideOnly(!nationwideOnly);
@@ -268,13 +280,13 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     setPage(1);
   }, []);
 
-  // Toggle category
-  const toggleCategory = useCallback((categoryId: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+  const updateClassification = useCallback((next: ClassificationChoice) => {
+    setClassification(next);
+    setPage(1);
+  }, []);
+
+  const removeClassificationValue = useCallback((field: keyof ClassificationChoice, slug: string) => {
+    setClassification(prev => ({ ...prev, [field]: prev[field].filter(item => item !== slug) }));
     setPage(1);
   }, []);
 
@@ -293,7 +305,8 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     setRadiusCity('');
     setIncludeNationwide(false);
     setNationwideOnly(false);
-    setSelectedCategories([]);
+    setClassification(emptyChoice());
+    setLegacyCategories([]);
     setParticipation([]);
     setDateFrom('');
     setDateTo('');
@@ -304,7 +317,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     setPage(1);
   }, []);
 
-  const hasActiveFilters = query || selectedCity || selectedRegion || useRadius || selectedCategories.length > 0 || 
+  const hasActiveFilters = query || selectedCity || selectedRegion || useRadius || hasChoice(classification) || legacyCategories.length > 0 ||  
     participation.length > 0 || dateFrom || dateTo || eventType || onlineOnly || nationwideOnly;
 
   const filteredCities = citiesData || [];
@@ -316,9 +329,9 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
     refetch();
   };
 
-  // Get category name by ID
-  const getCategoryName = (id: string) => {
-    return categories?.find(c => c.id.toString() === id)?.name || id;
+  const legacyCategoryName = (id: number) => {
+    const category = legacyCategoryList?.find(item => item.id === id);
+    return category ? `${category.display_name || category.name} (dawny link)` : 'Kategoria z dawnego linku';
   };
 
   return (
@@ -473,7 +486,7 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
               Więcej filtrów
               {hasActiveFilters && (
                 <span className="w-5 h-5 rounded-full bg-primary-600 text-white text-xs flex items-center justify-center">
-                  {[query, !useRadius && selectedCity, selectedRegion, useRadius, selectedCategories.length > 0, participation.length > 0, dateFrom || dateTo, eventType, onlineOnly, nationwideOnly, hasPlaceFilter && includeNationwide].filter(Boolean).length}
+                  {[query, !useRadius && selectedCity, selectedRegion, useRadius, hasChoice(classification) || legacyCategories.length > 0, participation.length > 0, dateFrom || dateTo, eventType, onlineOnly, nationwideOnly, hasPlaceFilter && includeNationwide].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -542,53 +555,20 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
         <div className="bg-slate-50 border-b border-slate-200">
           <div className="container mx-auto px-4 py-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Categories */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3">
-                  <Tag className="w-4 h-4 inline mr-2" />
-                  Kategorie
-                </label>
-                {!categories?.length && (
-                  categoriesLoading ? (
-                    <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                      Ładowanie kategorii…
-                    </p>
-                  ) : (
-                    <div className="space-y-2 text-sm">
-                      <p role={categoriesError ? 'alert' : 'status'} className="text-slate-600">
-                        {categoriesError ? 'Nie udało się pobrać kategorii.' : 'Brak dostępnych kategorii.'}
-                      </p>
-                      <button
-                        onClick={() => void refetchCategories()}
-                        className="inline-flex items-center gap-1 text-primary-700 hover:underline"
-                      >
-                        <RefreshCw className="w-4 h-4" aria-hidden="true" />
-                        Ponów pobieranie kategorii
-                      </button>
-                    </div>
-                  )
-                )}
-                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                  {categories?.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => toggleCategory(cat.id.toString())}
-                      aria-pressed={selectedCategories.includes(cat.id.toString())}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        selectedCategories.includes(cat.id.toString())
-                          ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200'
-                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                      }`}
-                    >
-                      {cat.name}
-                      {selectedCategories.includes(cat.id.toString()) && (
-                        <X className="w-3 h-3 ml-1 inline" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Rodzaj / Dla kogo / Tematyka / Zasoby — każde pole w osobnej kolumnie siatki */}
+              <ClassificationPicker
+                dimensions={dimensions}
+                loading={dimensionsLoading}
+                error={dimensionsError}
+                onRetry={() => void refetchDimensions()}
+                value={classification}
+                onChange={updateClassification}
+                fields={CLASSIFICATION_FIELDS}
+                mode="filter"
+                showCounts
+                scrollable
+                className="contents"
+              />
 
               {/* Forma uczestnictwa — osobno od kategorii */}
               <div>
@@ -881,14 +861,30 @@ function SearchPageContent({ initialResults, initialResultsKey, initialCategorie
                 </button>
               </span>
             )}
-            {selectedCategories.map(catId => (
-              <span 
-                key={catId}
+            {CLASSIFICATION_FIELDS.flatMap(field => classification[field].map(slug => (
+              <span
+                key={`${field}-${slug}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium"
               >
                 <Tag className="w-3.5 h-3.5" />
-                {getCategoryName(catId)}
-                <button onClick={() => toggleCategory(catId)} className="hover:text-primary-900">
+                {findValue(dimensions, field, slug)?.name || slug}
+                <button onClick={() => removeClassificationValue(field, slug)} className="hover:text-primary-900" aria-label="Usuń filtr">
+                  <X className="w-4 h-4" />
+                </button>
+              </span>
+            )))}
+            {legacyCategories.map(categoryId => (
+              <span
+                key={`legacy-${categoryId}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                {legacyCategoryName(categoryId)}
+                <button
+                  onClick={() => { setLegacyCategories(prev => prev.filter(id => id !== categoryId)); setPage(1); }}
+                  className="hover:text-primary-900"
+                  aria-label="Usuń filtr"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </span>
@@ -1108,12 +1104,12 @@ function EventListItemCard({ event }: { event: EventListItem }) {
                   {getRemoteLabel(event)}
                 </span>
               )}
-              {event.categories.slice(0, 3).map(cat => (
-                <span 
-                  key={cat.id}
+              {(event.event_types?.length ? event.event_types : event.resource_types || []).slice(0, 3).map(value => (
+                <span
+                  key={value.slug}
                   className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-medium"
                 >
-                  {cat.name}
+                  {value.name}
                 </span>
               ))}
             </div>
@@ -1159,7 +1155,7 @@ function EventListItemCard({ event }: { event: EventListItem }) {
 }
 
 // Main export with Suspense boundary
-export default function SearchPage({ initialResults, initialResultsKey, initialCategories }: SearchPageContentProps) {
+export default function SearchPage({ initialResults, initialResultsKey, initialClassification }: SearchPageContentProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -1183,7 +1179,7 @@ export default function SearchPage({ initialResults, initialResultsKey, initialC
         </div>
       </div>
     }>
-      <SearchPageContent initialResults={initialResults} initialResultsKey={initialResultsKey} initialCategories={initialCategories} />
+      <SearchPageContent initialResults={initialResults} initialResultsKey={initialResultsKey} initialClassification={initialClassification} />
     </Suspense>
   );
 }

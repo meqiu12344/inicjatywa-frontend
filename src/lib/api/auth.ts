@@ -5,6 +5,9 @@
 import { apiClient } from './client';
 import type { AxiosRequestConfig } from 'axios';
 import type { User, Profile, AuthTokens, AuthUser, RegisterData } from '@/types';
+import type { ClassificationChoice, ClassificationField } from '@/types';
+
+export type InterestsResponse = Partial<Record<ClassificationField, number[]>> & { favorite_categories?: number[] };
 
 /** Django LoginView response shape */
 interface LoginResponse {
@@ -174,20 +177,18 @@ export const authApi = {
   },
 
   /**
-   * Get user interests (favorite categories)
+   * „Moje zainteresowania” — wybory w nowym podziale (ID wartości ze słowników /api/classification/).
    */
-  getInterests: async (): Promise<{ favorite_categories: number[]; all_categories: { id: number; name: string; value: string }[] }> => {
-    const response = await apiClient.get<{ favorite_categories: number[]; all_categories: { id: number; name: string; value: string }[] }>('/auth/interests/');
+  getInterests: async (): Promise<InterestsResponse> => {
+    const response = await apiClient.get<InterestsResponse>('/auth/interests/');
     return response.data;
   },
 
   /**
-   * Update user interests (favorite categories)
+   * Zapis zainteresowań — slugi wartości dla podanych pól (pozostałe pola bez zmian).
    */
-  updateInterests: async (categoryIds: number[]): Promise<{ message: string; favorite_categories: number[] }> => {
-    const response = await apiClient.put<{ message: string; favorite_categories: number[] }>('/auth/interests/', {
-      category_ids: categoryIds,
-    });
+  updateInterests: async (choice: Partial<ClassificationChoice>): Promise<InterestsResponse & { message: string }> => {
+    const response = await apiClient.put<InterestsResponse & { message: string }>('/auth/interests/', choice);
     return response.data;
   },
 

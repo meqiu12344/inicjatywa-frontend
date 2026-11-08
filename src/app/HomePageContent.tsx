@@ -11,8 +11,9 @@ import PopupAd from '@/components/ads/PopupAd';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategorySliders, useGoldEvents, useLatestEvents, usePromotedEvents, useRecommendedEvents, useTop10Events } from '@/hooks/useEvents';
 import { useQuery } from '@tanstack/react-query';
-import { categoriesApi } from '@/lib/api/events';
-import type { Category, EventListItem } from '@/types';
+import { classificationApi, type CategorySlider } from '@/lib/api/events';
+import { searchHref } from '@/lib/classification';
+import type { ClassificationDimension, EventListItem } from '@/types';
 import { useRestoreListingScroll } from '@/lib/returnContext';
 
 const HeroPolandMap = dynamic(() => import('@/components/layout/HeroPolandMap'), { ssr: false });
@@ -22,8 +23,9 @@ export interface HomePageData {
   promotedEvents: EventListItem[];
   latestEvents: EventListItem[];
   top10Events: EventListItem[];
-  categorySliders: { category_id: number; category_name: string; events: EventListItem[] }[];
-  categories: Category[];
+  // Slidery po Rodzaju wydarzenia i siatki Rodzaj / Dla kogo (słowniki z liczbą aktualnych wydarzeń)
+  categorySliders: CategorySlider[];
+  classification: ClassificationDimension[];
 }
 
 function useHomePageData(data: HomePageData): HomePageData {
@@ -32,7 +34,7 @@ function useHomePageData(data: HomePageData): HomePageData {
   const latestEvents = useLatestEvents(15);
   const top10Events = useTop10Events();
   const categorySliders = useCategorySliders();
-  const categories = useQuery({ queryKey: ['categories'], queryFn: categoriesApi.getCategories, initialData: data.categories });
+  const classification = useQuery({ queryKey: ['classification'], queryFn: classificationApi.getDimensions, initialData: data.classification.length ? data.classification : undefined });
 
   useEffect(() => {
     if (data.goldEvents.length === 0) goldEvents.refetch();
@@ -40,7 +42,7 @@ function useHomePageData(data: HomePageData): HomePageData {
     if (data.latestEvents.length === 0) latestEvents.refetch();
     if (data.top10Events.length === 0) top10Events.refetch();
     if (data.categorySliders.length === 0) categorySliders.refetch();
-    if (data.categories.length === 0) categories.refetch();
+    if (data.classification.length === 0) classification.refetch();
   }, []);
 
   return {
@@ -49,7 +51,7 @@ function useHomePageData(data: HomePageData): HomePageData {
     latestEvents: data.latestEvents.length ? data.latestEvents : latestEvents.data || [],
     top10Events: data.top10Events.length ? data.top10Events : top10Events.data || [],
     categorySliders: data.categorySliders.length ? data.categorySliders : categorySliders.data || [],
-    categories: data.categories.length ? data.categories : categories.data || [],
+    classification: data.classification.length ? data.classification : classification.data || [],
   };
 }
 
@@ -127,8 +129,16 @@ export default function HomePageContent({ data }: { data: HomePageData }) {
         <EventSlider title="Najnowsze Wydarzenia" events={homePageData.latestEvents} icon={<Clock className="w-6 h-6 text-primary-600" />} viewAllLink="/szukaj?ordering=-created_at" />
         <EventSlider title="Top 10" events={homePageData.top10Events.slice(0, 10)} icon={<TrendingUp className="w-6 h-6 text-emerald-600" />} viewAllLink="/szukaj?ordering=-views_count" />
         <AdBanner id="ad-banner-2" />
-        {homePageData.categorySliders.map((slider) => <EventSlider key={slider.category_id} title={slider.category_name} events={slider.events} viewAllLink={`/szukaj?category=${slider.category_id}`} />)}
-        {homePageData.categories.length > 0 && <CategoryGrid categories={homePageData.categories} initialVisibleCount={10} />}
+        {homePageData.categorySliders.map((slider) => <EventSlider key={slider.value_slug} title={slider.title} events={slider.events} viewAllLink={searchHref('event_types', slider.value_slug)} />)}
+        {homePageData.classification.filter(dimension => dimension.field === 'event_types' || dimension.field === 'audiences').map(dimension => (
+          <CategoryGrid
+            key={dimension.field}
+            title={dimension.field === 'event_types' ? 'Rodzaje wydarzeń' : 'Dla kogo?'}
+            field={dimension.field}
+            values={dimension.values}
+            initialVisibleCount={10}
+          />
+        ))}
         <div className="h-8" />
       </div>
     </>

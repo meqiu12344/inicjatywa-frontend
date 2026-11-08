@@ -513,6 +513,7 @@ export default function EditEventPage({ params }: Props) {
       ? { address: watchAll.location_address, city: watchAll.location_city }
       : undefined,
     categories: event?.categories?.map((category) => category.id),
+    event_types: event?.event_types?.map((value) => value.slug),
     event: eventId,
   };
 

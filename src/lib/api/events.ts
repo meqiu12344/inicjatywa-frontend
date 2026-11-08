@@ -1,5 +1,7 @@
 import { get, post, patch, del, PaginatedResponse } from '@/lib/api/client';
-import type { Event, EventListItem, EventFilters, CreateEventData, Category, IkCardVariant } from '@/types';
+import type {
+  Event, EventListItem, EventFilters, CreateEventData, Category, ClassificationDimension, IkCardVariant,
+} from '@/types';
 
 const EVENTS_BASE = '/events';
 
@@ -36,9 +38,23 @@ export interface IkCardPreviewData {
   location_type?: string;
   location?: { address?: string; city?: string };
   categories?: number[];
+  // Rodzaj wydarzenia (slugi) — to on stoi na Karcie IK.
+  event_types?: string[];
   organizer?: string;
   // Edytowane wydarzenie — karta pokaże jego Organizatora.
   event?: number;
+}
+
+// Slider strony głównej — jeden Rodzaj wydarzenia; view_all to parametry API (np. event_types=rekolekcje).
+export interface CategorySlider {
+  field: 'event_types';
+  value_id: number;
+  value_slug: string;
+  title: string;
+  view_all: string;
+  category_id: number | null;
+  category_name: string;
+  events: EventListItem[];
 }
 
 // Events API
@@ -109,8 +125,8 @@ export const eventsApi = {
   },
 
   // Get category sliders data (categories with their events)
-  getCategorySliders: async (): Promise<{ category_id: number; category_name: string; events: EventListItem[] }[]> => {
-    return get<{ category_id: number; category_name: string; events: EventListItem[] }[]>(`${EVENTS_BASE}/category-sliders/`);
+  getCategorySliders: async (): Promise<CategorySlider[]> => {
+    return get<CategorySlider[]>(`${EVENTS_BASE}/category-sliders/`);
   },
   
   // Get user's events
@@ -237,7 +253,15 @@ export const eventsApi = {
   },
 };
 
-// Categories API
+// Słowniki nowego podziału: Rodzaj / Dla kogo / Tematyka / Zasoby katolickie
+export const classificationApi = {
+  getDimensions: async (): Promise<ClassificationDimension[]> => {
+    const data = await get<{ fields: ClassificationDimension[] }>('/classification/');
+    return data.fields;
+  },
+};
+
+// Stare kategorie (archiwum — nowe ekrany używają classificationApi)
 export const categoriesApi = {
   getCategories: async (): Promise<Category[]> => {
     return get<Category[]>('/categories/');

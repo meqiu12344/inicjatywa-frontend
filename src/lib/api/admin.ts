@@ -1,3 +1,4 @@
+import type { ClassificationValue } from '@/types';
 import { get, post, patch, del, PaginatedResponse } from '@/lib/api/client';
 import type { LocationType } from '@/types';
 
@@ -159,6 +160,10 @@ export interface PendingEvent {
     id: number;
     name: string;
   }>;
+  event_types?: ClassificationValue[];
+  audiences?: ClassificationValue[];
+  topics?: ClassificationValue[];
+  resource_types?: ClassificationValue[];
   start_date: string;
   start_time_unknown?: boolean;
   end_date: string | null;

@@ -20,14 +20,16 @@ interface GlobeEvent {
 }
 
 // Color palette per category (fallback to blue)
+// Klucze to slugi Rodzaju wydarzenia (GET /events/globe/ zwraca w polu category slug pierwszego Rodzaju).
 const CATEGORY_COLORS: Record<string, string> = {
-  'Rekolekcje': '#10b981',
-  'Pielgrzymki': '#eab308',
-  'Spotkania modlitewne': '#8b5cf6',
-  'Koncerty': '#f59e0b',
-  'Warsztaty': '#3b82f6',
-  'Konferencje': '#ec4899',
-  'Wolontariat': '#14b8a6',
+  'rekolekcje': '#10b981',
+  'dzien-skupienia': '#10b981',
+  'pielgrzymka': '#eab308',
+  'spotkanie-modlitewne-uwielbienie': '#8b5cf6',
+  'koncert': '#f59e0b',
+  'warsztaty': '#3b82f6',
+  'konferencja': '#ec4899',
+  'wydarzenie-charytatywne': '#14b8a6',
 };
 const DEFAULT_COLOR = '#60a5fa';
 

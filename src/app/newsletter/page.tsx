@@ -4,25 +4,23 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Mail, Check, Bell, Calendar, BookOpen } from 'lucide-react';
 import Link from 'next/link';
-import { get } from '@/lib/api/client';
+import { useClassification } from '@/hooks/useEvents';
+import { ClassificationPicker } from '@/components/events/ClassificationPicker';
+import { emptyChoice } from '@/lib/classification';
+import type { ClassificationChoice, ClassificationField } from '@/types';
 import { newsletterApi, NewsletterApiError, NEWSLETTER_ARCHIVE_PATH } from '@/lib/api/newsletter';
 import { NewsletterArchiveList } from '@/components/newsletter/NewsletterArchiveList';
 import toast from 'react-hot-toast';
 
-interface Category {
-  id: number;
-  name: string;
-}
+// „Dla kogo?” na początku; bez żadnego wyboru subskrybent dostaje wszystkie wydarzenia.
+const NEWSLETTER_FIELDS: ClassificationField[] = ['audiences', 'event_types', 'topics'];
 
 export default function NewsletterPage() {
   const [email, setEmail] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [choice, setChoice] = useState<ClassificationChoice>(emptyChoice);
   const [step, setStep] = useState<'form' | 'success'>('form');
 
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => get<Category[]>('/categories/'),
-  });
+  const classificationQuery = useClassification();
 
   const { data: archiveData, isPending: isArchivePending, isError: isArchiveError } = useQuery({
     queryKey: ['newsletter-archive'],
@@ -30,7 +28,7 @@ export default function NewsletterPage() {
   });
 
   const subscribeMutation = useMutation({
-    mutationFn: (data: { email: string; categories: number[] }) => 
+    mutationFn: (data: { email: string } & Partial<ClassificationChoice>) =>  
       newsletterApi.subscribe(data),
     onSuccess: () => {
       setStep('success');
@@ -47,24 +45,11 @@ export default function NewsletterPage() {
       toast.error('Podaj adres email');
       return;
     }
-    subscribeMutation.mutate({ email, categories: selectedCategories });
+    subscribeMutation.mutate({
+      email, event_types: choice.event_types, audiences: choice.audiences, topics: choice.topics,
+    });
   };
 
-  const toggleCategory = (categoryId: number) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
-
-  const selectAllCategories = () => {
-    if (categoriesData) {
-      setSelectedCategories(categoriesData.map(c => c.id));
-    }
-  };
-
-  const categories = categoriesData || [];
 
   if (step === 'success') {
     return (
@@ -131,47 +116,21 @@ export default function NewsletterPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Interesujące kategorie
-                  </label>
-                  <button
-                    type="button"
-                    onClick={selectAllCategories}
-                    className="text-sm text-primary-600 hover:text-primary-800"
-                  >
-                    Zaznacz wszystkie
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {categories.map((category) => (
-                    <label
-                      key={category.id}
-                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedCategories.includes(category.id)
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category.id)}
-                        onChange={() => toggleCategory(category.id)}
-                        className="sr-only"
-                      />
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                        selectedCategories.includes(category.id)
-                          ? 'bg-primary-600 border-primary-600'
-                          : 'border-gray-300'
-                      }`}>
-                        {selectedCategories.includes(category.id) && (
-                          <Check className="h-3 w-3 text-white" />
-                        )}
-                      </div>
-                      <span className="text-sm text-gray-700">{category.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <p className="block text-sm font-medium text-gray-700 mb-1">Co Cię interesuje?</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Nieobowiązkowo. Bez wyboru wyślemy wszystkie wydarzenia; z wyborem — te, które mają którąkolwiek z zaznaczonych wartości.
+                </p>
+                <ClassificationPicker
+                  dimensions={classificationQuery.data}
+                  loading={classificationQuery.isFetching}
+                  error={classificationQuery.isError}
+                  onRetry={() => void classificationQuery.refetch()}
+                  value={choice}
+                  onChange={setChoice}
+                  fields={NEWSLETTER_FIELDS}
+                  mode="preferences"
+                  className="space-y-5"
+                />
               </div>
 
               <button

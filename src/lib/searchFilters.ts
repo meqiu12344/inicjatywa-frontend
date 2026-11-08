@@ -1,4 +1,5 @@
 import type { EventFilters, EventListItem, LocationType } from '@/types';
+import { choiceToFilters, readChoiceFromParams, readLegacyCategories } from '@/lib/classification';
 
 export type SearchParameters = Record<string, string | string[] | undefined>;
 type ParamReader = { get(key: string): string | null | undefined };
@@ -83,7 +84,8 @@ export function searchFiltersFromParams(parameters: SearchParameters): EventFilt
   return {
     search: get('q') || undefined,
     ...searchLocationFilters(readSearchLocation({ get })),
-    categories: (get('categories') || '').split(',').map(value => value.trim()).filter(value => /^\d+$/.test(value)).map(Number),
+    ...choiceToFilters(readChoiceFromParams({ get })),
+    categories: readLegacyCategories({ get }),
     participation: readParticipation(get('participation')),
     date_from: get('date_from') || undefined, date_to: get('date_to') || undefined,
     event_type: (get('event_type') || undefined) as EventFilters['event_type'],
