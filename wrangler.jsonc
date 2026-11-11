@@ -16,6 +16,9 @@
     // Deploy: `npm run deploy:test` (buduje z NEXT_PUBLIC_APP_ENV=test).
     "test": {
       "name": "inicjatywa-frontend-test",
+      // Tylko przez domenę za Cloudflare Access — adres *.workers.dev omijałby logowanie.
+      "workers_dev": false,
+      "preview_urls": false,
       "assets": {
         "directory": ".open-next/assets",
         "binding": "ASSETS"
