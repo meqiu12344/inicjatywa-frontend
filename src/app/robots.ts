@@ -1,6 +1,10 @@
 import type { MetadataRoute } from 'next';
+import { IS_TEST_ENV } from '@/lib/env';
 
 export default function robots(): MetadataRoute.Robots {
+  if (IS_TEST_ENV) {
+    return { rules: { userAgent: '*', disallow: '/' } };
+  }
   return {
     rules: {
       userAgent: '*',

@@ -23,3 +23,5 @@ export function getPublicApiBaseUrl(): string {
   const normalized = stripWrappingQuotes(rawValue.trim()).replace(/\/+$/, '');
   return normalized || DEFAULT_BACKEND_URL;
 }
+/** Build środowiska testowego (test.inicjatywakatolicka.pl): bez analityki, noindex, pasek ostrzegawczy. */
+export const IS_TEST_ENV = process.env.NEXT_PUBLIC_APP_ENV === 'test';

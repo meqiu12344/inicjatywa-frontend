@@ -10,5 +10,23 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    // Środowisko testowe: osobny worker pod test.inicjatywakatolicka.pl, backend api-test.
+    // Deploy: `npm run deploy:test` (buduje z NEXT_PUBLIC_APP_ENV=test).
+    "test": {
+      "name": "inicjatywa-frontend-test",
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS"
+      },
+      "routes": [
+        { "pattern": "test.inicjatywakatolicka.pl", "custom_domain": true }
+      ],
+      "vars": {
+        "BACKEND_URL": "https://api-test.inicjatywakatolicka.pl",
+        "NEXT_PUBLIC_APP_ENV": "test"
+      }
+    }
   }
 }
