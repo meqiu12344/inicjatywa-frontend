@@ -18,7 +18,8 @@ const env = {
 };
 
 const run = (args) => {
-  const result = spawnSync('npx', ['opennextjs-cloudflare', ...args], { stdio: 'inherit', env, shell: true });
+  // Jeden string zamiast tablicy argumentów: na Windows npx wymaga powłoki (bez ostrzeżenia DEP0190).
+  const result = spawnSync(`npx opennextjs-cloudflare ${args.join(' ')}`, { stdio: 'inherit', env, shell: true });
   if (result.status !== 0) process.exit(result.status ?? 1);
 };
 
